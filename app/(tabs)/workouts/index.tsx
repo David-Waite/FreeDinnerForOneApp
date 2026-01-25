@@ -8,9 +8,9 @@ import {
   Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { WorkoutRepository } from "../../services/WorkoutRepository";
-import { WorkoutTemplate } from "../../constants/types";
-import Colors from "../../constants/Colors";
+import { WorkoutRepository } from "../../../services/WorkoutRepository";
+import { WorkoutTemplate } from "../../../constants/types";
+import Colors from "../../../constants/Colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function WorkoutDashboard() {
@@ -82,8 +82,13 @@ export default function WorkoutDashboard() {
 
       <TouchableOpacity
         style={styles.startBtn}
-        // For now, this just goes to the old recorder, we will link this up later
-        onPress={() => router.push("/workouts/record")}
+        // UPDATE THIS LINE: Pass the templateId as a parameter
+        onPress={() =>
+          router.push({
+            pathname: "/workouts/record",
+            params: { templateId: item.id },
+          })
+        }
       >
         <Text style={styles.startBtnText}>Start Workout</Text>
       </TouchableOpacity>

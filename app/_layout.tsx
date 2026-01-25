@@ -1,59 +1,27 @@
-import { Tabs } from "expo-router";
-import React from "react";
-import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
-import Colors from "../constants/Colors";
+import { Stack } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { StyleSheet } from "react-native";
 
-export default function TabLayout() {
+export default function RootLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors.tabIconSelected,
-        tabBarInactiveTintColor: Colors.tabIconDefault,
-        headerShown: false,
-      }}
-    >
-      {/* 1. Leaderboard Tab */}
-      <Tabs.Screen
-        name="leaderboard"
-        options={{
-          title: "Leaderboard",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="trophy" size={24} color={color} />
-          ),
-        }}
-      />
+    <GestureHandlerRootView style={styles.container}>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* The Tabs */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-      {/* 2. Home / Feed Tab */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Feed",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="home" size={24} color={color} />
-          ),
-        }}
-      />
-
-      {/* 3. Stats Tab */}
-      <Tabs.Screen
-        name="stats"
-        options={{
-          title: "Stats",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="bar-chart" size={24} color={color} />
-          ),
-        }}
-      />
-      {/* 4. Workout Tab */}
-      <Tabs.Screen
-        name="workouts"
-        options={{
-          title: "Workouts",
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="dumbbell" size={24} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+        {/* The Modal */}
+        <Stack.Screen
+          name="post-modal"
+          options={{
+            presentation: "modal", // Native iOS modal slide
+            headerShown: false,
+          }}
+        />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});

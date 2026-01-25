@@ -11,9 +11,9 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { WorkoutRepository } from "../../services/WorkoutRepository";
-import { TemplateExercise, WorkoutTemplate } from "../../constants/types";
-import Colors from "../../constants/Colors";
+import { WorkoutRepository } from "../../../services/WorkoutRepository";
+import { TemplateExercise, WorkoutTemplate } from "../../../constants/types";
+import Colors from "../../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function TemplateEditor() {
@@ -40,8 +40,8 @@ export default function TemplateEditor() {
     const newEx: TemplateExercise = {
       id: Date.now().toString(),
       name: "",
-      targetSets: "3",
-      targetReps: "10",
+      targetSets: "3", // This is now valid (string)
+      targetReps: "8-12", // This is now valid (string)
       restTime: "60s",
       notes: "",
     };
@@ -136,7 +136,7 @@ export default function TemplateEditor() {
                     style={styles.smallInput}
                     placeholder="3"
                     keyboardType="numeric"
-                    value={ex.targetSets}
+                    value={ex.targetSets} // Valid: string to string
                     onChangeText={(v) => updateExercise(ex.id, "targetSets", v)}
                   />
                 </View>
@@ -145,7 +145,7 @@ export default function TemplateEditor() {
                   <TextInput
                     style={styles.smallInput}
                     placeholder="8-12"
-                    value={ex.targetReps}
+                    value={ex.targetReps} // Valid: string to string
                     onChangeText={(v) => updateExercise(ex.id, "targetReps", v)}
                   />
                 </View>

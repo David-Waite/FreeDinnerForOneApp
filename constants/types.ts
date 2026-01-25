@@ -8,28 +8,47 @@ export type Set = {
 export type Exercise = {
   id: string;
   name: string;
+  restTime: number; // Seconds
   sets: Set[];
 };
 
 export type WorkoutSession = {
   id: string;
-  name: string; // e.g., "Chest Day"
-  date: string; // ISO string
+  name: string;
+  date: string;
   exercises: Exercise[];
 };
 
 export type TemplateExercise = {
   id: string;
   name: string;
-  targetSets: string; // e.g. "3" or "4"
-  targetReps: string; // e.g. "8-12"
-  restTime: string; // e.g. "60s" or "2 min"
+  targetSets: string; // CHANGED to string to allow Input editing
+  targetReps: string; // CHANGED to string to allow ranges like "8-12"
+  restTime: string; // "60s"
   notes: string;
 };
 
 export type WorkoutTemplate = {
   id: string;
-  name: string; // e.g. "Chest & Triceps"
-  lastPerformed?: string; // ISO Date string
+  name: string;
+  lastPerformed?: string;
   exercises: TemplateExercise[];
+};
+
+export type ExerciseNote = {
+  id: string;
+  text: string;
+  createdAt: string;
+  isPinned: boolean;
+};
+
+export type NotesStorage = Record<string, ExerciseNote[]>;
+
+export type WorkoutPost = {
+  id: string;
+  userId: string;
+  userName: string;
+  message: string;
+  imageUri?: string;
+  date: string;
 };
