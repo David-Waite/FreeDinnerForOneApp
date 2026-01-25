@@ -1,148 +1,179 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
-import { WorkoutTemplate } from "../../../constants/types";
+import { WorkoutSession } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { Calendar, DateData } from "react-native-calendars";
 
-export default function WorkoutDashboard() {
+export default function WorkoutHistoryScreen() {
   const router = useRouter();
-  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [history, setHistory] = useState<WorkoutSession[]>([]);
+  // Default to today string YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      loadTemplates();
+      loadHistory();
     }, []),
   );
 
-  const loadTemplates = async () => {
-    const data = await WorkoutRepository.getTemplates();
-    setTemplates(data);
+  const loadHistory = async () => {
+    const data = await WorkoutRepository.getWorkouts();
+    setHistory(data);
   };
 
-  const deleteTemplate = async (id: string) => {
-    Alert.alert("Delete Template", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          await WorkoutRepository.deleteTemplate(id);
-          loadTemplates();
-        },
-      },
-    ]);
+  // 1. Generate Marked Dates for Calendar
+  const markedDates = useMemo(() => {
+    const marks: any = {};
+
+    // Mark days with workouts
+    history.forEach((session) => {
+      const dateKey = session.date.split("T")[0];
+      marks[dateKey] = { marked: true, dotColor: Colors.primary };
+    });
+
+    // Highlight selected day
+    marks[selectedDate] = {
+      ...(marks[selectedDate] || {}),
+      selected: true,
+      selectedColor: Colors.primary,
+      disableTouchEvent: true,
+    };
+
+    return marks;
+  }, [history, selectedDate]);
+
+  // 2. Filter Workouts for Selected Date
+  const dayWorkouts = useMemo(() => {
+    return history.filter((s) => s.date.startsWith(selectedDate));
+  }, [history, selectedDate]);
+
+  const onDayPress = (day: DateData) => {
+    setSelectedDate(day.dateString);
   };
-
-  const renderTemplateItem = ({ item }: { item: WorkoutTemplate }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.name}</Text>
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: "/workouts/template-editor",
-                params: { id: item.id },
-              })
-            }
-          >
-            <Ionicons
-              name="pencil"
-              size={20}
-              color={Colors.tabIconDefault}
-              style={{ marginRight: 15 }}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => deleteTemplate(item.id)}>
-            <Ionicons name="trash-outline" size={20} color="#ff4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Text style={styles.cardSubtitle}>{item.exercises.length} Exercises</Text>
-      <View style={styles.exercisePreview}>
-        {item.exercises.slice(0, 3).map((ex, i) => (
-          <Text key={i} style={styles.previewText}>
-            • {ex.name}
-          </Text>
-        ))}
-        {item.exercises.length > 3 && (
-          <Text style={styles.previewText}>...</Text>
-        )}
-      </View>
-
-      <TouchableOpacity
-        style={styles.startBtn}
-        // UPDATE THIS LINE: Pass the templateId as a parameter
-        onPress={() =>
-          router.push({
-            pathname: "/workouts/record",
-            params: { templateId: item.id },
-          })
-        }
-      >
-        <Text style={styles.startBtnText}>Start Workout</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={templates}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTemplateItem}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        ListHeaderComponent={
-          <Text style={styles.headerTitle}>My Routines</Text>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No templates found.</Text>
-            <Text style={styles.emptySubText}>
-              Create a routine to get started!
-            </Text>
-          </View>
-        }
-      />
+      {/* Calendar Section */}
+      <View style={styles.calendarContainer}>
+        <Calendar
+          onDayPress={onDayPress}
+          markedDates={markedDates}
+          theme={{
+            todayTextColor: Colors.primary,
+            arrowColor: Colors.primary,
+            selectedDayBackgroundColor: Colors.primary,
+            selectedDayTextColor: "#ffffff",
+            textDayFontWeight: "600",
+            textMonthFontWeight: "bold",
+            textDayHeaderFontWeight: "600",
+          }}
+        />
+      </View>
 
+      {/* Selected Day Details */}
+      <View style={styles.listContainer}>
+        <Text style={styles.sectionTitle}>
+          {new Date(selectedDate).toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </Text>
+
+        <FlatList
+          data={dayWorkouts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.cardTime}>
+                  {new Date(item.date).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+
+              <View style={styles.exercisesList}>
+                {item.exercises.map((ex, i) => (
+                  <Text key={i} style={styles.exerciseText}>
+                    • {ex.sets.filter((s) => s.completed).length} x {ex.name}
+                    <Text style={styles.bestSet}>
+                      {" "}
+                      (Top: {Math.max(...ex.sets.map((s) => s.weight))}kg)
+                    </Text>
+                  </Text>
+                ))}
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No workouts recorded.</Text>
+              <Text style={styles.emptySubText}>
+                Rest days are important too!
+              </Text>
+            </View>
+          }
+        />
+      </View>
+
+      {/* Record Workout FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push("/workouts/template-editor")}
+        onPress={() => router.push("/workouts/new")}
       >
-        <Ionicons name="add" size={30} color="#fff" />
-        <Text style={styles.fabText}>New Template</Text>
+        <Ionicons name="add" size={24} color="#fff" />
+        <Text style={styles.fabText}>Record Workout</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f9fa", padding: 16 },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: Colors.text,
+  container: { flex: 1, backgroundColor: "#f2f2f7" },
+  calendarContainer: {
+    backgroundColor: "#fff",
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    overflow: "hidden",
   },
+  listContainer: { flex: 1, paddingHorizontal: 16 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#666",
+    marginBottom: 12,
+    marginTop: 4,
+  },
+
   card: {
     backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    marginBottom: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: "row",
@@ -150,18 +181,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  cardActions: { flexDirection: "row" },
-  cardTitle: { fontSize: 20, fontWeight: "bold", color: Colors.text },
-  cardSubtitle: { fontSize: 14, color: "#888", marginBottom: 8 },
-  exercisePreview: { marginBottom: 16 },
-  previewText: { color: "#555", fontSize: 14, marginBottom: 2 },
-  startBtn: {
-    backgroundColor: "#f0f2f5",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  startBtnText: { color: Colors.primary, fontWeight: "700", fontSize: 16 },
+  cardTitle: { fontSize: 18, fontWeight: "700", color: Colors.text },
+  cardTime: { fontSize: 14, color: "#888" },
+
+  exercisesList: { marginTop: 4 },
+  exerciseText: { fontSize: 15, color: "#444", marginBottom: 4 },
+  bestSet: { color: "#888", fontSize: 13 },
+
+  emptyContainer: { alignItems: "center", marginTop: 40 },
+  emptyText: { fontSize: 16, fontWeight: "600", color: "#888" },
+  emptySubText: { fontSize: 14, color: "#aaa", marginTop: 4 },
+
   fab: {
     position: "absolute",
     bottom: 30,
@@ -178,7 +208,4 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fabText: { color: "#fff", fontWeight: "bold", marginLeft: 8, fontSize: 16 },
-  emptyContainer: { alignItems: "center", marginTop: 50 },
-  emptyText: { fontSize: 18, fontWeight: "bold", color: "#ccc" },
-  emptySubText: { fontSize: 14, color: "#ccc", marginTop: 4 },
 });

@@ -4,12 +4,19 @@ import Colors from "../../../constants/Colors";
 export default function WorkoutsLayout() {
   return (
     <Stack screenOptions={{ headerTintColor: Colors.primary }}>
-      <Stack.Screen name="index" options={{ title: "Workouts" }} />
+      {/* 1. Dashboard (Calendar) */}
+      <Stack.Screen name="index" options={{ title: "History" }} />
+
+      {/* 2. New Workout (Template Picker) */}
+      <Stack.Screen name="new" options={{ title: "Start Workout" }} />
+
+      {/* 3. Editor */}
       <Stack.Screen
         name="template-editor"
         options={{ title: "Edit Template", presentation: "modal" }}
       />
-      {/* We will update the recorder later to use these templates */}
+
+      {/* 4. Active Session */}
       <Stack.Screen name="record" options={{ title: "Record Session" }} />
     </Stack>
   );
