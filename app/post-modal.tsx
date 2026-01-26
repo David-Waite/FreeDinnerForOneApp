@@ -87,7 +87,8 @@ export default function PostModal() {
       message: message,
       imageUri: image || undefined,
       date: new Date().toISOString(),
-      comments: [], // <--- FIX: Initialize empty array
+      comments: [],
+      reactions: [],
     };
 
     await WorkoutRepository.createPost(newPost);

@@ -6,6 +6,7 @@ import {
   WorkoutSession,
   WorkoutTemplate,
   PostComment,
+  PostReaction,
 } from "../constants/types";
 
 const SESSION_KEY = "workout_sessions";
@@ -222,6 +223,59 @@ export const WorkoutRepository = {
       return newComment;
     } catch (e) {
       console.error("Failed to add comment", e);
+      return null;
+    }
+  },
+  async toggleReaction(
+    postId: string,
+    emoji: string,
+  ): Promise<PostReaction[] | null> {
+    try {
+      const posts = await this.getPosts();
+      const postIndex = posts.findIndex((p) => p.id === postId);
+
+      if (postIndex === -1) return null;
+
+      const post = posts[postIndex];
+      const currentUserId = "current-user"; // Hardcoded for V1
+      const existingReactions = post.reactions || [];
+
+      // Check if user already reacted
+      const existingReactionIndex = existingReactions.findIndex(
+        (r) => r.userId === currentUserId,
+      );
+
+      let updatedReactions = [...existingReactions];
+
+      if (existingReactionIndex >= 0) {
+        // User has reacted before
+        if (existingReactions[existingReactionIndex].emoji === emoji) {
+          // Same emoji -> Remove it (Toggle off)
+          updatedReactions.splice(existingReactionIndex, 1);
+        } else {
+          // Different emoji -> Update it
+          updatedReactions[existingReactionIndex] = {
+            ...updatedReactions[existingReactionIndex],
+            emoji: emoji,
+            createdAt: new Date().toISOString(),
+          };
+        }
+      } else {
+        // New reaction
+        updatedReactions.push({
+          userId: currentUserId,
+          emoji: emoji,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      // Save
+      posts[postIndex] = { ...post, reactions: updatedReactions };
+      await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(posts));
+
+      return updatedReactions;
+    } catch (e) {
+      console.error("Failed to toggle reaction", e);
       return null;
     }
   },

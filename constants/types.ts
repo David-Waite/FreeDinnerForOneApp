@@ -54,6 +54,12 @@ export type PostComment = {
   createdAt: string;
 };
 
+export type PostReaction = {
+  userId: string;
+  emoji: string; // "❤️", "🔥", etc.
+  createdAt: string;
+};
+
 export type WorkoutPost = {
   id: string;
   userId: string;
@@ -61,6 +67,6 @@ export type WorkoutPost = {
   message: string;
   imageUri?: string;
   date: string;
-  comments: PostComment[]; // Update reference here
-  likes?: string[];
+  comments: PostComment[];
+  reactions: PostReaction[]; // <--- NEW: Replaces 'likes'
 };
