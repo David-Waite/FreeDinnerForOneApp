@@ -18,12 +18,13 @@ import { WorkoutPost } from "../../constants/types";
 import Colors from "../../constants/Colors";
 import PostCard from "../../components/social/PostCard";
 import CommentsModal from "../../components/social/CommentsModal";
+import WorkoutDetailsModal from "../../components/social/WorkoutDetailsModal";
 
 export default function FeedScreen() {
   const router = useRouter();
   const [posts, setPosts] = useState<WorkoutPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [viewWorkoutId, setViewWorkoutId] = useState<string | null>(null);
   // --- COMMENTS STATE ---
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<WorkoutPost | null>(null);
@@ -55,6 +56,10 @@ export default function FeedScreen() {
     setCommentsVisible(true);
   };
 
+  const handleOpenWorkout = (workoutId: string) => {
+    setViewWorkoutId(workoutId);
+  };
+
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <Text style={styles.headerTitle}>Community Feed</Text>
@@ -73,7 +78,11 @@ export default function FeedScreen() {
         data={posts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PostCard post={item} onCommentPress={handleOpenComments} />
+          <PostCard
+            post={item}
+            onCommentPress={handleOpenComments}
+            onWorkoutPress={handleOpenWorkout} // <--- Connect Handler
+          />
         )}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={renderHeader}
@@ -107,6 +116,13 @@ export default function FeedScreen() {
           setCommentsVisible(false);
           loadPosts(); // Reload to update comment counts after closing
         }}
+      />
+
+      {/* NEW: Workout Details Modal */}
+      <WorkoutDetailsModal
+        visible={!!viewWorkoutId}
+        workoutId={viewWorkoutId}
+        onClose={() => setViewWorkoutId(null)}
       />
     </SafeAreaView>
   );

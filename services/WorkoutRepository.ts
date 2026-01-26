@@ -181,6 +181,11 @@ export const WorkoutRepository = {
     }
   },
 
+  async getWorkoutById(id: string): Promise<WorkoutSession | undefined> {
+    const workouts = await this.getWorkouts();
+    return workouts.find((w) => w.id === id);
+  },
+
   async createPost(post: WorkoutPost): Promise<void> {
     try {
       const existing = await this.getPosts();

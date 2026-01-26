@@ -1,23 +1,22 @@
 import React, { useRef, useState } from "react";
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  LayoutRectangle,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutPost, PostReaction } from "../../constants/types";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import ReactionPicker from "./ReactionPicker";
+import Colors from "../../constants/Colors";
 
 type Props = {
   post: WorkoutPost;
   onCommentPress: (post: WorkoutPost) => void;
+  onWorkoutPress: (workoutId: string) => void;
 };
 
-export default function PostCard({ post, onCommentPress }: Props) {
+export default function PostCard({
+  post,
+  onCommentPress,
+  onWorkoutPress,
+}: Props) {
   const [reactions, setReactions] = useState<PostReaction[]>(
     post.reactions || [],
   );
@@ -55,16 +54,20 @@ export default function PostCard({ post, onCommentPress }: Props) {
   };
 
   const handleLongPress = () => {
-    heartButtonRef.current?.measureInWindow(
-      (x: number, y: number, width: number, height: number) => {
-        setPickerPos({ x: x + width / 2, y: y });
-        setPickerVisible(true);
-      },
-    );
+    heartButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setPickerPos({ x: x + width / 2, y: y });
+      setPickerVisible(true);
+    });
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    return `${mins}m`;
   };
 
   return (
     <View style={styles.card}>
+      {/* --- HEADER --- */}
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{post.userName[0]}</Text>
@@ -77,14 +80,40 @@ export default function PostCard({ post, onCommentPress }: Props) {
         </View>
       </View>
 
+      {/* --- ATTACHED WORKOUT BANNER --- */}
+      {post.workoutSummary && (
+        <View style={styles.workoutContainer}>
+          <TouchableOpacity
+            style={styles.workoutBanner}
+            onPress={() => onWorkoutPress(post.workoutSummary!.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.workoutIcon}>
+              <MaterialCommunityIcons name="dumbbell" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.workoutTitle}>
+                {post.workoutSummary.name}
+              </Text>
+              <Text style={styles.workoutSub}>
+                {formatDuration(post.workoutSummary.duration)} •{" "}
+                {post.workoutSummary.exerciseCount} Exercises
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* --- MAIN IMAGE --- */}
       {post.imageUri && (
         <Image source={{ uri: post.imageUri }} style={styles.postImage} />
       )}
 
-      {/* --- REACTION BAR --- */}
+      {/* --- ACTION BAR --- */}
       <View style={styles.actionBar}>
         <TouchableOpacity
-          ref={heartButtonRef} // IMPORTANT: Ref for measuring
+          ref={heartButtonRef}
           style={styles.actionButton}
           onPress={handleHeartPress}
           onLongPress={handleLongPress}
@@ -109,8 +138,9 @@ export default function PostCard({ post, onCommentPress }: Props) {
         </TouchableOpacity>
       </View>
 
+      {/* --- CONTENT & COMMENTS --- */}
       <View style={styles.content}>
-        {/* --- REACTION COUNTS --- */}
+        {/* Reaction Badges */}
         {Object.keys(reactionCounts).length > 0 && (
           <View style={styles.reactionRow}>
             {Object.keys(reactionCounts).map((emoji) => (
@@ -123,10 +153,12 @@ export default function PostCard({ post, onCommentPress }: Props) {
           </View>
         )}
 
+        {/* Caption */}
         <Text style={styles.caption}>
           <Text style={styles.boldName}>{post.userName}</Text> {post.message}
         </Text>
 
+        {/* View Comments Link */}
         {post.comments && post.comments.length > 0 && (
           <TouchableOpacity onPress={() => onCommentPress(post)}>
             <Text style={styles.viewComments}>
@@ -136,6 +168,7 @@ export default function PostCard({ post, onCommentPress }: Props) {
         )}
       </View>
 
+      {/* --- REACTION PICKER MODAL --- */}
       <ReactionPicker
         visible={pickerVisible}
         position={pickerPos}
@@ -162,7 +195,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#2c3e50",
+    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
@@ -179,7 +212,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 12,
     gap: 16,
-    zIndex: 1, // Ensure buttons are clickable
+    zIndex: 1,
   },
   actionButton: {},
   content: {
@@ -202,4 +235,30 @@ const styles = StyleSheet.create({
   caption: { fontSize: 14, lineHeight: 18, color: "#333" },
   boldName: { fontWeight: "700" },
   viewComments: { color: "#888", marginTop: 6, fontSize: 14 },
+
+  // Workout Banner Styles
+  workoutContainer: {
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  workoutBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  workoutIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  workoutTitle: { fontWeight: "bold", fontSize: 14, color: "#333" },
+  workoutSub: { color: "#666", fontSize: 12 },
 });

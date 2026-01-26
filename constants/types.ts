@@ -60,6 +60,13 @@ export type PostReaction = {
   createdAt: string;
 };
 
+export type WorkoutSummary = {
+  id: string;
+  name: string;
+  duration: number; // in seconds
+  exerciseCount: number;
+};
+
 export type WorkoutPost = {
   id: string;
   userId: string;
@@ -68,5 +75,6 @@ export type WorkoutPost = {
   imageUri?: string;
   date: string;
   comments: PostComment[];
-  reactions: PostReaction[]; // <--- NEW: Replaces 'likes'
+  reactions: PostReaction[];
+  workoutSummary?: WorkoutSummary; // <--- ADD THIS
 };
