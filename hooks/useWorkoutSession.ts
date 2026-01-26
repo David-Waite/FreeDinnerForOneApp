@@ -4,7 +4,6 @@ import { WorkoutRepository } from "../services/WorkoutRepository";
 import { Exercise, Set, WorkoutSession } from "../constants/types";
 import { useRouter } from "expo-router";
 
-// Enable animation for Android
 if (
   Platform.OS === "android" &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -12,22 +11,25 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Helper to parse "60s", "2 min", etc. into seconds
+// ... existing parseRestTime helper ...
 const parseRestTime = (input: string): number => {
   const text = input.toLowerCase();
-  const number = parseInt(text.replace(/[^0-9]/g, "")) || 60; // Default 60s
+  const number = parseInt(text.replace(/[^0-9]/g, "")) || 60;
   if (text.includes("m")) return number * 60;
   return number;
 };
 
 export function useWorkoutSession(templateId: string) {
   const router = useRouter();
+
+  // 1. Generate ID immediately so we can link notes to it
+  const [sessionId] = useState(Date.now().toString());
+
   const [sessionName, setSessionName] = useState("New Session");
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [startTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
 
-  // Load Template on mount
   useEffect(() => {
     if (templateId) {
       loadTemplate(templateId);
@@ -52,7 +54,7 @@ export function useWorkoutSession(templateId: string) {
       return {
         id: Date.now().toString() + Math.random(),
         name: tExercise.name,
-        restTime: parseRestTime(tExercise.restTime), // Parse it here
+        restTime: parseRestTime(tExercise.restTime),
         sets: initialSets,
       };
     });
@@ -61,6 +63,7 @@ export function useWorkoutSession(templateId: string) {
     setLoading(false);
   };
 
+  // ... keep updateSet, toggleSetComplete, addSet, removeSet, markSetComplete EXACTLY THE SAME ...
   const updateSet = (
     exerciseId: string,
     setId: string,
@@ -74,6 +77,20 @@ export function useWorkoutSession(templateId: string) {
           ...e,
           sets: e.sets.map((s) =>
             s.id === setId ? { ...s, [field]: value } : s,
+          ),
+        };
+      }),
+    );
+  };
+
+  const markSetComplete = (exerciseId: string, setId: string) => {
+    setExercises((prev) =>
+      prev.map((e) => {
+        if (e.id !== exerciseId) return e;
+        return {
+          ...e,
+          sets: e.sets.map((s) =>
+            s.id === setId ? { ...s, completed: true } : s,
           ),
         };
       }),
@@ -121,23 +138,9 @@ export function useWorkoutSession(templateId: string) {
     );
   };
 
-  const markSetComplete = (exerciseId: string, setId: string) => {
-    setExercises((prev) =>
-      prev.map((e) => {
-        if (e.id !== exerciseId) return e;
-        return {
-          ...e,
-          sets: e.sets.map((s) =>
-            s.id === setId ? { ...s, completed: true } : s,
-          ),
-        };
-      }),
-    );
-  };
-
   const finishWorkout = async () => {
     const session: WorkoutSession = {
-      id: Date.now().toString(),
+      id: sessionId, // Use the ID generated at start
       name: sessionName,
       date: new Date().toISOString(),
       exercises,
@@ -147,13 +150,14 @@ export function useWorkoutSession(templateId: string) {
   };
 
   return {
-    markSetComplete,
+    sessionId, // Export this!
     sessionName,
     startTime,
     exercises,
     loading,
     updateSet,
     toggleSetComplete,
+    markSetComplete,
     addSet,
     removeSet,
     finishWorkout,

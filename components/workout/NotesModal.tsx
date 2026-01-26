@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   Modal,
   KeyboardAvoidingView,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import { ExerciseNote } from "../../constants/types";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 
 type Props = {
   visible: boolean;
@@ -20,6 +22,7 @@ type Props = {
   notes: ExerciseNote[];
   onSaveNote: (text: string) => void;
   onTogglePin: (noteId: string) => void;
+  onDeleteNote: (noteId: string) => void; // <--- NEW PROP
 };
 
 export default function NotesModal({
@@ -29,6 +32,7 @@ export default function NotesModal({
   notes,
   onSaveNote,
   onTogglePin,
+  onDeleteNote,
 }: Props) {
   const [newNoteText, setNewNoteText] = useState("");
 
@@ -37,6 +41,24 @@ export default function NotesModal({
       onSaveNote(newNoteText);
       setNewNoteText("");
     }
+  };
+
+  const renderRightActions = (
+    _: any,
+    dragX: Animated.AnimatedInterpolation<number>,
+  ) => {
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0],
+      extrapolate: "clamp",
+    });
+    return (
+      <View style={styles.deleteAction}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Ionicons name="trash" size={24} color="#fff" />
+        </Animated.View>
+      </View>
+    );
   };
 
   return (
@@ -63,24 +85,29 @@ export default function NotesModal({
           )}
 
           {notes.map((note) => (
-            <View
+            <Swipeable
               key={note.id}
-              style={[styles.noteCard, note.isPinned && styles.pinnedNote]}
+              renderRightActions={renderRightActions}
+              onSwipeableOpen={() => onDeleteNote(note.id)}
             >
-              <View style={styles.noteTop}>
-                <Text style={styles.noteDate}>
-                  {new Date(note.createdAt).toLocaleDateString()}
-                </Text>
-                <TouchableOpacity onPress={() => onTogglePin(note.id)}>
-                  <Ionicons
-                    name={note.isPinned ? "pin" : "pin-outline"}
-                    size={18}
-                    color={note.isPinned ? Colors.primary : "#999"}
-                  />
-                </TouchableOpacity>
+              <View
+                style={[styles.noteCard, note.isPinned && styles.pinnedNote]}
+              >
+                <View style={styles.noteTop}>
+                  <Text style={styles.noteDate}>
+                    {new Date(note.createdAt).toLocaleDateString()}
+                  </Text>
+                  <TouchableOpacity onPress={() => onTogglePin(note.id)}>
+                    <Ionicons
+                      name={note.isPinned ? "pin" : "pin-outline"}
+                      size={18}
+                      color={note.isPinned ? Colors.primary : "#999"}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.noteText}>{note.text}</Text>
               </View>
-              <Text style={styles.noteText}>{note.text}</Text>
-            </View>
+            </Swipeable>
           ))}
         </ScrollView>
 
@@ -152,4 +179,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   sendNoteBtn: { padding: 4 },
+  deleteAction: {
+    backgroundColor: "#ff4444",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    marginBottom: 12,
+    borderRadius: 10,
+    flex: 1,
+    paddingRight: 20,
+  },
 });

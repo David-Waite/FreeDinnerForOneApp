@@ -30,6 +30,43 @@ export const WorkoutRepository = {
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updated));
   },
 
+  async deleteWorkout(id: string): Promise<void> {
+    try {
+      // 1. Delete the Session
+      const existingSessions = await this.getWorkouts();
+      const filteredSessions = existingSessions.filter((w) => w.id !== id);
+      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(filteredSessions));
+
+      // 2. Cascade Delete: Remove notes linked to this session
+      const jsonNotes = await AsyncStorage.getItem(NOTES_KEY);
+      if (jsonNotes) {
+        const allNotes: NotesStorage = JSON.parse(jsonNotes);
+        let hasChanges = false;
+
+        // Iterate through every exercise (e.g., "Bench", "Squat")
+        Object.keys(allNotes).forEach((exerciseName) => {
+          const originalLength = allNotes[exerciseName].length;
+
+          // Filter out notes that belong to the deleted session ID
+          allNotes[exerciseName] = allNotes[exerciseName].filter(
+            (n) => n.sessionId !== id,
+          );
+
+          if (allNotes[exerciseName].length !== originalLength) {
+            hasChanges = true;
+          }
+        });
+
+        // Only write to disk if we actually deleted something
+        if (hasChanges) {
+          await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(allNotes));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to delete workout and notes", e);
+    }
+  },
+
   // --- TEMPLATES (Plans) ---
   async getTemplates(): Promise<WorkoutTemplate[]> {
     try {
@@ -74,13 +111,12 @@ export const WorkoutRepository = {
   },
 
   async getNotes(exerciseName: string): Promise<ExerciseNote[]> {
+    // ... existing implementation
     try {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
       const allNotes: NotesStorage =
         jsonValue != null ? JSON.parse(jsonValue) : {};
       const notes = allNotes[exerciseName] || [];
-
-      // Sort: Pinned first, then Newest to Oldest
       return notes.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
@@ -93,8 +129,21 @@ export const WorkoutRepository = {
       return [];
     }
   },
+  async getAllNotes(): Promise<NotesStorage> {
+    try {
+      const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
+      return jsonValue != null ? JSON.parse(jsonValue) : {};
+    } catch (e) {
+      console.error("Failed to load all notes", e);
+      return {};
+    }
+  },
 
-  async addNote(exerciseName: string, text: string): Promise<void> {
+  async addNote(
+    exerciseName: string,
+    text: string,
+    sessionId?: string,
+  ): Promise<void> {
     try {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
       const allNotes: NotesStorage =
@@ -105,6 +154,8 @@ export const WorkoutRepository = {
         text,
         createdAt: new Date().toISOString(),
         isPinned: false,
+        sessionId: sessionId,
+        exerciseName: exerciseName, // <--- SAVE THIS
       };
 
       const existing = allNotes[exerciseName] || [];

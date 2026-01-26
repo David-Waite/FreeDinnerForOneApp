@@ -28,6 +28,7 @@ export default function RecordWorkoutScreen() {
     addSet,
     removeSet,
     finishWorkout,
+    sessionId,
   } = useWorkoutSession(templateId);
 
   // --- STATE ---
@@ -123,13 +124,19 @@ export default function RecordWorkoutScreen() {
   };
 
   const handleSaveNote = async (text: string) => {
-    await WorkoutRepository.addNote(currentNoteExercise, text);
+    await WorkoutRepository.addNote(currentNoteExercise, text, sessionId);
     const data = await WorkoutRepository.getNotes(currentNoteExercise);
     setNotesList(data);
   };
 
   const handleTogglePin = async (noteId: string) => {
     await WorkoutRepository.togglePinNote(currentNoteExercise, noteId);
+    const data = await WorkoutRepository.getNotes(currentNoteExercise);
+    setNotesList(data);
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    await WorkoutRepository.deleteNote(currentNoteExercise, noteId);
     const data = await WorkoutRepository.getNotes(currentNoteExercise);
     setNotesList(data);
   };
@@ -188,6 +195,7 @@ export default function RecordWorkoutScreen() {
         notes={notesList}
         onSaveNote={handleSaveNote}
         onTogglePin={handleTogglePin}
+        onDeleteNote={handleDeleteNote} // <--- Pass the function
       />
 
       <RestTimerModal

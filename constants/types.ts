@@ -40,6 +40,8 @@ export type ExerciseNote = {
   text: string;
   createdAt: string;
   isPinned: boolean;
+  sessionId?: string;
+  exerciseName?: string; // <--- NEW: Store which exercise this belongs to
 };
 
 export type NotesStorage = Record<string, ExerciseNote[]>;
