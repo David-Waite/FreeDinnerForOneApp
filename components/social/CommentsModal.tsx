@@ -10,9 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-// IMPORTS FIXED: Use PostComment
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostComment, WorkoutPost } from "../../constants/types";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import Colors from "../../constants/Colors";
@@ -24,7 +23,7 @@ type Props = {
 };
 
 export default function CommentsModal({ visible, onClose, post }: Props) {
-  // FIX: Explicitly use PostComment[] here
+  const insets = useSafeAreaInsets(); // <--- 1. Get Safe Area Insets
   const [comments, setComments] = useState<PostComment[]>([]);
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +50,6 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
     setIsSubmitting(false);
   };
 
-  // FIX: Type the item as PostComment
   const renderComment = ({ item }: { item: PostComment }) => (
     <View style={styles.commentRow}>
       <View style={styles.avatar}>
@@ -79,9 +77,11 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
       visible={visible}
       onRequestClose={onClose}
     >
+      {/* 2. Configure KeyboardAvoidingView with Offset */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <View style={styles.container}>
           <View style={styles.header}>
@@ -103,7 +103,13 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
             }
           />
 
-          <SafeAreaView style={styles.inputSafeArea}>
+          {/* 3. Apply Bottom Padding Manually */}
+          <View
+            style={[
+              styles.inputContainerWrapper,
+              { paddingBottom: Math.max(insets.bottom, 20) },
+            ]}
+          >
             <View style={styles.inputContainer}>
               <View style={styles.avatarSmall}>
                 <Text style={styles.avatarTextSmall}>M</Text>
@@ -128,7 +134,7 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
                 </TouchableOpacity>
               )}
             </View>
-          </SafeAreaView>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -174,7 +180,9 @@ const styles = StyleSheet.create({
   userName: { fontWeight: "bold", fontSize: 14 },
   timeText: { color: "#999", fontSize: 12 },
   commentText: { fontSize: 14, color: "#333", lineHeight: 20 },
-  inputSafeArea: {
+
+  // Updated Input Styles
+  inputContainerWrapper: {
     borderTopWidth: 1,
     borderTopColor: "#eee",
     backgroundColor: "#fff",

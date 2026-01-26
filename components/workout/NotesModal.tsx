@@ -1,19 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  ScrollView,
-  TouchableOpacity,
   Modal,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
   KeyboardAvoidingView,
-  Animated,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../../constants/Colors";
 import { ExerciseNote } from "../../constants/types";
-import Swipeable from "react-native-gesture-handler/Swipeable";
 
 type Props = {
   visible: boolean;
@@ -21,8 +21,8 @@ type Props = {
   exerciseName: string;
   notes: ExerciseNote[];
   onSaveNote: (text: string) => void;
-  onTogglePin: (noteId: string) => void;
-  onDeleteNote: (noteId: string) => void; // <--- NEW PROP
+  onTogglePin: (id: string) => void;
+  onDeleteNote: (id: string) => void;
 };
 
 export default function NotesModal({
@@ -34,31 +34,14 @@ export default function NotesModal({
   onTogglePin,
   onDeleteNote,
 }: Props) {
-  const [newNoteText, setNewNoteText] = useState("");
+  const insets = useSafeAreaInsets();
+  const [text, setText] = useState("");
 
   const handleSave = () => {
-    if (newNoteText.trim()) {
-      onSaveNote(newNoteText);
-      setNewNoteText("");
+    if (text.trim()) {
+      onSaveNote(text.trim());
+      setText("");
     }
-  };
-
-  const renderRightActions = (
-    _: any,
-    dragX: Animated.AnimatedInterpolation<number>,
-  ) => {
-    const scale = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: "clamp",
-    });
-    return (
-      <View style={styles.deleteAction}>
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Ionicons name="trash" size={24} color="#fff" />
-        </Animated.View>
-      </View>
-    );
   };
 
   return (
@@ -68,60 +51,91 @@ export default function NotesModal({
       visible={visible}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{exerciseName} Notes</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.modalClose}>Done</Text>
-          </TouchableOpacity>
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>Notes</Text>
+              <Text style={styles.subtitle}>{exerciseName}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
 
-        <ScrollView
-          style={styles.modalBody}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          {notes.length === 0 && (
-            <Text style={styles.emptyNotes}>No notes yet. Add one below.</Text>
-          )}
-
-          {notes.map((note) => (
-            <Swipeable
-              key={note.id}
-              renderRightActions={renderRightActions}
-              onSwipeableOpen={() => onDeleteNote(note.id)}
-            >
-              <View
-                style={[styles.noteCard, note.isPinned && styles.pinnedNote]}
-              >
-                <View style={styles.noteTop}>
+          <FlatList
+            data={notes}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <View style={styles.noteItem}>
+                <View style={styles.noteContent}>
+                  <Text style={styles.noteText}>{item.text}</Text>
                   <Text style={styles.noteDate}>
-                    {new Date(note.createdAt).toLocaleDateString()}
+                    {new Date(item.createdAt).toLocaleDateString()}
                   </Text>
-                  <TouchableOpacity onPress={() => onTogglePin(note.id)}>
+                </View>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    onPress={() => onTogglePin(item.id)}
+                    style={styles.actionBtn}
+                  >
                     <Ionicons
-                      name={note.isPinned ? "pin" : "pin-outline"}
-                      size={18}
-                      color={note.isPinned ? Colors.primary : "#999"}
+                      name={item.isPinned ? "pin" : "pin-outline"}
+                      size={20}
+                      color={item.isPinned ? Colors.primary : "#999"}
                     />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => onDeleteNote(item.id)}
+                    style={styles.actionBtn}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.noteText}>{note.text}</Text>
               </View>
-            </Swipeable>
-          ))}
-        </ScrollView>
-
-        <View style={styles.addNoteContainer}>
-          <TextInput
-            style={styles.addNoteInput}
-            placeholder="Add a new note..."
-            value={newNoteText}
-            onChangeText={setNewNoteText}
-            multiline
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  No notes yet for this exercise.
+                </Text>
+              </View>
+            }
           />
-          <TouchableOpacity onPress={handleSave} style={styles.sendNoteBtn}>
-            <Ionicons name="send" size={24} color={Colors.primary} />
-          </TouchableOpacity>
+
+          <View
+            style={[
+              styles.inputContainer,
+              { paddingBottom: Math.max(insets.bottom, 20) },
+            ]}
+          >
+            <TextInput
+              style={styles.input}
+              placeholder="Add a note..."
+              value={text}
+              onChangeText={setText}
+              multiline
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                !text.trim() && styles.sendButtonDisabled,
+              ]}
+              disabled={!text.trim()}
+              onPress={handleSave}
+            >
+              <Ionicons
+                name="arrow-up"
+                size={24}
+                color={text.trim() ? "#fff" : "#999"}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -129,63 +143,63 @@ export default function NotesModal({
 }
 
 const styles = StyleSheet.create({
-  modalContainer: { flex: 1, backgroundColor: "#f2f2f7" },
-  modalHeader: {
-    padding: 16,
+  container: { flex: 1, backgroundColor: "#f2f2f7" },
+  header: {
     backgroundColor: "#fff",
+    padding: 16,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#e5e5ea",
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold" },
-  modalClose: { color: Colors.primary, fontSize: 16, fontWeight: "600" },
-  modalBody: { padding: 16, flex: 1 },
-  emptyNotes: { textAlign: "center", color: "#999", marginTop: 20 },
-  noteCard: {
+  title: { fontSize: 20, fontWeight: "bold" },
+  subtitle: { fontSize: 14, color: "#666", marginTop: 2 },
+  closeButton: { padding: 4 },
+  listContent: { padding: 16 },
+  noteItem: {
     backgroundColor: "#fff",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: "#ddd",
-  },
-  pinnedNote: { borderLeftColor: Colors.primary, backgroundColor: "#f0f9ff" },
-  noteTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
+    alignItems: "flex-start",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  noteDate: { fontSize: 12, color: "#888" },
-  noteText: { fontSize: 16, color: "#333" },
-  addNoteContainer: {
+  noteContent: { flex: 1 },
+  noteText: { fontSize: 16, color: "#333", marginBottom: 4 },
+  noteDate: { fontSize: 12, color: "#999" },
+  actions: { flexDirection: "row", paddingLeft: 8, gap: 8 },
+  actionBtn: { padding: 4 },
+  emptyContainer: { alignItems: "center", marginTop: 40 },
+  emptyText: { color: "#999", fontSize: 16 },
+  inputContainer: {
+    backgroundColor: "#fff",
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e5ea",
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    paddingBottom: 30,
+    gap: 12,
   },
-  addNoteInput: {
+  input: {
     flex: 1,
-    backgroundColor: "#f0f2f5",
+    backgroundColor: "#f2f2f7",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 16,
     maxHeight: 100,
-    marginRight: 10,
   },
-  sendNoteBtn: { padding: 4 },
-  deleteAction: {
-    backgroundColor: "#ff4444",
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
     justifyContent: "center",
-    alignItems: "flex-end",
-    marginBottom: 12,
-    borderRadius: 10,
-    flex: 1,
-    paddingRight: 20,
+    alignItems: "center",
   },
+  sendButtonDisabled: { backgroundColor: "#e5e5ea" },
 });
