@@ -9,8 +9,8 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 // IMPORTS FIXED: Use PostComment
 import { PostComment, WorkoutPost } from "../../constants/types";

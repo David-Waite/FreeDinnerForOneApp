@@ -15,9 +15,6 @@ export default function WorkoutsLayout() {
         name="template-editor"
         options={{ title: "Edit Template", presentation: "modal" }}
       />
-
-      {/* 4. Active Session */}
-      <Stack.Screen name="record" options={{ title: "Record Session" }} />
     </Stack>
   );
 }

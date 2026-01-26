@@ -85,9 +85,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/* Hidden Routes */}
-      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }

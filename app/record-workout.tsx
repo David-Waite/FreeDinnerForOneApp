@@ -6,8 +6,8 @@ import {
   ScrollView,
   LayoutAnimation,
   Alert,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
