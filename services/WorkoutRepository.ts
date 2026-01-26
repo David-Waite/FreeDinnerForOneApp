@@ -5,6 +5,7 @@ import {
   WorkoutPost,
   WorkoutSession,
   WorkoutTemplate,
+  PostComment,
 } from "../constants/types";
 
 const SESSION_KEY = "workout_sessions";
@@ -182,10 +183,46 @@ export const WorkoutRepository = {
   async createPost(post: WorkoutPost): Promise<void> {
     try {
       const existing = await this.getPosts();
-      const updated = [post, ...existing];
+      // Ensure comments array exists if it's a new post
+      const newPost = { ...post, comments: post.comments || [] };
+      const updated = [newPost, ...existing];
       await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(updated));
     } catch (e) {
       console.error("Failed to create post", e);
+    }
+  },
+
+  // NEW: Add Comment Logic
+  async addCommentToPost(
+    postId: string,
+    text: string,
+  ): Promise<PostComment | null> {
+    try {
+      const posts = await this.getPosts();
+      const postIndex = posts.findIndex((p) => p.id === postId);
+
+      if (postIndex === -1) return null;
+
+      const newComment: PostComment = {
+        id: Date.now().toString(),
+        userId: "current-user",
+        userName: "Me",
+        text,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedPost = {
+        ...posts[postIndex],
+        comments: [...(posts[postIndex].comments || []), newComment],
+      };
+
+      posts[postIndex] = updatedPost;
+
+      await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(posts));
+      return newComment;
+    } catch (e) {
+      console.error("Failed to add comment", e);
+      return null;
     }
   },
 };

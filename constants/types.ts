@@ -4,7 +4,6 @@ export type WorkoutSet = {
   reps: string;
   completed: boolean;
 };
-
 export type Exercise = {
   id: string;
   name: string;
@@ -47,6 +46,14 @@ export type ExerciseNote = {
 
 export type NotesStorage = Record<string, ExerciseNote[]>;
 
+export type PostComment = {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: string;
+};
+
 export type WorkoutPost = {
   id: string;
   userId: string;
@@ -54,4 +61,6 @@ export type WorkoutPost = {
   message: string;
   imageUri?: string;
   date: string;
+  comments: PostComment[]; // Update reference here
+  likes?: string[];
 };

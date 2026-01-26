@@ -16,11 +16,11 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors.tabIconSelected,
         tabBarInactiveTintColor: Colors.tabIconDefault,
-        headerShown: true,
-        tabBarShowLabel: false, // Keep it clean
+        headerShown: false, // We handle headers inside the screens now
+        tabBarShowLabel: false,
       }}
     >
-      {/* 1. Feed */}
+      {/* 1. Feed (Maps to app/(tabs)/index.tsx) */}
       <Tabs.Screen
         name="index"
         options={{
@@ -36,6 +36,7 @@ export default function TabLayout() {
         name="leaderboard"
         options={{
           title: "Leaderboard",
+          headerShown: true,
           tabBarIcon: ({ color }) => (
             <FontAwesome name="trophy" size={24} color={color} />
           ),
@@ -66,13 +67,14 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: "Stats",
+          headerShown: true,
           tabBarIcon: ({ color }) => (
             <FontAwesome name="bar-chart" size={24} color={color} />
           ),
         }}
       />
 
-      {/* 5. Workouts (The Missing Tab) */}
+      {/* 5. Workouts */}
       <Tabs.Screen
         name="workouts"
         options={{
@@ -84,7 +86,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* SAFETY: Hide any rogue files from the tab bar */}
+      {/* Hidden Routes */}
       <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );

@@ -4,25 +4,31 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
-  RefreshControl,
   TouchableOpacity,
-  SafeAreaView,
-  Platform,
-  StatusBar,
+  RefreshControl,
+  Image,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+// --- IMPORTS ---
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { WorkoutPost } from "../../constants/types";
 import Colors from "../../constants/Colors";
-import { Ionicons } from "@expo/vector-icons";
+import PostCard from "../../components/social/PostCard";
+import CommentsModal from "../../components/social/CommentsModal";
 
 export default function FeedScreen() {
   const router = useRouter();
   const [posts, setPosts] = useState<WorkoutPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // --- FORCE REFRESH ON FOCUS ---
+  // --- COMMENTS STATE ---
+  const [commentsVisible, setCommentsVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<WorkoutPost | null>(null);
+
+  // Load posts whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadPosts();
@@ -30,12 +36,12 @@ export default function FeedScreen() {
   );
 
   const loadPosts = async () => {
-    try {
-      const data = await WorkoutRepository.getPosts();
-      setPosts(data);
-    } catch (e) {
-      console.error("Failed to load posts", e);
-    }
+    const data = await WorkoutRepository.getPosts();
+    // Sort by newest first
+    const sorted = data.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    setPosts(sorted);
   };
 
   const onRefresh = async () => {
@@ -44,136 +50,120 @@ export default function FeedScreen() {
     setRefreshing(false);
   };
 
-  const renderPost = ({ item }: { item: WorkoutPost }) => (
-    <View style={styles.postCard}>
-      {/* Header */}
-      <View style={styles.postHeader}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>
-            {item.userName ? item.userName[0] : "?"}
-          </Text>
-        </View>
-        <View>
-          <Text style={styles.userName}>{item.userName}</Text>
-          <Text style={styles.postDate}>
-            {new Date(item.date).toLocaleDateString()} at{" "}
-            {new Date(item.date).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        </View>
-      </View>
+  const handleOpenComments = (post: WorkoutPost) => {
+    setSelectedPost(post);
+    setCommentsVisible(true);
+  };
 
-      {/* Image */}
-      {item.imageUri && (
-        <Image
-          source={{ uri: item.imageUri }}
-          style={styles.postImage}
-          resizeMode="cover"
-        />
-      )}
-
-      {/* Actions */}
-      <View style={styles.actionsRow}>
-        <Ionicons
-          name="heart-outline"
-          size={24}
-          color="#333"
-          style={{ marginRight: 16 }}
-        />
-        <Ionicons
-          name="chatbubble-outline"
-          size={24}
-          color="#333"
-          style={{ marginRight: 16 }}
-        />
-        <Ionicons name="paper-plane-outline" size={24} color="#333" />
-      </View>
-
-      {/* Caption */}
-      <View style={styles.captionContainer}>
-        <Text style={styles.captionText}>
-          <Text style={styles.userName}>{item.userName}</Text> {item.message}
-        </Text>
-      </View>
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <Text style={styles.headerTitle}>Community Feed</Text>
+      <TouchableOpacity
+        style={styles.iconButton}
+        onPress={() => router.push("/post-modal")}
+      >
+        <Ionicons name="camera-outline" size={26} color={Colors.text} />
+      </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Custom Header to add a Create Post Button */}
-      <SafeAreaView style={styles.headerSafe}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Social Feed</Text>
-          <TouchableOpacity onPress={() => router.push("/post-modal")}>
-            <Ionicons name="add-circle" size={32} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
-        renderItem={renderPost}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        renderItem={({ item }) => (
+          <PostCard post={item} onCommentPress={handleOpenComments} />
+        )}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={renderHeader}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        extraData={refreshing} // Helps force update
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="images-outline" size={48} color="#ccc" />
+            <Ionicons name="people-outline" size={64} color="#ccc" />
             <Text style={styles.emptyText}>No posts yet.</Text>
             <Text style={styles.emptySubText}>
-              Tap the + button to log your first workout!
+              Be the first to share a workout!
             </Text>
           </View>
         }
       />
-    </View>
+
+      {/* Floating Action Button (Alternative to Header Button) */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push("/post-modal")}
+      >
+        <Ionicons name="add" size={30} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Comments Modal */}
+      <CommentsModal
+        visible={commentsVisible}
+        post={selectedPost}
+        onClose={() => {
+          setCommentsVisible(false);
+          loadPosts(); // Reload to update comment counts after closing
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f2f2f7" },
-  headerSafe: {
-    backgroundColor: "#fff",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e5ea",
-  },
-  headerContent: {
+  listContent: { paddingBottom: 100 },
+  headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e5ea",
+    marginBottom: 10,
   },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: "#000" },
-  postCard: { backgroundColor: "#fff", marginBottom: 10 },
-  postHeader: { flexDirection: "row", alignItems: "center", padding: 12 },
-  avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.secondary || "#ccc",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: Colors.text,
   },
-  avatarText: { color: "#fff", fontWeight: "bold" },
-  userName: { fontWeight: "bold", fontSize: 14, color: "#262626" },
-  postDate: { color: "#8e8e8e", fontSize: 12 },
-  postImage: { width: "100%", height: 400, backgroundColor: "#eee" },
-  actionsRow: { flexDirection: "row", padding: 12 },
-  captionContainer: { paddingHorizontal: 12, paddingBottom: 16 },
-  captionText: { fontSize: 14, lineHeight: 18, color: "#262626" },
+  iconButton: {
+    padding: 8,
+  },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 100,
+    paddingTop: 60,
   },
-  emptyText: { fontWeight: "bold", fontSize: 18, color: "#999", marginTop: 10 },
-  emptySubText: { color: "#999", marginTop: 5 },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#888",
+  },
+  emptySubText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#aaa",
+  },
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
 });

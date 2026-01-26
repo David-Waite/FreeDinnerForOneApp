@@ -42,11 +42,38 @@ export default function RecordWorkoutScreen() {
     cancelSession,
   } = useWorkoutContext();
 
+  // Renamed for clarity: tracks if we are intentionally leaving the screen
+  const [isExiting, setIsExiting] = useState(false);
+
+  // --- FIX 1: Prevent "Zombie" Workouts ---
   useEffect(() => {
-    if (!isActive && !sessionId) {
+    // Only auto-start if we are NOT currently trying to exit/save.
+    // This prevents the effect from firing immediately after we clear the session.
+    if (!isActive && !sessionId && !isExiting) {
       startWorkout(templateId);
     }
-  }, [isActive, sessionId, templateId]);
+  }, [isActive, sessionId, templateId, isExiting]);
+
+  // --- FIX 2: Block Back Button / Swipe ---
+  useEffect(() => {
+    const removeListener = navigation.addListener("beforeRemove", (e) => {
+      if (isExiting) {
+        // We initiated this navigation (Finish, Cancel, or Minimize), so allow it.
+        return;
+      }
+
+      // Block hardware back button & gestures
+      e.preventDefault();
+
+      // Optional: Tell the user why back is blocked
+      Alert.alert(
+        "Workout in Progress",
+        "Please use the Minimize (Home) button or End Workout button.",
+        [{ text: "OK" }],
+      );
+    });
+    return removeListener;
+  }, [navigation, isExiting]);
 
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(
     null,
@@ -61,15 +88,6 @@ export default function RecordWorkoutScreen() {
     exId: string;
     setId: string;
   } | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    const removeListener = navigation.addListener("beforeRemove", (e) => {
-      if (isSaving) return;
-      return;
-    });
-    return removeListener;
-  }, [navigation, isSaving]);
 
   const handleFinish = async () => {
     if (hasIncompleteData) {
@@ -83,7 +101,7 @@ export default function RecordWorkoutScreen() {
   };
 
   const performSave = async () => {
-    setIsSaving(true);
+    setIsExiting(true); // Flag prevents the useEffect from restarting a workout
     await saveSession();
     if (router.canDismiss()) router.dismiss();
     router.replace("/");
@@ -102,7 +120,7 @@ export default function RecordWorkoutScreen() {
         text: "Discard",
         style: "destructive",
         onPress: async () => {
-          setIsSaving(true);
+          setIsExiting(true); // Flag prevents restart
           await cancelSession();
           if (router.canDismiss()) router.dismiss();
           router.replace("/");
@@ -112,10 +130,13 @@ export default function RecordWorkoutScreen() {
   };
 
   const handleMinimize = () => {
-    setIsSaving(true);
+    setIsExiting(true); // Flag allows navigation through the listener
+    // We do NOT cancel/save here, we just leave.
     if (router.canDismiss()) router.dismiss();
     router.replace("/");
   };
+
+  // ... (Rest of the component logic remains the same: expand/collapse, etc.) ...
 
   const advanceToNextSet = (exId: string, currentSetId: string) => {
     const ex = exercises.find((e) => e.id === exId);

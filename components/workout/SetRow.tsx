@@ -11,14 +11,14 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import Colors from "../../constants/Colors";
-import { Set } from "../../constants/types";
+import { WorkoutSet } from "../../constants/types";
 
 type Props = {
-  set: Set;
+  set: WorkoutSet;
   index: number;
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onUpdate: (field: keyof Set, value: number) => void;
+  onUpdate: (field: keyof WorkoutSet, value: number) => void;
   onDone: () => void;
   onStartTimer: () => void;
   onRemove: () => void;
@@ -89,9 +89,8 @@ export default function SetRow({
               style={styles.input}
               keyboardType="numeric"
               placeholder="0"
-              // FIX: Convert number to string for TextInput
-              value={set.weight === 0 ? "" : set.weight.toString()}
-              // FIX: Convert string back to number for State
+              // FIX: compare with string "0" or empty string, not number 0
+              value={set.weight === "0" || set.weight === "" ? "" : set.weight}
               onChangeText={(v) => onUpdate("weight", Number(v))}
             />
             <Text style={styles.unit}>kg</Text>
@@ -102,9 +101,8 @@ export default function SetRow({
               style={styles.input}
               keyboardType="numeric"
               placeholder="0"
-              // FIX: Convert number to string for TextInput
-              value={set.reps === 0 ? "" : set.reps.toString()}
-              // FIX: Convert string back to number for State
+              // FIX: compare with string "0" or empty string, not number 0
+              value={set.reps === "0" || set.reps === "" ? "" : set.reps}
               onChangeText={(v) => onUpdate("reps", Number(v))}
             />
             <Text style={styles.unit}>reps</Text>
