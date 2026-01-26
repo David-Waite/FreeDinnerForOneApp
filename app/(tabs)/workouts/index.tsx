@@ -9,8 +9,14 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Calendar, DateData } from "react-native-calendars";
+import { Swipeable } from "react-native-gesture-handler";
+
+// --- IMPORTS ---
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import {
   WorkoutSession,
@@ -18,15 +24,17 @@ import {
   ExerciseNote,
 } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
-import { Ionicons } from "@expo/vector-icons";
-import { Calendar, DateData } from "react-native-calendars";
 import HistoryWorkoutCard from "../../../components/workout/HistoryWorkoutCard";
-import { Swipeable } from "react-native-gesture-handler";
+import { useWorkoutContext } from "../../../context/WorkoutContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
+
+  // --- CONTEXT HOOK ---
+  const { isActive } = useWorkoutContext();
+
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [allNotes, setAllNotes] = useState<NotesStorage>({});
   const [selectedDate, setSelectedDate] = useState(
@@ -47,13 +55,30 @@ export default function WorkoutHistoryScreen() {
       WorkoutRepository.getWorkouts(),
       WorkoutRepository.getAllNotes(),
     ]);
-    setHistory(workouts);
+    // Sort by newest first
+    const sorted = workouts.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    setHistory(sorted);
     setAllNotes(notes);
   };
 
   const deleteWorkout = async (id: string) => {
-    await WorkoutRepository.deleteWorkout(id);
-    loadData();
+    Alert.alert(
+      "Delete Workout",
+      "Are you sure you want to remove this session?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await WorkoutRepository.deleteWorkout(id);
+            loadData();
+          },
+        },
+      ],
+    );
   };
 
   const deleteHistoryNote = async (note: ExerciseNote) => {
@@ -64,12 +89,14 @@ export default function WorkoutHistoryScreen() {
     }
   };
 
+  // --- CALENDAR MARKERS ---
   const markedDates = useMemo(() => {
     const marks: any = {};
     history.forEach((session) => {
       const dateKey = session.date.split("T")[0];
       marks[dateKey] = { marked: true, dotColor: Colors.primary };
     });
+    // Highlight selected
     marks[selectedDate] = {
       ...(marks[selectedDate] || {}),
       selected: true,
@@ -92,10 +119,11 @@ export default function WorkoutHistoryScreen() {
     setNotesModalVisible(true);
   };
 
-  // --- 1. RENDER FUNCTION FOR WORKOUT CARD SWIPE ---
+  // --- SWIPE ACTIONS ---
   const renderRightActions = (
     _: any,
     dragX: Animated.AnimatedInterpolation<number>,
+    id: string,
   ) => {
     const scale = dragX.interpolate({
       inputRange: [-80, 0],
@@ -104,18 +132,21 @@ export default function WorkoutHistoryScreen() {
     });
 
     return (
-      <View style={styles.deleteAction}>
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={() => deleteWorkout(id)}
+      >
         <Animated.View style={{ transform: [{ scale }] }}>
           <Ionicons name="trash" size={30} color="#fff" />
         </Animated.View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
-  // --- 2. RENDER FUNCTION FOR NOTE SWIPE ---
   const renderNoteRightActions = (
     _: any,
     dragX: Animated.AnimatedInterpolation<number>,
+    note: ExerciseNote,
   ) => {
     const scale = dragX.interpolate({
       inputRange: [-80, 0],
@@ -123,11 +154,14 @@ export default function WorkoutHistoryScreen() {
       extrapolate: "clamp",
     });
     return (
-      <View style={styles.noteDeleteAction}>
+      <TouchableOpacity
+        style={styles.noteDeleteAction}
+        onPress={() => deleteHistoryNote(note)}
+      >
         <Animated.View style={{ transform: [{ scale }] }}>
           <Ionicons name="trash" size={24} color="#fff" />
         </Animated.View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -168,9 +202,8 @@ export default function WorkoutHistoryScreen() {
         renderItem={({ item }) => (
           <View style={styles.itemWrapper}>
             <Swipeable
-              renderRightActions={renderRightActions}
+              renderRightActions={(p, d) => renderRightActions(p, d, item.id)}
               rightThreshold={SCREEN_WIDTH * 0.4}
-              onSwipeableOpen={() => deleteWorkout(item.id)}
             >
               <HistoryWorkoutCard
                 workout={item}
@@ -191,12 +224,26 @@ export default function WorkoutHistoryScreen() {
         }
       />
 
+      {/* --- DYNAMIC FAB BUTTON --- */}
       <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push("/workouts/new")}
+        style={[
+          styles.fab,
+          isActive && { backgroundColor: "#32D74B" }, // Green if active
+        ]}
+        onPress={() => {
+          if (isActive) {
+            // Navigate to the global record screen
+            router.push("/record-workout");
+          } else {
+            // Navigate to the template selector / new workout flow
+            router.push("/workouts/new");
+          }
+        }}
       >
-        <Ionicons name="add" size={24} color="#fff" />
-        <Text style={styles.fabText}>Record Workout</Text>
+        <Ionicons name={isActive ? "play" : "add"} size={24} color="#fff" />
+        <Text style={styles.fabText}>
+          {isActive ? "Continue Workout" : "Record Workout"}
+        </Text>
       </TouchableOpacity>
 
       <Modal
@@ -216,8 +263,9 @@ export default function WorkoutHistoryScreen() {
             {viewingNotes.map((note) => (
               <Swipeable
                 key={note.id}
-                renderRightActions={renderNoteRightActions}
-                onSwipeableOpen={() => deleteHistoryNote(note)}
+                renderRightActions={(p, d) =>
+                  renderNoteRightActions(p, d, note)
+                }
               >
                 <View style={styles.noteCard}>
                   <Text style={styles.noteTitle}>{note.exerciseName}</Text>
@@ -259,8 +307,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   itemWrapper: { paddingHorizontal: 16 },
-
-  // Style for WORKOUT delete
   deleteAction: {
     backgroundColor: "#ff4444",
     justifyContent: "center",
@@ -270,8 +316,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flex: 1,
   },
-
-  // Style for NOTE delete
   noteDeleteAction: {
     backgroundColor: "#ff4444",
     justifyContent: "center",
@@ -281,11 +325,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 20,
   },
-
   emptyContainer: { alignItems: "center", marginTop: 40 },
   emptyText: { fontSize: 16, fontWeight: "600", color: "#888" },
   emptySubText: { fontSize: 14, color: "#aaa", marginTop: 4 },
-
   fab: {
     position: "absolute",
     bottom: 30,
@@ -302,7 +344,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fabText: { color: "#fff", fontWeight: "bold", marginLeft: 8, fontSize: 16 },
-
   modalContainer: { flex: 1, backgroundColor: "#f2f2f7" },
   modalHeader: {
     padding: 16,
@@ -315,7 +356,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: "bold" },
   modalClose: { color: Colors.primary, fontSize: 16, fontWeight: "600" },
-
   noteCard: {
     backgroundColor: "#fff",
     padding: 16,

@@ -1,27 +1,35 @@
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { WorkoutProvider } from "../context/WorkoutContext";
+import GlobalWorkoutBanner from "../components/GlobalWorkoutBanner";
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* The Tabs */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-        {/* The Modal */}
-        <Stack.Screen
-          name="post-modal"
-          options={{
-            presentation: "modal", // Native iOS modal slide
-            headerShown: false,
-          }}
-        />
-      </Stack>
-    </GestureHandlerRootView>
+    <WorkoutProvider>
+      <GestureHandlerRootView style={styles.container}>
+        <GlobalWorkoutBanner />
+        <View style={{ flex: 1 }}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="record-workout"
+              options={{
+                headerShown: false,
+                gestureEnabled: false,
+                presentation: "fullScreenModal",
+              }}
+            />
+            <Stack.Screen
+              name="post-modal"
+              options={{ presentation: "modal", headerShown: false }}
+            />
+          </Stack>
+        </View>
+      </GestureHandlerRootView>
+    </WorkoutProvider>
   );
 }
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#000" },
 });

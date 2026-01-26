@@ -85,7 +85,7 @@ export default function WorkoutDashboard() {
         // UPDATE THIS LINE: Pass the templateId as a parameter
         onPress={() =>
           router.push({
-            pathname: "/workouts/record",
+            pathname: "/record-workout",
             params: { templateId: item.id },
           })
         }

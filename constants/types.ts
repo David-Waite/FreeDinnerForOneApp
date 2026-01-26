@@ -1,7 +1,7 @@
-export type Set = {
+export type WorkoutSet = {
   id: string;
-  weight: number;
-  reps: number;
+  weight: string;
+  reps: string;
   completed: boolean;
 };
 
@@ -9,22 +9,23 @@ export type Exercise = {
   id: string;
   name: string;
   restTime: number; // Seconds
-  sets: Set[];
+  sets: WorkoutSet[];
 };
 
 export type WorkoutSession = {
   id: string;
   name: string;
   date: string;
+  duration: number;
   exercises: Exercise[];
 };
 
 export type TemplateExercise = {
   id: string;
   name: string;
-  targetSets: string; // CHANGED to string to allow Input editing
-  targetReps: string; // CHANGED to string to allow ranges like "8-12"
-  restTime: string; // "60s"
+  targetSets: string;
+  targetReps: string;
+  restTime: string; // "60"
   notes: string;
 };
 
@@ -40,8 +41,8 @@ export type ExerciseNote = {
   text: string;
   createdAt: string;
   isPinned: boolean;
-  sessionId?: string;
-  exerciseName?: string; // <--- NEW: Store which exercise this belongs to
+  sessionId?: string | null;
+  exerciseName?: string;
 };
 
 export type NotesStorage = Record<string, ExerciseNote[]>;

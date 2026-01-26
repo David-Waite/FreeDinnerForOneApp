@@ -26,44 +26,24 @@ export const WorkoutRepository = {
 
   async saveWorkout(workout: WorkoutSession): Promise<void> {
     const existing = await this.getWorkouts();
-    const updated = [workout, ...existing];
+    const index = existing.findIndex((w) => w.id === workout.id);
+    let updated;
+    if (index >= 0) {
+      updated = [...existing];
+      updated[index] = workout;
+    } else {
+      updated = [workout, ...existing];
+    }
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updated));
   },
 
   async deleteWorkout(id: string): Promise<void> {
     try {
-      // 1. Delete the Session
       const existingSessions = await this.getWorkouts();
       const filteredSessions = existingSessions.filter((w) => w.id !== id);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(filteredSessions));
-
-      // 2. Cascade Delete: Remove notes linked to this session
-      const jsonNotes = await AsyncStorage.getItem(NOTES_KEY);
-      if (jsonNotes) {
-        const allNotes: NotesStorage = JSON.parse(jsonNotes);
-        let hasChanges = false;
-
-        // Iterate through every exercise (e.g., "Bench", "Squat")
-        Object.keys(allNotes).forEach((exerciseName) => {
-          const originalLength = allNotes[exerciseName].length;
-
-          // Filter out notes that belong to the deleted session ID
-          allNotes[exerciseName] = allNotes[exerciseName].filter(
-            (n) => n.sessionId !== id,
-          );
-
-          if (allNotes[exerciseName].length !== originalLength) {
-            hasChanges = true;
-          }
-        });
-
-        // Only write to disk if we actually deleted something
-        if (hasChanges) {
-          await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(allNotes));
-        }
-      }
     } catch (e) {
-      console.error("Failed to delete workout and notes", e);
+      console.error("Failed to delete workout", e);
     }
   },
 
@@ -73,7 +53,6 @@ export const WorkoutRepository = {
       const jsonValue = await AsyncStorage.getItem(TEMPLATE_KEY);
       return jsonValue != null ? JSON.parse(jsonValue) : [];
     } catch (e) {
-      console.error("Failed to load templates", e);
       return [];
     }
   },
@@ -87,17 +66,13 @@ export const WorkoutRepository = {
     try {
       const existing = await this.getTemplates();
       const index = existing.findIndex((t) => t.id === template.id);
-
       let updated;
       if (index >= 0) {
-        // Update existing
         updated = [...existing];
         updated[index] = template;
       } else {
-        // Create new
         updated = [template, ...existing];
       }
-
       await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
     } catch (e) {
       console.error("Failed to save template", e);
@@ -110,8 +85,8 @@ export const WorkoutRepository = {
     await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(filtered));
   },
 
+  // --- NOTES ---
   async getNotes(exerciseName: string): Promise<ExerciseNote[]> {
-    // ... existing implementation
     try {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
       const allNotes: NotesStorage =
@@ -125,16 +100,15 @@ export const WorkoutRepository = {
         );
       });
     } catch (e) {
-      console.error("Failed to load notes", e);
       return [];
     }
   },
+
   async getAllNotes(): Promise<NotesStorage> {
     try {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
       return jsonValue != null ? JSON.parse(jsonValue) : {};
     } catch (e) {
-      console.error("Failed to load all notes", e);
       return {};
     }
   },
@@ -154,13 +128,12 @@ export const WorkoutRepository = {
         text,
         createdAt: new Date().toISOString(),
         isPinned: false,
-        sessionId: sessionId,
-        exerciseName: exerciseName, // <--- SAVE THIS
+        sessionId: sessionId || null,
+        exerciseName: exerciseName,
       };
 
       const existing = allNotes[exerciseName] || [];
       allNotes[exerciseName] = [newNote, ...existing];
-
       await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(allNotes));
     } catch (e) {
       console.error("Failed to save note", e);
@@ -172,16 +145,13 @@ export const WorkoutRepository = {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
       const allNotes: NotesStorage =
         jsonValue != null ? JSON.parse(jsonValue) : {};
-
       if (allNotes[exerciseName]) {
         allNotes[exerciseName] = allNotes[exerciseName].map((n) =>
           n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
         );
         await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(allNotes));
       }
-    } catch (e) {
-      console.error("Failed to toggle pin", e);
-    }
+    } catch (e) {}
   },
 
   async deleteNote(exerciseName: string, noteId: string): Promise<void> {
@@ -189,18 +159,16 @@ export const WorkoutRepository = {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
       const allNotes: NotesStorage =
         jsonValue != null ? JSON.parse(jsonValue) : {};
-
       if (allNotes[exerciseName]) {
         allNotes[exerciseName] = allNotes[exerciseName].filter(
           (n) => n.id !== noteId,
         );
         await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(allNotes));
       }
-    } catch (e) {
-      console.error("Failed to delete note", e);
-    }
+    } catch (e) {}
   },
 
+  // --- POSTS (FIXED) ---
   async getPosts(): Promise<WorkoutPost[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(POSTS_KEY);
@@ -214,7 +182,6 @@ export const WorkoutRepository = {
   async createPost(post: WorkoutPost): Promise<void> {
     try {
       const existing = await this.getPosts();
-      // Add new post to the TOP of the feed
       const updated = [post, ...existing];
       await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(updated));
     } catch (e) {

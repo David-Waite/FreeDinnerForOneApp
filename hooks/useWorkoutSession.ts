@@ -1,165 +1,234 @@
 import { useState, useEffect } from "react";
-import { LayoutAnimation, Platform, UIManager } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { WorkoutSession, WorkoutSet, Exercise } from "../constants/types";
 import { WorkoutRepository } from "../services/WorkoutRepository";
-import { Exercise, Set, WorkoutSession } from "../constants/types";
-import { useRouter } from "expo-router";
 
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+const CURRENT_SESSION_KEY = "current_workout_session";
+const TIMER_START_KEY = "workout_timer_start";
 
-// ... existing parseRestTime helper ...
-const parseRestTime = (input: string): number => {
-  const text = input.toLowerCase();
-  const number = parseInt(text.replace(/[^0-9]/g, "")) || 60;
-  if (text.includes("m")) return number * 60;
-  return number;
-};
-
-export function useWorkoutSession(templateId: string) {
-  const router = useRouter();
-
-  // 1. Generate ID immediately so we can link notes to it
-  const [sessionId] = useState(Date.now().toString());
-
-  const [sessionName, setSessionName] = useState("New Session");
+export const useWorkoutSession = () => {
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionName, setSessionName] = useState("");
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [startTime] = useState(new Date());
-  const [loading, setLoading] = useState(true);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (templateId) {
-      loadTemplate(templateId);
+    loadActiveSession();
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (startTime && !isPaused && sessionId) {
+      interval = setInterval(() => {
+        const now = Date.now();
+        setElapsedSeconds(Math.floor((now - startTime) / 1000));
+      }, 1000);
     }
-  }, [templateId]);
+    return () => clearInterval(interval);
+  }, [startTime, isPaused, sessionId]);
 
-  const loadTemplate = async (id: string) => {
-    const template = await WorkoutRepository.getTemplateById(id);
-    if (!template) return;
+  const loadActiveSession = async () => {
+    try {
+      const json = await AsyncStorage.getItem(CURRENT_SESSION_KEY);
+      const timerStart = await AsyncStorage.getItem(TIMER_START_KEY);
 
-    setSessionName(template.name);
+      if (json) {
+        const session: WorkoutSession = JSON.parse(json);
+        setSessionId(session.id);
+        setSessionName(session.name);
+        setExercises(session.exercises);
 
-    const sessionExercises: Exercise[] = template.exercises.map((tExercise) => {
-      const targetSets = parseInt(tExercise.targetSets) || 3;
-      const initialSets: Set[] = Array.from({ length: targetSets }).map(() => ({
-        id: Date.now().toString() + Math.random(),
-        weight: 0,
-        reps: 0,
-        completed: false,
-      }));
-
-      return {
-        id: Date.now().toString() + Math.random(),
-        name: tExercise.name,
-        restTime: parseRestTime(tExercise.restTime),
-        sets: initialSets,
-      };
-    });
-
-    setExercises(sessionExercises);
-    setLoading(false);
+        if (timerStart) {
+          const start = parseInt(timerStart, 10);
+          setStartTime(start);
+          setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load active session", e);
+    }
   };
 
-  // ... keep updateSet, toggleSetComplete, addSet, removeSet, markSetComplete EXACTLY THE SAME ...
-  const updateSet = (
-    exerciseId: string,
-    setId: string,
-    field: keyof Set,
-    value: number | boolean,
-  ) => {
-    setExercises((prev) =>
-      prev.map((e) => {
-        if (e.id !== exerciseId) return e;
-        return {
-          ...e,
-          sets: e.sets.map((s) =>
-            s.id === setId ? { ...s, [field]: value } : s,
-          ),
-        };
-      }),
-    );
-  };
+  const startWorkout = async (templateId?: string) => {
+    let newExercises: Exercise[] = [];
+    let name = "Quick Workout";
 
-  const markSetComplete = (exerciseId: string, setId: string) => {
-    setExercises((prev) =>
-      prev.map((e) => {
-        if (e.id !== exerciseId) return e;
-        return {
-          ...e,
-          sets: e.sets.map((s) =>
-            s.id === setId ? { ...s, completed: true } : s,
-          ),
-        };
-      }),
-    );
-  };
+    if (templateId) {
+      const template = await WorkoutRepository.getTemplateById(templateId);
+      if (template) {
+        name = template.name;
+        newExercises = template.exercises.map((ex) => ({
+          id: ex.id,
+          name: ex.name,
+          restTime: parseInt(ex.restTime) || 60,
+          sets: ex.targetSets
+            ? Array(parseInt(ex.targetSets) || 3)
+                .fill(null)
+                .map((_, i) => ({
+                  id: Date.now().toString() + i,
+                  weight: "",
+                  reps: "",
+                  completed: false,
+                }))
+            : [],
+        }));
+      }
+    }
 
-  const toggleSetComplete = (exerciseId: string, setId: string) => {
-    setExercises((prev) =>
-      prev.map((e) => {
-        if (e.id !== exerciseId) return e;
-        return {
-          ...e,
-          sets: e.sets.map((s) =>
-            s.id === setId ? { ...s, completed: !s.completed } : s,
-          ),
-        };
-      }),
-    );
-  };
+    const newId = Date.now().toString();
+    const start = Date.now();
 
-  const addSet = (exerciseId: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExercises((prev) =>
-      prev.map((e) => {
-        if (e.id !== exerciseId) return e;
-        const lastSet = e.sets[e.sets.length - 1];
-        const newSet: Set = {
-          id: Date.now().toString() + Math.random(),
-          weight: lastSet ? lastSet.weight : 0,
-          reps: lastSet ? lastSet.reps : 0,
-          completed: false,
-        };
-        return { ...e, sets: [...e.sets, newSet] };
-      }),
-    );
-  };
+    setSessionId(newId);
+    setSessionName(name);
+    setExercises(newExercises);
+    setStartTime(start);
+    setElapsedSeconds(0);
+    setIsPaused(false);
 
-  const removeSet = (exerciseId: string, setId: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExercises((prev) =>
-      prev.map((e) => {
-        if (e.id !== exerciseId) return e;
-        return { ...e, sets: e.sets.filter((s) => s.id !== setId) };
-      }),
-    );
-  };
-
-  const finishWorkout = async () => {
     const session: WorkoutSession = {
-      id: sessionId, // Use the ID generated at start
+      id: newId,
+      name,
+      date: new Date().toISOString(),
+      duration: 0,
+      exercises: newExercises,
+    };
+
+    await AsyncStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify(session));
+    await AsyncStorage.setItem(TIMER_START_KEY, start.toString());
+  };
+
+  const saveSessionState = async (updatedExercises: Exercise[]) => {
+    if (!sessionId) return;
+    const currentSession: WorkoutSession = {
+      id: sessionId,
       name: sessionName,
       date: new Date().toISOString(),
+      duration: elapsedSeconds,
+      exercises: updatedExercises,
+    };
+    await AsyncStorage.setItem(
+      CURRENT_SESSION_KEY,
+      JSON.stringify(currentSession),
+    );
+  };
+
+  const updateSet = (
+    exId: string,
+    setId: string,
+    field: keyof WorkoutSet,
+    value: string | number | boolean,
+  ) => {
+    const updated = exercises.map((e) => {
+      if (e.id !== exId) return e;
+      return {
+        ...e,
+        sets: e.sets.map((s) => {
+          if (s.id !== setId) return s;
+          if (
+            (field === "weight" || field === "reps") &&
+            typeof value === "number"
+          ) {
+            return { ...s, [field]: value.toString() };
+          }
+          return { ...s, [field]: value };
+        }),
+      };
+    });
+    setExercises(updated);
+    saveSessionState(updated);
+  };
+
+  const markSetComplete = (exId: string, setId: string) => {
+    const updated = exercises.map((e) => {
+      if (e.id !== exId) return e;
+      return {
+        ...e,
+        sets: e.sets.map((s) =>
+          s.id === setId ? { ...s, completed: !s.completed } : s,
+        ),
+      };
+    });
+    setExercises(updated);
+    saveSessionState(updated);
+  };
+
+  const addSet = (exId: string) => {
+    const updated = exercises.map((e) => {
+      if (e.id !== exId) return e;
+      const previousSet = e.sets[e.sets.length - 1];
+      const newSet: WorkoutSet = {
+        id: Date.now().toString(),
+        reps: previousSet ? previousSet.reps : "",
+        weight: previousSet ? previousSet.weight : "",
+        completed: false,
+      };
+      return { ...e, sets: [...e.sets, newSet] };
+    });
+    setExercises(updated);
+    saveSessionState(updated);
+  };
+
+  const removeSet = (exId: string, setId: string) => {
+    const updated = exercises.map((e) => {
+      if (e.id !== exId) return e;
+      return { ...e, sets: e.sets.filter((s) => s.id !== setId) };
+    });
+    setExercises(updated);
+    saveSessionState(updated);
+  };
+
+  const togglePause = () => setIsPaused(!isPaused);
+
+  const saveSession = async () => {
+    if (!sessionId) return;
+    const finalSession: WorkoutSession = {
+      id: sessionId,
+      name: sessionName,
+      date: new Date().toISOString(),
+      duration: elapsedSeconds,
       exercises,
     };
-    await WorkoutRepository.saveWorkout(session);
-    router.replace("/workouts");
+
+    await WorkoutRepository.saveWorkout(finalSession);
+    await AsyncStorage.removeItem(CURRENT_SESSION_KEY);
+    await AsyncStorage.removeItem(TIMER_START_KEY);
+
+    // Force reset state
+    setSessionId(null);
+    setExercises([]);
+    setStartTime(null);
+    setElapsedSeconds(0);
+  };
+
+  const cancelSession = async () => {
+    await AsyncStorage.removeItem(CURRENT_SESSION_KEY);
+    await AsyncStorage.removeItem(TIMER_START_KEY);
+    setSessionId(null);
+    setExercises([]);
+    setStartTime(null);
+    setElapsedSeconds(0);
   };
 
   return {
-    sessionId, // Export this!
+    isActive: !!sessionId,
+    sessionId,
     sessionName,
-    startTime,
     exercises,
-    loading,
+    elapsedSeconds,
+    isPaused,
+    startWorkout,
+    togglePause,
     updateSet,
-    toggleSetComplete,
     markSetComplete,
     addSet,
     removeSet,
-    finishWorkout,
+    saveSession,
+    cancelSession,
+    hasUnsavedChanges: elapsedSeconds > 0,
+    hasIncompleteData: exercises.some((e) =>
+      e.sets.some((s) => !s.completed && (s.weight === "" || s.reps === "")),
+    ),
   };
-}
+};
