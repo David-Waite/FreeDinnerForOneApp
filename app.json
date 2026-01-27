@@ -21,12 +21,12 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1"
           }
         }
       ],
-      "expo-router",
-      "expo-font"
+      "expo-router"
     ],
     "extra": {
       "eas": {
