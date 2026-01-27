@@ -19,8 +19,8 @@ const withIosRelaxedIncludes = (config) => {
 
       # Add explicit search paths for React headers to fix missing macros like RCT_EXPORT_METHOD
       config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
-      config.build_settings['HEADER_SEARCH_PATHS'] << ' "\\${PODS_ROOT}/Headers/Public/React-Core"'
-      config.build_settings['HEADER_SEARCH_PATHS'] << ' "\\${PODS_ROOT}/Headers/Public/React-bridging/react/bridging"'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' "$(PODS_ROOT)/Headers/Public/React-Core"'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' "$(PODS_ROOT)/Headers/Public/React-bridging/react/bridging"'
     end
   end
 `;
