@@ -13,6 +13,7 @@
     },
     "plugins": [
       "./plugins/fix-folly",
+      "./plugins/withIosRelaxedIncludes.js",
       "@react-native-firebase/app",
       "expo-secure-store",
       "expo-image-picker",
