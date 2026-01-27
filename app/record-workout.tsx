@@ -42,13 +42,15 @@ export default function RecordWorkoutScreen() {
     cancelSession,
   } = useWorkoutContext();
 
-  // Renamed for clarity: tracks if we are intentionally leaving the screen
   const [isExiting, setIsExiting] = useState(false);
+
+  // Track sets that should be highlighted red (errors/warnings)
+  const [highlightedSets, setHighlightedSets] = useState<Set<string>>(
+    new Set(),
+  );
 
   // --- FIX 1: Prevent "Zombie" Workouts ---
   useEffect(() => {
-    // Only auto-start if we are NOT currently trying to exit/save.
-    // This prevents the effect from firing immediately after we clear the session.
     if (!isActive && !sessionId && !isExiting) {
       startWorkout(templateId);
     }
@@ -57,15 +59,8 @@ export default function RecordWorkoutScreen() {
   // --- FIX 2: Block Back Button / Swipe ---
   useEffect(() => {
     const removeListener = navigation.addListener("beforeRemove", (e) => {
-      if (isExiting) {
-        // We initiated this navigation (Finish, Cancel, or Minimize), so allow it.
-        return;
-      }
-
-      // Block hardware back button & gestures
+      if (isExiting) return;
       e.preventDefault();
-
-      // Optional: Tell the user why back is blocked
       Alert.alert(
         "Workout in Progress",
         "Please use the Minimize (Home) button or End Workout button.",
@@ -89,19 +84,48 @@ export default function RecordWorkoutScreen() {
     setId: string;
   } | null>(null);
 
+  // Helper: Find all sets that are "empty" (no reps)
+  const validateSets = () => {
+    const invalidIds = new Set<string>();
+    exercises.forEach((ex) => {
+      ex.sets.forEach((set) => {
+        // Condition: Reps are missing or "0".
+        // We allow empty weight (bodyweight), but usually reps are required.
+        if (!set.reps || set.reps === "0") {
+          invalidIds.add(set.id);
+        }
+      });
+    });
+    return invalidIds;
+  };
+
   const handleFinish = async () => {
-    if (hasIncompleteData) {
-      Alert.alert("Finish Workout?", "Incomplete sets. Finish anyway?", [
-        { text: "Resume", style: "cancel" },
-        { text: "Finish", style: "default", onPress: performSave },
-      ]);
+    // 1. Check for empty sets (reps = 0 or empty)
+    const invalidIds = validateSets();
+
+    if (invalidIds.size > 0) {
+      // Highlight them immediately
+      setHighlightedSets(invalidIds);
+
+      // Force expand the first exercise with an error (optional UX improvement)
+      // const firstInvalidEx = exercises.find(ex => ex.sets.some(s => invalidIds.has(s.id)));
+      // if (firstInvalidEx) setExpandedExerciseId(firstInvalidEx.id);
+
+      Alert.alert(
+        "Incomplete Sets",
+        "Some sets have no reps recorded. Finish anyway?",
+        [
+          { text: "Resume", style: "cancel" },
+          { text: "Finish", style: "default", onPress: performSave },
+        ],
+      );
     } else {
       performSave();
     }
   };
 
   const performSave = async () => {
-    setIsExiting(true); // Flag prevents the useEffect from restarting a workout
+    setIsExiting(true);
     await saveSession();
     if (router.canDismiss()) router.dismiss();
     router.replace("/");
@@ -120,7 +144,7 @@ export default function RecordWorkoutScreen() {
         text: "Discard",
         style: "destructive",
         onPress: async () => {
-          setIsExiting(true); // Flag prevents restart
+          setIsExiting(true);
           await cancelSession();
           if (router.canDismiss()) router.dismiss();
           router.replace("/");
@@ -130,13 +154,42 @@ export default function RecordWorkoutScreen() {
   };
 
   const handleMinimize = () => {
-    setIsExiting(true); // Flag allows navigation through the listener
-    // We do NOT cancel/save here, we just leave.
+    setIsExiting(true);
     if (router.canDismiss()) router.dismiss();
     router.replace("/");
   };
 
-  // ... (Rest of the component logic remains the same: expand/collapse, etc.) ...
+  // Logic: "Warn once, allow twice"
+  const checkAndWarnAction = (
+    exId: string,
+    setId: string,
+    action: () => void,
+  ) => {
+    const ex = exercises.find((e) => e.id === exId);
+    const set = ex?.sets.find((s) => s.id === setId);
+
+    if (!set) return;
+
+    const isEmpty = !set.reps || set.reps === "0";
+
+    // If empty AND not already highlighted -> Warn (Highlight) & Block
+    if (isEmpty && !highlightedSets.has(setId)) {
+      setHighlightedSets((prev) => new Set(prev).add(setId));
+      return;
+    }
+
+    // Otherwise (Valid OR already warned) -> Proceed
+    action();
+
+    // Clear warning if it was fixed
+    if (!isEmpty && highlightedSets.has(setId)) {
+      setHighlightedSets((prev) => {
+        const next = new Set(prev);
+        next.delete(setId);
+        return next;
+      });
+    }
+  };
 
   const advanceToNextSet = (exId: string, currentSetId: string) => {
     const ex = exercises.find((e) => e.id === exId);
@@ -193,6 +246,7 @@ export default function RecordWorkoutScreen() {
             exercise={exercise}
             isExpanded={expandedExerciseId === exercise.id}
             expandedSetId={expandedSetId}
+            highlightedSets={highlightedSets} // <--- Pass State
             onToggle={() => toggleAccordion(exercise.id)}
             onSetExpand={(setId) => {
               LayoutAnimation.configureNext(
@@ -200,20 +254,32 @@ export default function RecordWorkoutScreen() {
               );
               setExpandedSetId(setId);
             }}
-            onUpdateSet={(setId, field, value) =>
-              updateSet(exercise.id, setId, field as any, value)
-            }
+            onUpdateSet={(setId, field, value) => {
+              // Clear error as user types
+              if (highlightedSets.has(setId)) {
+                const next = new Set(highlightedSets);
+                next.delete(setId);
+                setHighlightedSets(next);
+              }
+              updateSet(exercise.id, setId, field as any, value);
+            }}
             onAddSet={() => addSet(exercise.id)}
             onRemoveSet={(setId) => removeSet(exercise.id, setId)}
             onOpenNotes={() => openNotes(exercise.name)}
             onStartRestTimer={(dur, setId) => {
-              setTimerDuration(dur);
-              setActiveSetForTimer({ exId: exercise.id, setId });
-              setTimerVisible(true);
+              // Wrap with check logic
+              checkAndWarnAction(exercise.id, setId, () => {
+                setTimerDuration(dur);
+                setActiveSetForTimer({ exId: exercise.id, setId });
+                setTimerVisible(true);
+              });
             }}
             onSetDone={(setId) => {
-              markSetComplete(exercise.id, setId);
-              advanceToNextSet(exercise.id, setId);
+              // Wrap with check logic
+              checkAndWarnAction(exercise.id, setId, () => {
+                markSetComplete(exercise.id, setId);
+                advanceToNextSet(exercise.id, setId);
+              });
             }}
           />
         ))}
@@ -227,6 +293,7 @@ export default function RecordWorkoutScreen() {
         onCancel={handleCancel}
         onMinimize={handleMinimize}
       />
+      {/* ... NotesModal and RestTimerModal (unchanged) ... */}
       <NotesModal
         visible={notesModalVisible}
         onClose={() => setNotesModalVisible(false)}

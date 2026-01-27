@@ -1,5 +1,3 @@
-// FreeDinnerForOneApp/components/workout/SetRow.tsx
-
 import React from "react";
 import {
   View,
@@ -19,6 +17,7 @@ type Props = {
   set: WorkoutSet;
   index: number;
   isExpanded: boolean;
+  isError?: boolean; // <--- New Prop
   onToggleExpand: () => void;
   onUpdate: (field: keyof WorkoutSet, value: number) => void;
   onDone: () => void;
@@ -30,13 +29,13 @@ export default function SetRow({
   set,
   index,
   isExpanded,
+  isError,
   onToggleExpand,
   onUpdate,
   onDone,
   onStartTimer,
   onRemove,
 }: Props) {
-  // Logic: Clicking the row expands it. Clicking again collapses it.
   const handlePress = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggleExpand();
@@ -70,7 +69,8 @@ export default function SetRow({
         onPress={handlePress}
         style={[
           styles.container,
-          set.completed && !isExpanded && styles.containerCompleted, // Green when closed & done
+          set.completed && !isExpanded && styles.containerCompleted,
+          isError && styles.containerError, // <--- Apply Error Style
         ]}
       >
         {/* TOP ROW: Inputs */}
@@ -101,7 +101,6 @@ export default function SetRow({
             <TextInput
               style={styles.input}
               keyboardType="numeric"
-              // Use previousReps as placeholder if available
               placeholder={set.previousReps || "0"}
               placeholderTextColor={set.previousReps ? "#aaa" : "#ccc"}
               value={set.reps === "0" || set.reps === "" ? "" : set.reps}
@@ -146,7 +145,12 @@ const styles = StyleSheet.create({
   },
   containerCompleted: {
     backgroundColor: "#e8f5e9",
-    borderColor: "#c8e6c9", // Light Green
+    borderColor: "#c8e6c9",
+  },
+  containerError: {
+    // <--- New Style
+    borderColor: "#ff4444",
+    borderWidth: 1.5,
   },
   topRow: {
     flexDirection: "row",

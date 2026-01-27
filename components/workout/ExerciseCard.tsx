@@ -9,6 +9,7 @@ type Props = {
   exercise: Exercise;
   isExpanded: boolean;
   expandedSetId: string | null;
+  highlightedSets?: Set<string>; // <--- New Prop
   onToggle: () => void;
   onSetExpand: (setId: string | null) => void;
   onUpdateSet: (
@@ -27,6 +28,7 @@ export default function ExerciseCard({
   exercise,
   isExpanded,
   expandedSetId,
+  highlightedSets,
   onToggle,
   onSetExpand,
   onUpdateSet,
@@ -65,6 +67,7 @@ export default function ExerciseCard({
               set={set}
               index={index}
               isExpanded={expandedSetId === set.id}
+              isError={highlightedSets?.has(set.id)} // <--- Pass Error State
               onToggleExpand={() =>
                 onSetExpand(expandedSetId === set.id ? null : set.id)
               }
@@ -91,7 +94,7 @@ export default function ExerciseCard({
     </View>
   );
 }
-// ... Styles remain the same (omitted for brevity)
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
