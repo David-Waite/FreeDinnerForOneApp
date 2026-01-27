@@ -12,32 +12,35 @@ const withIosRelaxedIncludes = (config) => {
       );
       let contents = fs.readFileSync(podfile, "utf-8");
 
-      // The ruby code we want to inject to relax the compiler
       const fixScript = `
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        
+        # Add explicit search paths for React headers to fix missing macros like RCT_EXPORT_METHOD
+        config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
+        config.build_settings['HEADER_SEARCH_PATHS'] << ' "${PODS_ROOT}/Headers/Public/React-Core"'
+        config.build_settings['HEADER_SEARCH_PATHS'] << ' "${PODS_ROOT}/Headers/Public/React-bridging/react/bridging"'
       end
     end
       `;
 
-      // If the fix is already there, don't add it again
       if (
         contents.includes(
           "CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES",
         )
       ) {
-        return config;
+        if (contents.includes("Headers/Public/React-Core")) {
+          return config;
+        }
       }
 
-      // Inject the fix into the post_install block
       if (contents.includes("post_install do |installer|")) {
         contents = contents.replace(
           "post_install do |installer|",
           `post_install do |installer|${fixScript}`,
         );
       } else {
-        // Fallback if no post_install block exists (rare but possible)
         contents += `
           post_install do |installer|
             ${fixScript}
