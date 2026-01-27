@@ -7,15 +7,18 @@ import {
   WorkoutTemplate,
   PostComment,
   PostReaction,
+  MasterExercise,
 } from "../constants/types";
 
 const SESSION_KEY = "workout_sessions";
 const TEMPLATE_KEY = "workout_templates";
 const NOTES_KEY = "exercise_notes";
 const POSTS_KEY = "workout_posts";
+const MASTER_EXERCISE_KEY = "master_exercises";
 
 export const WorkoutRepository = {
   // --- SESSIONS (History) ---
+
   async getWorkouts(): Promise<WorkoutSession[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(SESSION_KEY);
@@ -26,7 +29,17 @@ export const WorkoutRepository = {
     }
   },
 
+  async getWorkoutById(id: string): Promise<WorkoutSession | undefined> {
+    const workouts = await this.getWorkouts();
+    return workouts.find((w) => w.id === id);
+  },
+
   async saveWorkout(workout: WorkoutSession): Promise<void> {
+    // 1. Harvest Names
+    const names = workout.exercises.map((e) => e.name);
+    await this.ensureExercisesExist(names);
+
+    // 2. Save Session
     const existing = await this.getWorkouts();
     const index = existing.findIndex((w) => w.id === workout.id);
     let updated;
@@ -49,7 +62,67 @@ export const WorkoutRepository = {
     }
   },
 
+  // --- HISTORY LOOKUP (New & Existing) ---
+
+  // NEW: Helper to find specific set data from history for auto-fill
+  async getHistoricSetValues(
+    exerciseName: string,
+    setIndex: number,
+  ): Promise<{ weight: string; reps: string } | null> {
+    try {
+      // 1. Get the last 2 sessions that included this exercise
+      const recentSessions = await this.getRecentHistoryForExercise(
+        exerciseName,
+        2,
+      );
+
+      // 2. Iterate through them (newest first) to find a matching set index
+      for (const session of recentSessions) {
+        const exercise = session.exercises.find(
+          (e) => e.name.toLowerCase() === exerciseName.toLowerCase(),
+        );
+
+        if (exercise && exercise.sets[setIndex]) {
+          const set = exercise.sets[setIndex];
+          // Only return if there is actual data
+          if (set.weight || set.reps) {
+            return { weight: set.weight, reps: set.reps };
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      console.error("Failed to get historic set values", e);
+      return null;
+    }
+  },
+
+  async getRecentHistoryForExercise(
+    exerciseName: string,
+    limit: number = 3,
+  ): Promise<WorkoutSession[]> {
+    try {
+      const allSessions = await this.getWorkouts();
+      // Sort newest first
+      const sorted = allSessions.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+
+      // Filter sessions that contain this exercise
+      const filtered = sorted.filter((session) =>
+        session.exercises.some(
+          (e) => e.name.toLowerCase() === exerciseName.toLowerCase(),
+        ),
+      );
+
+      return filtered.slice(0, limit);
+    } catch (e) {
+      return [];
+    }
+  },
+
   // --- TEMPLATES (Plans) ---
+
   async getTemplates(): Promise<WorkoutTemplate[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(TEMPLATE_KEY);
@@ -66,6 +139,11 @@ export const WorkoutRepository = {
 
   async saveTemplate(template: WorkoutTemplate): Promise<void> {
     try {
+      // 1. Harvest Names
+      const names = template.exercises.map((e) => e.name);
+      await this.ensureExercisesExist(names);
+
+      // 2. Save Template
       const existing = await this.getTemplates();
       const index = existing.findIndex((t) => t.id === template.id);
       let updated;
@@ -88,6 +166,7 @@ export const WorkoutRepository = {
   },
 
   // --- NOTES ---
+
   async getNotes(exerciseName: string): Promise<ExerciseNote[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(NOTES_KEY);
@@ -170,7 +249,8 @@ export const WorkoutRepository = {
     } catch (e) {}
   },
 
-  // --- POSTS (FIXED) ---
+  // --- POSTS (Social) ---
+
   async getPosts(): Promise<WorkoutPost[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(POSTS_KEY);
@@ -181,24 +261,16 @@ export const WorkoutRepository = {
     }
   },
 
-  async getWorkoutById(id: string): Promise<WorkoutSession | undefined> {
-    const workouts = await this.getWorkouts();
-    return workouts.find((w) => w.id === id);
-  },
-
   async createPost(post: WorkoutPost): Promise<void> {
     try {
       const existing = await this.getPosts();
-      // Ensure comments array exists if it's a new post
-      const newPost = { ...post, comments: post.comments || [] };
-      const updated = [newPost, ...existing];
+      const updated = [post, ...existing];
       await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(updated));
     } catch (e) {
       console.error("Failed to create post", e);
     }
   },
 
-  // NEW: Add Comment Logic
   async addCommentToPost(
     postId: string,
     text: string,
@@ -231,6 +303,7 @@ export const WorkoutRepository = {
       return null;
     }
   },
+
   async toggleReaction(
     postId: string,
     emoji: string,
@@ -282,6 +355,82 @@ export const WorkoutRepository = {
     } catch (e) {
       console.error("Failed to toggle reaction", e);
       return null;
+    }
+  },
+
+  // --- MASTER EXERCISES ---
+
+  async getMasterExercises(): Promise<MasterExercise[]> {
+    try {
+      const jsonValue = await AsyncStorage.getItem(MASTER_EXERCISE_KEY);
+      if (jsonValue == null) {
+        return this.seedDefaultExercises();
+      }
+      return JSON.parse(jsonValue);
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async seedDefaultExercises(): Promise<MasterExercise[]> {
+    const defaults = [
+      "Bench Press",
+      "Squat",
+      "Deadlift",
+      "Overhead Press",
+      "Barbell Row",
+      "Pull Up",
+      "Dumbbell Curl",
+      "Tricep Extension",
+      "Leg Press",
+      "Lat Pulldown",
+    ].map((name) => ({ id: name, name }));
+
+    await AsyncStorage.setItem(MASTER_EXERCISE_KEY, JSON.stringify(defaults));
+    return defaults;
+  },
+
+  // "Harvest" new names from a template or session automatically
+  async ensureExercisesExist(names: string[]): Promise<void> {
+    try {
+      const existing = await this.getMasterExercises();
+      const existingNames = new Set(
+        existing.map((e) => e.name.toLowerCase().trim()),
+      );
+
+      let hasChanges = false;
+      const updates = [...existing];
+
+      names.forEach((name) => {
+        const cleanName = name.trim();
+        if (cleanName && !existingNames.has(cleanName.toLowerCase())) {
+          updates.push({ id: cleanName, name: cleanName });
+          existingNames.add(cleanName.toLowerCase());
+          hasChanges = true;
+        }
+      });
+
+      if (hasChanges) {
+        await AsyncStorage.setItem(
+          MASTER_EXERCISE_KEY,
+          JSON.stringify(updates),
+        );
+      }
+    } catch (e) {
+      console.error("Failed to harvest exercises", e);
+    }
+  },
+
+  async getPostByWorkoutId(
+    workoutId: string,
+  ): Promise<WorkoutPost | undefined> {
+    try {
+      const posts = await this.getPosts();
+      // Check if any post has a workoutSummary with the matching ID
+      return posts.find((p) => p.workoutSummary?.id === workoutId);
+    } catch (e) {
+      console.error("Failed to find post by workout ID", e);
+      return undefined;
     }
   },
 };

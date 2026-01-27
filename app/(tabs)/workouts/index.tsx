@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -43,7 +43,7 @@ export default function WorkoutHistoryScreen() {
 
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [viewingNotes, setViewingNotes] = useState<ExerciseNote[]>([]);
-
+  const rowRefs = useRef<{ [key: string]: Swipeable | null }>({});
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -64,21 +64,34 @@ export default function WorkoutHistoryScreen() {
   };
 
   const deleteWorkout = async (id: string) => {
-    Alert.alert(
-      "Delete Workout",
-      "Are you sure you want to remove this session?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await WorkoutRepository.deleteWorkout(id);
-            loadData();
-          },
+    // Check if linked to a post
+    const linkedPost = await WorkoutRepository.getPostByWorkoutId(id);
+
+    // Determine the warning message
+    const message = linkedPost
+      ? "This workout is linked to a social post. Deleting it will remove the content from your post. Are you sure?"
+      : "Are you sure you want to remove this session?";
+
+    Alert.alert("Delete Workout", message, [
+      {
+        text: "Cancel",
+        style: "cancel",
+        onPress: () => {
+          // If cancelled, close the swipeable row back to normal
+          const ref = rowRefs.current[id];
+          if (ref) ref.close();
         },
-      ],
-    );
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await WorkoutRepository.deleteWorkout(id);
+          loadData();
+          // Note: No need to close ref here as the item will be removed from list
+        },
+      },
+    ]);
   };
 
   const deleteHistoryNote = async (note: ExerciseNote) => {
@@ -202,6 +215,11 @@ export default function WorkoutHistoryScreen() {
         renderItem={({ item }) => (
           <View style={styles.itemWrapper}>
             <Swipeable
+              ref={(ref) => {
+                // Capture the ref for this specific row
+                if (ref) rowRefs.current[item.id] = ref;
+              }}
+              onSwipeableRightOpen={() => deleteWorkout(item.id)}
               renderRightActions={(p, d) => renderRightActions(p, d, item.id)}
               rightThreshold={SCREEN_WIDTH * 0.4}
             >

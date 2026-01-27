@@ -15,6 +15,7 @@ import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import { TemplateExercise, WorkoutTemplate } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import ExerciseAutocomplete from "../../../components/workout/ExerciseAutocomplete";
 
 export default function TemplateEditor() {
   const router = useRouter();
@@ -40,8 +41,8 @@ export default function TemplateEditor() {
     const newEx: TemplateExercise = {
       id: Date.now().toString(),
       name: "",
-      targetSets: "3", // This is now valid (string)
-      targetReps: "8-12", // This is now valid (string)
+      targetSets: "3",
+      targetReps: "8-12",
       restTime: "60s",
       notes: "",
     };
@@ -100,7 +101,11 @@ export default function TemplateEditor() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
+        {/* CRITICAL CHANGE: 
+           keyboardShouldPersistTaps="handled" ensures clicks on the 
+           autocomplete suggestions register before the keyboard dismisses 
+        */}
+        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Routine Name</Text>
             <TextInput
@@ -122,12 +127,16 @@ export default function TemplateEditor() {
                 </TouchableOpacity>
               </View>
 
-              <TextInput
-                style={styles.exerciseNameInput}
-                placeholder="Exercise Name (e.g. Bench Press)"
-                value={ex.name}
-                onChangeText={(v) => updateExercise(ex.id, "name", v)}
-              />
+              {/* REPLACED TextInput WITH AUTOCOMPLETE */}
+              <View style={{ zIndex: 100 - index, marginBottom: 12 }}>
+                {/* zIndex hack: ensures top dropdown covers items below it */}
+                <ExerciseAutocomplete
+                  style={styles.exerciseNameInput}
+                  placeholder="Exercise Name (e.g. Bench Press)"
+                  value={ex.name}
+                  onChangeText={(v) => updateExercise(ex.id, "name", v)}
+                />
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.col}>
@@ -136,7 +145,7 @@ export default function TemplateEditor() {
                     style={styles.smallInput}
                     placeholder="3"
                     keyboardType="numeric"
-                    value={ex.targetSets} // Valid: string to string
+                    value={ex.targetSets}
                     onChangeText={(v) => updateExercise(ex.id, "targetSets", v)}
                   />
                 </View>
@@ -145,7 +154,7 @@ export default function TemplateEditor() {
                   <TextInput
                     style={styles.smallInput}
                     placeholder="8-12"
-                    value={ex.targetReps} // Valid: string to string
+                    value={ex.targetReps}
                     onChangeText={(v) => updateExercise(ex.id, "targetReps", v)}
                   />
                 </View>
@@ -236,14 +245,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   exerciseIndex: { fontWeight: "bold", color: "#ccc" },
+
+  // Update this to look good within the autocomplete container
   exerciseNameInput: {
     fontSize: 18,
     fontWeight: "600",
-    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
     paddingBottom: 8,
+    backgroundColor: "transparent",
   },
+
   row: { flexDirection: "row", gap: 10, marginBottom: 12 },
   col: { flex: 1 },
   subLabel: { fontSize: 12, color: "#888", marginBottom: 4 },

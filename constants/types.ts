@@ -1,13 +1,17 @@
+// FreeDinnerForOneApp/constants/types.ts
+
 export type WorkoutSet = {
   id: string;
   weight: string;
   reps: string;
   completed: boolean;
+  previousReps?: string; // <--- NEW: For the placeholder hint
 };
+
 export type Exercise = {
   id: string;
   name: string;
-  restTime: number; // Seconds
+  restTime: number;
   sets: WorkoutSet[];
 };
 
@@ -24,7 +28,7 @@ export type TemplateExercise = {
   name: string;
   targetSets: string;
   targetReps: string;
-  restTime: string; // "60"
+  restTime: string;
   notes: string;
 };
 
@@ -33,6 +37,11 @@ export type WorkoutTemplate = {
   name: string;
   lastPerformed?: string;
   exercises: TemplateExercise[];
+};
+
+export type MasterExercise = {
+  id: string;
+  name: string;
 };
 
 export type ExerciseNote = {
@@ -46,6 +55,23 @@ export type ExerciseNote = {
 
 export type NotesStorage = Record<string, ExerciseNote[]>;
 
+export type WorkoutPost = {
+  id: string;
+  userId: string;
+  userName: string;
+  message: string;
+  imageUri?: string;
+  date: string;
+  comments: any[];
+  reactions: any[];
+  workoutSummary?: {
+    id: string;
+    name: string;
+    duration: number;
+    exerciseCount: number;
+  };
+};
+
 export type PostComment = {
   id: string;
   userId: string;
@@ -56,25 +82,13 @@ export type PostComment = {
 
 export type PostReaction = {
   userId: string;
-  emoji: string; // "❤️", "🔥", etc.
+  emoji: string;
   createdAt: string;
 };
 
 export type WorkoutSummary = {
   id: string;
   name: string;
-  duration: number; // in seconds
+  duration: number;
   exerciseCount: number;
-};
-
-export type WorkoutPost = {
-  id: string;
-  userId: string;
-  userName: string;
-  message: string;
-  imageUri?: string;
-  date: string;
-  comments: PostComment[];
-  reactions: PostReaction[];
-  workoutSummary?: WorkoutSummary; // <--- ADD THIS
 };

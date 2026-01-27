@@ -1,3 +1,5 @@
+// FreeDinnerForOneApp/components/workout/SetRow.tsx
+
 import React from "react";
 import {
   View,
@@ -89,7 +91,6 @@ export default function SetRow({
               style={styles.input}
               keyboardType="numeric"
               placeholder="0"
-              // FIX: compare with string "0" or empty string, not number 0
               value={set.weight === "0" || set.weight === "" ? "" : set.weight}
               onChangeText={(v) => onUpdate("weight", Number(v))}
             />
@@ -100,8 +101,9 @@ export default function SetRow({
             <TextInput
               style={styles.input}
               keyboardType="numeric"
-              placeholder="0"
-              // FIX: compare with string "0" or empty string, not number 0
+              // Use previousReps as placeholder if available
+              placeholder={set.previousReps || "0"}
+              placeholderTextColor={set.previousReps ? "#aaa" : "#ccc"}
               value={set.reps === "0" || set.reps === "" ? "" : set.reps}
               onChangeText={(v) => onUpdate("reps", Number(v))}
             />

@@ -1,3 +1,5 @@
+// FreeDinnerForOneApp/hooks/useWorkoutSession.ts
+
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WorkoutSession, WorkoutSet, Exercise } from "../constants/types";
@@ -59,21 +61,37 @@ export const useWorkoutSession = () => {
       const template = await WorkoutRepository.getTemplateById(templateId);
       if (template) {
         name = template.name;
-        newExercises = template.exercises.map((ex) => ({
-          id: ex.id,
-          name: ex.name,
-          restTime: parseInt(ex.restTime) || 60,
-          sets: ex.targetSets
-            ? Array(parseInt(ex.targetSets) || 3)
-                .fill(null)
-                .map((_, i) => ({
-                  id: Date.now().toString() + i,
-                  weight: "",
-                  reps: "",
+
+        // Populate exercises and pre-fill history
+        newExercises = await Promise.all(
+          template.exercises.map(async (ex) => {
+            const setPromises = Array(parseInt(ex.targetSets) || 3)
+              .fill(null)
+              .map(async (_, i) => {
+                // Fetch history for this specific set index
+                const history = await WorkoutRepository.getHistoricSetValues(
+                  ex.name,
+                  i,
+                );
+                return {
+                  id: Date.now().toString() + i + Math.random(),
+                  weight: history ? history.weight : "",
+                  reps: "", // Reps are input by user, but...
+                  previousReps: history ? history.reps : "", // ...historic reps go here
                   completed: false,
-                }))
-            : [],
-        }));
+                };
+              });
+
+            const sets = await Promise.all(setPromises);
+
+            return {
+              id: ex.id,
+              name: ex.name,
+              restTime: parseInt(ex.restTime) || 60,
+              sets,
+            };
+          }),
+        );
       }
     }
 
@@ -154,18 +172,36 @@ export const useWorkoutSession = () => {
     saveSessionState(updated);
   };
 
-  const addSet = (exId: string) => {
+  const addSet = async (exId: string) => {
+    // 1. Find the exercise
+    const exercise = exercises.find((e) => e.id === exId);
+    if (!exercise) return;
+
+    // 2. Get history for the NEW index (length of current sets)
+    const newSetIndex = exercise.sets.length;
+    const history = await WorkoutRepository.getHistoricSetValues(
+      exercise.name,
+      newSetIndex,
+    );
+
+    const newSet: WorkoutSet = {
+      id: Date.now().toString(),
+      // Pre-fill weight from history, or copy previous set if no history, or empty
+      weight: history
+        ? history.weight
+        : exercise.sets.length > 0
+          ? exercise.sets[exercise.sets.length - 1].weight
+          : "",
+      reps: "",
+      previousReps: history ? history.reps : "", // Placeholder
+      completed: false,
+    };
+
     const updated = exercises.map((e) => {
       if (e.id !== exId) return e;
-      const previousSet = e.sets[e.sets.length - 1];
-      const newSet: WorkoutSet = {
-        id: Date.now().toString(),
-        reps: previousSet ? previousSet.reps : "",
-        weight: previousSet ? previousSet.weight : "",
-        completed: false,
-      };
       return { ...e, sets: [...e.sets, newSet] };
     });
+
     setExercises(updated);
     saveSessionState(updated);
   };
