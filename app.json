@@ -11,11 +11,6 @@
       }
     },
     "plugins": [
-      "./plugins/fix-folly",
-      "./plugins/withIosRelaxedIncludes.js",
-      "@react-native-firebase/app",
-      "expo-secure-store",
-      "expo-image-picker",
       [
         "expo-build-properties",
         {
@@ -26,8 +21,9 @@
         }
       ],
       "expo-router",
-      "@react-native-firebase/app",
-      "@react-native-firebase/storage"
+      "expo-secure-store",
+      "expo-image-picker",
+      "@react-native-firebase/app"
     ],
     "extra": {
       "eas": {
