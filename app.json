@@ -2,7 +2,7 @@
   "expo": {
     "name": "FreeDinnerForOneApp",
     "slug": "FreeDinnerForOneApp",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "com.david.freeDinnerForOneApp",
       "googleServicesFile": "./GoogleService-Info.plist",
