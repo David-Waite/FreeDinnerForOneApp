@@ -6,7 +6,6 @@
     "ios": {
       "bundleIdentifier": "com.david.freeDinnerForOneApp",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "deploymentTarget": "15.1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -21,8 +20,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static",
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "13.4",
+            "useFrameworks": "static"
           }
         }
       ],
