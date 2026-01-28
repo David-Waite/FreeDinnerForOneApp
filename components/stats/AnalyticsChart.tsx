@@ -101,7 +101,7 @@ export default function AnalyticsChart({
           yKeys={["y"]}
           transformState={transformState}
           chartPressState={pressState}
-          padding={{ top: 10, bottom: 0, left: 0, right: 45 }}
+          padding={{ top: 10, bottom: 0, left: 0, right: 0 }}
           axisOptions={{
             font,
             labelColor: "#000",
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     height: 320,
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 16,
+    padding: 8,
   },
   chartWrapper: { flex: 1 },
   emptyContainer: {

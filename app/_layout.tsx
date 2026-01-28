@@ -9,7 +9,7 @@ import { seedDatabase } from "../utils/seedData";
 export default function RootLayout() {
   useEffect(() => {
     // Uncomment this line to run the seed, then comment it out again
-    seedDatabase();
+    // seedDatabase();
   }, []);
   return (
     <WorkoutProvider>
