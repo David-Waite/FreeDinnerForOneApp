@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,10 +24,15 @@ type Props = {
 };
 
 export default function CommentsModal({ visible, onClose, post }: Props) {
-  const insets = useSafeAreaInsets(); // <--- 1. Get Safe Area Insets
+  const insets = useSafeAreaInsets();
   const [comments, setComments] = useState<PostComment[]>([]);
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // NEW: Track which comment is being replied to
+  const [replyingTo, setReplyingTo] = useState<PostComment | null>(null);
+
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (post) {
@@ -38,16 +44,56 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
     if (!inputText.trim() || !post) return;
     setIsSubmitting(true);
 
+    // If replyingTo is set, pass its ID (or the ID of the comment triggering the reply)
+    // The Repository handles finding the correct root parent.
+    const parentId = replyingTo ? replyingTo.id : undefined;
+
     const newComment = await WorkoutRepository.addCommentToPost(
       post.id,
       inputText.trim(),
+      parentId,
     );
 
     if (newComment) {
-      setComments((prev) => [...prev, newComment]);
+      // Locally update state to reflect change immediately
+      if (parentId) {
+        // Add to nested replies in local state
+        setComments((prev) =>
+          prev.map((c) => {
+            // If we replied to a root comment
+            if (c.id === parentId) {
+              return { ...c, replies: [...(c.replies || []), newComment] };
+            }
+            // If we replied to a child comment (need to find the root)
+            if (c.replies?.some((r) => r.id === parentId)) {
+              return { ...c, replies: [...(c.replies || []), newComment] };
+            }
+            return c;
+          }),
+        );
+      } else {
+        // Add to root
+        setComments((prev) => [...prev, newComment]);
+      }
+
       setInputText("");
+      setReplyingTo(null); // Reset reply state
+      Keyboard.dismiss();
     }
     setIsSubmitting(false);
+  };
+
+  const handleReplyPress = (comment: PostComment) => {
+    setReplyingTo(comment);
+    // Auto-fill username if replying to a specific person
+    setInputText(`@${comment.userName} `);
+    inputRef.current?.focus();
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setInputText("");
+    Keyboard.dismiss();
   };
 
   const renderComment = ({ item }: { item: PostComment }) => (
@@ -66,6 +112,48 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
           </Text>
         </View>
         <Text style={styles.commentText}>{item.text}</Text>
+
+        {/* Reply Button for Root Comment */}
+        <TouchableOpacity
+          style={styles.replyButton}
+          onPress={() => handleReplyPress(item)}
+        >
+          <Text style={styles.replyButtonText}>Reply</Text>
+        </TouchableOpacity>
+
+        {/* Nested Replies */}
+        {item.replies && item.replies.length > 0 && (
+          <View style={styles.repliesContainer}>
+            {item.replies.map((reply) => (
+              <View key={reply.id} style={styles.replyRow}>
+                <View style={styles.avatarSmallDisplay}>
+                  <Text style={styles.avatarTextSmall}>
+                    {reply.userName[0]}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.userName}>{reply.userName}</Text>
+                    <Text style={styles.timeText}>
+                      {new Date(reply.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.commentText}>{reply.text}</Text>
+                  {/* Reply to a Reply */}
+                  <TouchableOpacity
+                    style={styles.replyButton}
+                    onPress={() => handleReplyPress(reply)}
+                  >
+                    <Text style={styles.replyButtonText}>Reply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -77,7 +165,6 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
       visible={visible}
       onRequestClose={onClose}
     >
-      {/* 2. Configure KeyboardAvoidingView with Offset */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -103,7 +190,21 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
             }
           />
 
-          {/* 3. Apply Bottom Padding Manually */}
+          {/* Reply Context Bar */}
+          {replyingTo && (
+            <View style={styles.replyingBar}>
+              <Text style={styles.replyingText}>
+                Replying to{" "}
+                <Text style={{ fontWeight: "bold" }}>
+                  {replyingTo.userName}
+                </Text>
+              </Text>
+              <TouchableOpacity onPress={cancelReply}>
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View
             style={[
               styles.inputContainerWrapper,
@@ -115,10 +216,9 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
                 <Text style={styles.avatarTextSmall}>M</Text>
               </View>
               <TextInput
+                ref={inputRef}
                 style={styles.input}
-                placeholder={
-                  post ? `Add a comment for ${post.userName}...` : "Comment..."
-                }
+                placeholder={post ? `Add a comment...` : "Comment..."}
                 placeholderTextColor="#999"
                 value={inputText}
                 onChangeText={setInputText}
@@ -170,7 +270,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
-  commentContent: { flex: 1, justifyContent: "center" },
+  commentContent: { flex: 1 },
   commentHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -181,7 +281,34 @@ const styles = StyleSheet.create({
   timeText: { color: "#999", fontSize: 12 },
   commentText: { fontSize: 14, color: "#333", lineHeight: 20 },
 
-  // Updated Input Styles
+  // Reply Styles
+  replyButton: { marginTop: 4, alignSelf: "flex-start" },
+  replyButtonText: { fontSize: 12, fontWeight: "600", color: "#666" },
+  repliesContainer: { marginTop: 12, paddingLeft: 8 },
+  replyRow: { flexDirection: "row", marginBottom: 12, gap: 10 },
+  avatarSmallDisplay: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Replying Bar
+  replyingBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#f0f0f0",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  replyingText: { fontSize: 13, color: "#666" },
+
+  // Input Styles
   inputContainerWrapper: {
     borderTopWidth: 1,
     borderTopColor: "#eee",

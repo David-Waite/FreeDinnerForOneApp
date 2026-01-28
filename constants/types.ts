@@ -5,7 +5,7 @@ export type WorkoutSet = {
   weight: string;
   reps: string;
   completed: boolean;
-  previousReps?: string; // <--- NEW: For the placeholder hint
+  previousReps?: string;
 };
 
 export type Exercise = {
@@ -62,7 +62,7 @@ export type WorkoutPost = {
   message: string;
   imageUri?: string;
   date: string;
-  comments: any[];
+  comments: PostComment[]; // Updated type definition below
   reactions: any[];
   workoutSummary?: {
     id: string;
@@ -78,6 +78,7 @@ export type PostComment = {
   userName: string;
   text: string;
   createdAt: string;
+  replies?: PostComment[];
 };
 
 export type PostReaction = {

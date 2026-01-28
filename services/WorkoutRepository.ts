@@ -64,7 +64,6 @@ export const WorkoutRepository = {
 
   // --- HISTORY LOOKUP (New & Existing) ---
 
-  // NEW: Helper to find specific set data from history for auto-fill
   async getHistoricSetValues(
     exerciseName: string,
     setIndex: number,
@@ -274,6 +273,7 @@ export const WorkoutRepository = {
   async addCommentToPost(
     postId: string,
     text: string,
+    parentCommentId?: string, // <--- NEW ARGUMENT
   ): Promise<PostComment | null> {
     try {
       const posts = await this.getPosts();
@@ -287,11 +287,58 @@ export const WorkoutRepository = {
         userName: "Me",
         text,
         createdAt: new Date().toISOString(),
+        replies: [], // Initialize empty replies
       };
 
+      const post = posts[postIndex];
+      let updatedComments = [...(post.comments || [])];
+
+      if (parentCommentId) {
+        // Logic: Find the root parent.
+        // If parentCommentId matches a root comment, add to its replies.
+        // If parentCommentId is NOT a root (it's a reply), find ITS root and add there.
+        // This enforces 1-level deep nesting (Instagram style).
+
+        let rootFound = false;
+
+        updatedComments = updatedComments.map((comment) => {
+          // 1. Direct Reply to Root
+          if (comment.id === parentCommentId) {
+            rootFound = true;
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), newComment],
+            };
+          }
+
+          // 2. Reply to a Reply (Find if parentCommentId exists in this comment's children)
+          const isReplyToChild = comment.replies?.some(
+            (r) => r.id === parentCommentId,
+          );
+
+          if (isReplyToChild) {
+            rootFound = true;
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), newComment],
+            };
+          }
+
+          return comment;
+        });
+
+        // Fallback: If for some reason parent isn't found, add to root
+        if (!rootFound) {
+          updatedComments.push(newComment);
+        }
+      } else {
+        // Top level comment
+        updatedComments.push(newComment);
+      }
+
       const updatedPost = {
-        ...posts[postIndex],
-        comments: [...(posts[postIndex].comments || []), newComment],
+        ...post,
+        comments: updatedComments,
       };
 
       posts[postIndex] = updatedPost;
@@ -315,7 +362,7 @@ export const WorkoutRepository = {
       if (postIndex === -1) return null;
 
       const post = posts[postIndex];
-      const currentUserId = "current-user"; // Hardcoded for V1
+      const currentUserId = "current-user";
       const existingReactions = post.reactions || [];
 
       // Check if user already reacted
@@ -390,7 +437,6 @@ export const WorkoutRepository = {
     return defaults;
   },
 
-  // "Harvest" new names from a template or session automatically
   async ensureExercisesExist(names: string[]): Promise<void> {
     try {
       const existing = await this.getMasterExercises();
@@ -426,7 +472,6 @@ export const WorkoutRepository = {
   ): Promise<WorkoutPost | undefined> {
     try {
       const posts = await this.getPosts();
-      // Check if any post has a workoutSummary with the matching ID
       return posts.find((p) => p.workoutSummary?.id === workoutId);
     } catch (e) {
       console.error("Failed to find post by workout ID", e);
