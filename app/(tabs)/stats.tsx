@@ -107,7 +107,7 @@ export default function StatsScreen() {
       break;
     case "estimated":
       chartData = oneRMData;
-      unit = "kg (Est)";
+      unit = "kg";
       color = "#FF9500";
       break;
     case "consistency":

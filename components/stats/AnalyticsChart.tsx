@@ -1,9 +1,23 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, Dimensions } from "react-native";
-import { CartesianChart, Line, Bar, useChartPressState } from "victory-native";
-import { Circle, useFont, matchFont } from "@shopify/react-native-skia";
+import { View, Text, StyleSheet, Platform } from "react-native";
+import {
+  CartesianChart,
+  Line,
+  Bar,
+  useChartPressState,
+  useChartTransformState,
+} from "victory-native";
+import { Circle, matchFont } from "@shopify/react-native-skia";
+import Animated, {
+  useDerivedValue,
+  useAnimatedProps,
+} from "react-native-reanimated";
 import type { ChartDataPoint } from "../../hooks/useExerciseStats";
 import Colors from "../../constants/Colors";
+import { TextInput } from "react-native-gesture-handler";
+
+// Registering TextInput as an animated component for high-frequency updates
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 type Props = {
   data: ChartDataPoint[];
@@ -18,26 +32,59 @@ export default function AnalyticsChart({
   color = Colors.primary,
   unit = "",
 }: Props) {
-  const font = matchFont({
-    fontFamily: "System",
-    fontSize: 12,
-    fontWeight: "normal",
+  // 1. Standard transform state (since minPointers isn't supported in your version)
+  const { state: transformState } = useChartTransformState();
+  const { state: pressState, isActive } = useChartPressState({
+    x: 0,
+    y: { y: 0 },
   });
 
-  // 1. Convert String Dates (YYYY-MM-DD) to Number Timestamps for the Chart Logic
-  // This solves the "Type 'number' is not assignable to type 'string'" error.
+  // 2. Format the Active Value for the label
+  const activeValueStr = useDerivedValue(() => {
+    if (!isActive) {
+      return `${data[data.length - 1]?.y ?? 0} ${unit}`;
+    }
+    return `${pressState.y.y.value.value.toFixed(0)} ${unit}`;
+  }, [isActive, data, unit]);
+
+  // 3. Format the Active Date for the label
+  const activeDateStr = useDerivedValue(() => {
+    if (!isActive) return "Current";
+    const d = new Date(pressState.x.value.value);
+    return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+  }, [isActive]);
+
+  // Animated props to pipe values into the "text" property of TextInput
+  // This avoids the render-cycle warning and ensures real-time updates
+  const valueProps = useAnimatedProps(
+    () =>
+      ({
+        text: activeValueStr.value,
+        editable: false,
+      }) as any,
+  );
+
+  const dateProps = useAnimatedProps(
+    () =>
+      ({
+        text: activeDateStr.value,
+        editable: false,
+      }) as any,
+  );
+
+  const font = matchFont({
+    fontFamily: Platform.select({ ios: "Arial", default: "sans-serif" }),
+    fontSize: 12,
+  });
+
   const numericData = useMemo(() => {
     return data.map((d) => ({
-      x: new Date(d.x).getTime(), // Convert to number
+      x: new Date(d.x).getTime(),
       y: d.y,
-      originalDate: d.x, // Keep original string for reference
     }));
   }, [data]);
 
-  // Initialize state with numbers, matching the converted data
-  const { state, isActive } = useChartPressState({ x: 0, y: { y: 0 } });
-
-  if (!data || data.length === 0) {
+  if (!data || data.length === 0 || !font) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>Not enough data to chart yet.</Text>
@@ -45,31 +92,25 @@ export default function AnalyticsChart({
     );
   }
 
-  // Helper to make dates readable again (e.g., "Jan 24")
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.chartWrapper}>
         <CartesianChart
-          data={numericData} // Use the numeric data
+          data={numericData}
           xKey="x"
           yKeys={["y"]}
+          transformState={transformState}
+          chartPressState={pressState}
+          padding={{ top: 10, bottom: 0, left: 0, right: 45 }}
           axisOptions={{
             font,
-            tickCount: 5,
-            labelOffset: { x: 5, y: 5 },
-            lineColor: "#e5e5ea",
-            labelColor: "#999",
-            // Format the number back to a string for the axis labels
-            formatXLabel: (value) => formatDate(value),
+            labelColor: "#000",
+            formatXLabel: (v) => {
+              const d = new Date(v);
+              return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+            },
+            formatYLabel: (v) => `${Math.round(v)}${unit}`,
           }}
-          chartPressState={state}
         >
           {({ points, chartBounds }) => (
             <>
@@ -78,7 +119,7 @@ export default function AnalyticsChart({
                   points={points.y}
                   color={color}
                   strokeWidth={3}
-                  animate={{ type: "timing", duration: 500 }}
+                  curveType="natural"
                 />
               ) : (
                 <Bar
@@ -86,15 +127,13 @@ export default function AnalyticsChart({
                   chartBounds={chartBounds}
                   color={color}
                   roundedCorners={{ topLeft: 4, topRight: 4 }}
-                  animate={{ type: "timing", duration: 500 }}
                 />
               )}
-
-              {isActive && type === "line" && (
+              {isActive && (
                 <Circle
-                  cx={state.x.position}
-                  cy={state.y.y.position}
-                  r={8}
+                  cx={pressState.x.position}
+                  cy={pressState.y.y.position}
+                  r={6}
                   color={color}
                 />
               )}
@@ -103,26 +142,21 @@ export default function AnalyticsChart({
         </CartesianChart>
       </View>
 
-      {/* Active Value Display */}
       <View style={styles.activeLabel}>
-        {isActive ? (
-          <>
-            <Text style={styles.activeValue}>
-              {state.y.y.value.value.toFixed(0)} {unit}
-            </Text>
-            <Text style={styles.activeDate}>
-              {formatDate(state.x.value.value)}
-            </Text>
-          </>
-        ) : (
-          <>
-            {/* Show the last data point by default */}
-            <Text style={styles.activeValue}>
-              {data[data.length - 1]?.y} {unit}
-            </Text>
-            <Text style={styles.activeDate}>Current</Text>
-          </>
-        )}
+        {/* AnimatedTextInput is used here because it is the most reliable way to 
+            update text on the UI thread without triggering a React re-render */}
+        <AnimatedTextInput
+          underlineColorAndroid="transparent"
+          editable={false}
+          style={styles.activeValue}
+          animatedProps={valueProps}
+        />
+        <AnimatedTextInput
+          underlineColorAndroid="transparent"
+          editable={false}
+          style={styles.activeDate}
+          animatedProps={dateProps}
+        />
       </View>
     </View>
   );
@@ -130,25 +164,33 @@ export default function AnalyticsChart({
 
 const styles = StyleSheet.create({
   container: {
-    height: 300,
+    height: 320,
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
   },
-  chartWrapper: { flex: 1, overflow: "hidden" },
+  chartWrapper: { flex: 1 },
   emptyContainer: {
     height: 200,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
   },
   emptyText: { color: "#999" },
-  activeLabel: { alignItems: "center", marginTop: 12 },
-  activeValue: { fontSize: 24, fontWeight: "bold", color: "#333" },
-  activeDate: { fontSize: 14, color: "#888", marginTop: 2 },
+  activeLabel: { alignItems: "center", marginTop: 12, height: 70 },
+  activeValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
+    width: "100%",
+    padding: 0,
+  },
+  activeDate: {
+    fontSize: 14,
+    color: "#888",
+    marginTop: -5,
+    textAlign: "center",
+    width: "100%",
+    padding: 0,
+  },
 });

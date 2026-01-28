@@ -3,8 +3,14 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet, View } from "react-native";
 import { WorkoutProvider } from "../context/WorkoutContext";
 import GlobalWorkoutBanner from "../components/GlobalWorkoutBanner";
+import { useEffect } from "react";
+import { seedDatabase } from "../utils/seedData";
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Uncomment this line to run the seed, then comment it out again
+    seedDatabase();
+  }, []);
   return (
     <WorkoutProvider>
       <GestureHandlerRootView style={styles.container}>

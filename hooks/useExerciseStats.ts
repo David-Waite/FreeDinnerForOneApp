@@ -44,17 +44,33 @@ export const useExerciseStats = (exerciseName: string | null) => {
     const weekMap = new Map<string, number>();
     const now = new Date();
 
-    // Initialize last 12 weeks with 0
+    // Normalize "now" to the start of the current week (Monday)
+    const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday
+    // Calculate difference to get to Monday (if Sunday, go back 6 days)
+    const diffToMonday =
+      now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
+    const currentMonday = new Date(now.setDate(diffToMonday));
+    currentMonday.setHours(0, 0, 0, 0);
+
+    // Initialize last 12 weeks with 0, using the Monday Date as the Key
     for (let i = 11; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(now.getDate() - i * 7);
-      const weekKey = getWeekKey(d);
-      weekMap.set(weekKey, 0);
+      const d = new Date(currentMonday);
+      d.setDate(d.getDate() - i * 7);
+      const key = d.toISOString().split("T")[0]; // YYYY-MM-DD format
+      weekMap.set(key, 0);
     }
 
+    // Populate map with workout counts
     data.forEach((s) => {
       const d = new Date(s.date);
-      const key = getWeekKey(d);
+      // Snap workout date to its Monday
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      monday.setHours(0, 0, 0, 0);
+
+      const key = monday.toISOString().split("T")[0];
+
       if (weekMap.has(key)) {
         weekMap.set(key, (weekMap.get(key) || 0) + 1);
       }
@@ -62,7 +78,7 @@ export const useExerciseStats = (exerciseName: string | null) => {
 
     const cons: ChartDataPoint[] = Array.from(weekMap.entries()).map(
       ([k, v]) => ({
-        x: k, // "Week 10" or date string
+        x: k, // Now a valid Date String (e.g., "2023-10-23")
         y: v,
       }),
     );
@@ -114,19 +130,6 @@ export const useExerciseStats = (exerciseName: string | null) => {
     setVolumeData(vol);
     setMaxStrengthData(actMax);
     setOneRMData(est1rm);
-  };
-
-  // Helper to get a readable week key
-  const getWeekKey = (d: Date) => {
-    const onejan = new Date(d.getFullYear(), 0, 1);
-    const millisecsInDay = 86400000;
-    const weekNum = Math.ceil(
-      ((d.getTime() - onejan.getTime()) / millisecsInDay +
-        onejan.getDay() +
-        1) /
-        7,
-    );
-    return `W${weekNum}`;
   };
 
   return {
