@@ -18,7 +18,14 @@ import { MasterExercise } from "../../constants/types";
 import { useExerciseStats } from "../../hooks/useExerciseStats";
 import AnalyticsChart from "../../components/stats/AnalyticsChart";
 
-type ChartMode = "volume" | "actual" | "estimated" | "consistency" | "time";
+// Added "weight" to ChartMode
+type ChartMode =
+  | "volume"
+  | "actual"
+  | "estimated"
+  | "consistency"
+  | "time"
+  | "weight";
 
 export default function StatsScreen() {
   const [selectedExercise, setSelectedExercise] =
@@ -34,6 +41,7 @@ export default function StatsScreen() {
     maxStrengthData,
     durationData,
     consistencyData,
+    bodyWeightData, // <--- Destructure new data
     refresh,
   } = useExerciseStats(selectedExercise?.name || null);
 
@@ -42,13 +50,11 @@ export default function StatsScreen() {
     WorkoutRepository.getMasterExercises().then((list) => {
       setExerciseList(list);
       if (list.length > 0 && !selectedExercise) {
-        // Default to first exercise (usually Bench Press)
         setSelectedExercise(list[0]);
       }
     });
   }, []);
 
-  // Refresh data when entering screen
   useFocusEffect(
     React.useCallback(() => {
       refresh();
@@ -121,7 +127,22 @@ export default function StatsScreen() {
       unit = "mins";
       color = "#FF2D55";
       break;
+    case "weight": // <--- NEW CASE
+      chartData = bodyWeightData;
+      unit = "kg";
+      color = "#007AFF";
+      break;
   }
+
+  // Helper to format tab titles nicely
+  const getTabTitle = (m: ChartMode) => {
+    switch (m) {
+      case "weight":
+        return "Body Weight";
+      default:
+        return m.charAt(0).toUpperCase() + m.slice(1);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -136,7 +157,14 @@ export default function StatsScreen() {
           showsHorizontalScrollIndicator={false}
           style={styles.tabsContainer}
         >
-          {["volume", "actual", "estimated", "consistency", "time"].map((m) => (
+          {[
+            "volume",
+            "actual",
+            "estimated",
+            "consistency",
+            "time",
+            "weight", // <--- Added to list
+          ].map((m) => (
             <TouchableOpacity
               key={m}
               style={[styles.tab, mode === m && styles.activeTab]}
@@ -145,7 +173,7 @@ export default function StatsScreen() {
               <Text
                 style={[styles.tabText, mode === m && styles.activeTabText]}
               >
-                {m.charAt(0).toUpperCase() + m.slice(1)}
+                {getTabTitle(m as ChartMode)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -184,9 +212,14 @@ export default function StatsScreen() {
             <Text style={styles.statValue}>{chartData.length}</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Peak</Text>
+            <Text style={styles.statLabel}>
+              {mode === "weight" ? "Last Recorded" : "Peak"}
+            </Text>
             <Text style={styles.statValue}>
-              {Math.max(...chartData.map((d) => d.y), 0)} {unit.split(" ")[0]}
+              {mode === "weight"
+                ? (chartData[chartData.length - 1]?.y ?? "-")
+                : Math.max(...chartData.map((d) => d.y), 0)}{" "}
+              {unit.split(" ")[0]}
             </Text>
           </View>
         </View>

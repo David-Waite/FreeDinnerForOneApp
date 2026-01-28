@@ -8,6 +8,7 @@ import {
   PostComment,
   PostReaction,
   MasterExercise,
+  BodyWeightLog, // <--- Import
 } from "../constants/types";
 
 const SESSION_KEY = "workout_sessions";
@@ -15,6 +16,7 @@ const TEMPLATE_KEY = "workout_templates";
 const NOTES_KEY = "exercise_notes";
 const POSTS_KEY = "workout_posts";
 const MASTER_EXERCISE_KEY = "master_exercises";
+const WEIGHT_KEY = "body_weight_logs"; // <--- New Key
 
 export const WorkoutRepository = {
   // --- SESSIONS (History) ---
@@ -35,11 +37,9 @@ export const WorkoutRepository = {
   },
 
   async saveWorkout(workout: WorkoutSession): Promise<void> {
-    // 1. Harvest Names
     const names = workout.exercises.map((e) => e.name);
     await this.ensureExercisesExist(names);
 
-    // 2. Save Session
     const existing = await this.getWorkouts();
     const index = existing.findIndex((w) => w.id === workout.id);
     let updated;
@@ -62,28 +62,55 @@ export const WorkoutRepository = {
     }
   },
 
-  // --- HISTORY LOOKUP (New & Existing) ---
+  // --- BODY WEIGHT TRACKING (NEW) ---
+
+  async getBodyWeightHistory(): Promise<BodyWeightLog[]> {
+    try {
+      const jsonValue = await AsyncStorage.getItem(WEIGHT_KEY);
+      const data: BodyWeightLog[] =
+        jsonValue != null ? JSON.parse(jsonValue) : [];
+      // Ensure sorted by date ascending
+      return data.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+    } catch (e) {
+      console.error("Failed to load weight history", e);
+      return [];
+    }
+  },
+
+  async saveBodyWeight(weight: number, date: string): Promise<void> {
+    try {
+      const history = await this.getBodyWeightHistory();
+      // Filter out any existing entry for this specific date (Overwrites)
+      const filtered = history.filter((log) => log.date !== date);
+
+      const newEntry: BodyWeightLog = { date, weight };
+      const updated = [...filtered, newEntry];
+
+      await AsyncStorage.setItem(WEIGHT_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error("Failed to save body weight", e);
+    }
+  },
+
+  // --- HISTORY LOOKUP ---
 
   async getHistoricSetValues(
     exerciseName: string,
     setIndex: number,
   ): Promise<{ weight: string; reps: string } | null> {
     try {
-      // 1. Get the last 2 sessions that included this exercise
       const recentSessions = await this.getRecentHistoryForExercise(
         exerciseName,
         2,
       );
-
-      // 2. Iterate through them (newest first) to find a matching set index
       for (const session of recentSessions) {
         const exercise = session.exercises.find(
           (e) => e.name.toLowerCase() === exerciseName.toLowerCase(),
         );
-
         if (exercise && exercise.sets[setIndex]) {
           const set = exercise.sets[setIndex];
-          // Only return if there is actual data
           if (set.weight || set.reps) {
             return { weight: set.weight, reps: set.reps };
           }
@@ -102,25 +129,21 @@ export const WorkoutRepository = {
   ): Promise<WorkoutSession[]> {
     try {
       const allSessions = await this.getWorkouts();
-      // Sort newest first
       const sorted = allSessions.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
-
-      // Filter sessions that contain this exercise
       const filtered = sorted.filter((session) =>
         session.exercises.some(
           (e) => e.name.toLowerCase() === exerciseName.toLowerCase(),
         ),
       );
-
       return filtered.slice(0, limit);
     } catch (e) {
       return [];
     }
   },
 
-  // --- TEMPLATES (Plans) ---
+  // --- TEMPLATES ---
 
   async getTemplates(): Promise<WorkoutTemplate[]> {
     try {
@@ -138,11 +161,9 @@ export const WorkoutRepository = {
 
   async saveTemplate(template: WorkoutTemplate): Promise<void> {
     try {
-      // 1. Harvest Names
       const names = template.exercises.map((e) => e.name);
       await this.ensureExercisesExist(names);
 
-      // 2. Save Template
       const existing = await this.getTemplates();
       const index = existing.findIndex((t) => t.id === template.id);
       let updated;
@@ -248,14 +269,13 @@ export const WorkoutRepository = {
     } catch (e) {}
   },
 
-  // --- POSTS (Social) ---
+  // --- POSTS ---
 
   async getPosts(): Promise<WorkoutPost[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(POSTS_KEY);
       return jsonValue != null ? JSON.parse(jsonValue) : [];
     } catch (e) {
-      console.error("Failed to load posts", e);
       return [];
     }
   },
@@ -273,7 +293,7 @@ export const WorkoutRepository = {
   async addCommentToPost(
     postId: string,
     text: string,
-    parentCommentId?: string, // <--- NEW ARGUMENT
+    parentCommentId?: string,
   ): Promise<PostComment | null> {
     try {
       const posts = await this.getPosts();
@@ -287,22 +307,15 @@ export const WorkoutRepository = {
         userName: "Me",
         text,
         createdAt: new Date().toISOString(),
-        replies: [], // Initialize empty replies
+        replies: [],
       };
 
       const post = posts[postIndex];
       let updatedComments = [...(post.comments || [])];
 
       if (parentCommentId) {
-        // Logic: Find the root parent.
-        // If parentCommentId matches a root comment, add to its replies.
-        // If parentCommentId is NOT a root (it's a reply), find ITS root and add there.
-        // This enforces 1-level deep nesting (Instagram style).
-
         let rootFound = false;
-
         updatedComments = updatedComments.map((comment) => {
-          // 1. Direct Reply to Root
           if (comment.id === parentCommentId) {
             rootFound = true;
             return {
@@ -310,12 +323,9 @@ export const WorkoutRepository = {
               replies: [...(comment.replies || []), newComment],
             };
           }
-
-          // 2. Reply to a Reply (Find if parentCommentId exists in this comment's children)
           const isReplyToChild = comment.replies?.some(
             (r) => r.id === parentCommentId,
           );
-
           if (isReplyToChild) {
             rootFound = true;
             return {
@@ -323,30 +333,17 @@ export const WorkoutRepository = {
               replies: [...(comment.replies || []), newComment],
             };
           }
-
           return comment;
         });
-
-        // Fallback: If for some reason parent isn't found, add to root
-        if (!rootFound) {
-          updatedComments.push(newComment);
-        }
+        if (!rootFound) updatedComments.push(newComment);
       } else {
-        // Top level comment
         updatedComments.push(newComment);
       }
 
-      const updatedPost = {
-        ...post,
-        comments: updatedComments,
-      };
-
-      posts[postIndex] = updatedPost;
-
+      posts[postIndex] = { ...post, comments: updatedComments };
       await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(posts));
       return newComment;
     } catch (e) {
-      console.error("Failed to add comment", e);
       return null;
     }
   },
@@ -358,27 +355,20 @@ export const WorkoutRepository = {
     try {
       const posts = await this.getPosts();
       const postIndex = posts.findIndex((p) => p.id === postId);
-
       if (postIndex === -1) return null;
 
       const post = posts[postIndex];
       const currentUserId = "current-user";
       const existingReactions = post.reactions || [];
-
-      // Check if user already reacted
       const existingReactionIndex = existingReactions.findIndex(
         (r) => r.userId === currentUserId,
       );
-
       let updatedReactions = [...existingReactions];
 
       if (existingReactionIndex >= 0) {
-        // User has reacted before
         if (existingReactions[existingReactionIndex].emoji === emoji) {
-          // Same emoji -> Remove it (Toggle off)
           updatedReactions.splice(existingReactionIndex, 1);
         } else {
-          // Different emoji -> Update it
           updatedReactions[existingReactionIndex] = {
             ...updatedReactions[existingReactionIndex],
             emoji: emoji,
@@ -386,7 +376,6 @@ export const WorkoutRepository = {
           };
         }
       } else {
-        // New reaction
         updatedReactions.push({
           userId: currentUserId,
           emoji: emoji,
@@ -394,13 +383,10 @@ export const WorkoutRepository = {
         });
       }
 
-      // Save
       posts[postIndex] = { ...post, reactions: updatedReactions };
       await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(posts));
-
       return updatedReactions;
     } catch (e) {
-      console.error("Failed to toggle reaction", e);
       return null;
     }
   },
@@ -432,7 +418,6 @@ export const WorkoutRepository = {
       "Leg Press",
       "Lat Pulldown",
     ].map((name) => ({ id: name, name }));
-
     await AsyncStorage.setItem(MASTER_EXERCISE_KEY, JSON.stringify(defaults));
     return defaults;
   },
@@ -443,10 +428,8 @@ export const WorkoutRepository = {
       const existingNames = new Set(
         existing.map((e) => e.name.toLowerCase().trim()),
       );
-
       let hasChanges = false;
       const updates = [...existing];
-
       names.forEach((name) => {
         const cleanName = name.trim();
         if (cleanName && !existingNames.has(cleanName.toLowerCase())) {
@@ -455,7 +438,6 @@ export const WorkoutRepository = {
           hasChanges = true;
         }
       });
-
       if (hasChanges) {
         await AsyncStorage.setItem(
           MASTER_EXERCISE_KEY,
@@ -474,7 +456,6 @@ export const WorkoutRepository = {
       const posts = await this.getPosts();
       return posts.find((p) => p.workoutSummary?.id === workoutId);
     } catch (e) {
-      console.error("Failed to find post by workout ID", e);
       return undefined;
     }
   },

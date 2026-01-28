@@ -10,13 +10,15 @@ import {
   Animated,
   Dimensions,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Calendar, DateData } from "react-native-calendars";
 import { Swipeable } from "react-native-gesture-handler";
 
-// --- IMPORTS ---
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import {
   WorkoutSession,
@@ -31,8 +33,6 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
-
-  // --- CONTEXT HOOK ---
   const { isActive } = useWorkoutContext();
 
   const [history, setHistory] = useState<WorkoutSession[]>([]);
@@ -43,7 +43,13 @@ export default function WorkoutHistoryScreen() {
 
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [viewingNotes, setViewingNotes] = useState<ExerciseNote[]>([]);
+
+  // -- NEW: Body Weight Modal State --
+  const [weightModalVisible, setWeightModalVisible] = useState(false);
+  const [currentWeight, setCurrentWeight] = useState("");
+
   const rowRefs = useRef<{ [key: string]: Swipeable | null }>({});
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -55,7 +61,6 @@ export default function WorkoutHistoryScreen() {
       WorkoutRepository.getWorkouts(),
       WorkoutRepository.getAllNotes(),
     ]);
-    // Sort by newest first
     const sorted = workouts.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
@@ -64,10 +69,7 @@ export default function WorkoutHistoryScreen() {
   };
 
   const deleteWorkout = async (id: string) => {
-    // Check if linked to a post
     const linkedPost = await WorkoutRepository.getPostByWorkoutId(id);
-
-    // Determine the warning message
     const message = linkedPost
       ? "This workout is linked to a social post. Deleting it will remove the content from your post. Are you sure?"
       : "Are you sure you want to remove this session?";
@@ -77,7 +79,6 @@ export default function WorkoutHistoryScreen() {
         text: "Cancel",
         style: "cancel",
         onPress: () => {
-          // If cancelled, close the swipeable row back to normal
           const ref = rowRefs.current[id];
           if (ref) ref.close();
         },
@@ -88,7 +89,6 @@ export default function WorkoutHistoryScreen() {
         onPress: async () => {
           await WorkoutRepository.deleteWorkout(id);
           loadData();
-          // Note: No need to close ref here as the item will be removed from list
         },
       },
     ]);
@@ -102,14 +102,29 @@ export default function WorkoutHistoryScreen() {
     }
   };
 
-  // --- CALENDAR MARKERS ---
+  // --- NEW: Handle Body Weight Save ---
+  const handleSaveWeight = async () => {
+    if (!currentWeight) return;
+    const weightVal = parseFloat(currentWeight);
+    if (isNaN(weightVal)) {
+      Alert.alert("Invalid Input", "Please enter a valid number.");
+      return;
+    }
+
+    // Save for the currently selected date in the calendar
+    await WorkoutRepository.saveBodyWeight(weightVal, selectedDate);
+
+    setWeightModalVisible(false);
+    setCurrentWeight("");
+    Alert.alert("Success", `Logged ${weightVal}kg for ${selectedDate}`);
+  };
+
   const markedDates = useMemo(() => {
     const marks: any = {};
     history.forEach((session) => {
       const dateKey = session.date.split("T")[0];
       marks[dateKey] = { marked: true, dotColor: Colors.primary };
     });
-    // Highlight selected
     marks[selectedDate] = {
       ...(marks[selectedDate] || {}),
       selected: true,
@@ -132,7 +147,6 @@ export default function WorkoutHistoryScreen() {
     setNotesModalVisible(true);
   };
 
-  // --- SWIPE ACTIONS ---
   const renderRightActions = (
     _: any,
     dragX: Animated.AnimatedInterpolation<number>,
@@ -194,7 +208,20 @@ export default function WorkoutHistoryScreen() {
             textDayHeaderFontWeight: "600",
           }}
         />
+        {/* --- NEW: Weight Button inside/below calendar container --- */}
+        <TouchableOpacity
+          style={styles.weightButton}
+          onPress={() => setWeightModalVisible(true)}
+        >
+          <MaterialCommunityIcons
+            name="scale-bathroom"
+            size={20}
+            color={Colors.primary}
+          />
+          <Text style={styles.weightButtonText}>Log Body Weight</Text>
+        </TouchableOpacity>
       </View>
+
       <Text style={styles.sectionTitle}>
         {new Date(selectedDate).toLocaleDateString(undefined, {
           weekday: "long",
@@ -216,7 +243,6 @@ export default function WorkoutHistoryScreen() {
           <View style={styles.itemWrapper}>
             <Swipeable
               ref={(ref) => {
-                // Capture the ref for this specific row
                 if (ref) rowRefs.current[item.id] = ref;
               }}
               onSwipeableRightOpen={() => deleteWorkout(item.id)}
@@ -242,18 +268,12 @@ export default function WorkoutHistoryScreen() {
         }
       />
 
-      {/* --- DYNAMIC FAB BUTTON --- */}
       <TouchableOpacity
-        style={[
-          styles.fab,
-          isActive && { backgroundColor: "#32D74B" }, // Green if active
-        ]}
+        style={[styles.fab, isActive && { backgroundColor: "#32D74B" }]}
         onPress={() => {
           if (isActive) {
-            // Navigate to the global record screen
             router.push("/record-workout");
           } else {
-            // Navigate to the template selector / new workout flow
             router.push("/workouts/new");
           }
         }}
@@ -264,6 +284,7 @@ export default function WorkoutHistoryScreen() {
         </Text>
       </TouchableOpacity>
 
+      {/* --- Notes Modal --- */}
       <Modal
         animationType="slide"
         presentationStyle="pageSheet"
@@ -300,6 +321,51 @@ export default function WorkoutHistoryScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* --- NEW: Weight Entry Modal --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={weightModalVisible}
+        onRequestClose={() => setWeightModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.centeredView}
+        >
+          <View style={styles.weightModalView}>
+            <Text style={styles.weightModalTitle}>Log Body Weight</Text>
+            <Text style={styles.weightModalSub}>For {selectedDate}</Text>
+
+            <View style={styles.weightInputContainer}>
+              <TextInput
+                style={styles.weightInput}
+                placeholder="0.0"
+                keyboardType="decimal-pad"
+                value={currentWeight}
+                onChangeText={setCurrentWeight}
+                autoFocus
+              />
+              <Text style={styles.weightUnit}>kg</Text>
+            </View>
+
+            <View style={styles.weightActions}>
+              <TouchableOpacity
+                style={styles.weightCancelBtn}
+                onPress={() => setWeightModalVisible(false)}
+              >
+                <Text style={styles.weightCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.weightSaveBtn}
+                onPress={handleSaveWeight}
+              >
+                <Text style={styles.weightSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -317,6 +383,23 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 16,
     overflow: "hidden",
   },
+  // Weight Button Styles
+  weightButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    backgroundColor: "#fff",
+  },
+  weightButtonText: {
+    color: Colors.primary,
+    fontWeight: "600",
+    marginLeft: 8,
+    fontSize: 14,
+  },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -389,4 +472,59 @@ const styles = StyleSheet.create({
   },
   noteText: { fontSize: 16, color: "#333", marginBottom: 4 },
   noteTime: { fontSize: 12, color: "#999", alignSelf: "flex-end" },
+
+  // --- Weight Modal Styles ---
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  weightModalView: {
+    width: "80%",
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  weightModalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 4 },
+  weightModalSub: { fontSize: 14, color: "#666", marginBottom: 20 },
+  weightInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.primary,
+  },
+  weightInput: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#333",
+    padding: 8,
+    minWidth: 80,
+    textAlign: "center",
+  },
+  weightUnit: { fontSize: 20, color: "#999", marginLeft: 4, marginBottom: 6 },
+  weightActions: { flexDirection: "row", width: "100%", gap: 12 },
+  weightCancelBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+  },
+  weightSaveBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+  },
+  weightCancelText: { fontSize: 16, fontWeight: "600", color: "#666" },
+  weightSaveText: { fontSize: 16, fontWeight: "600", color: "#fff" },
 });

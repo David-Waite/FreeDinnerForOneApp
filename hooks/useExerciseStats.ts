@@ -13,14 +13,25 @@ export const useExerciseStats = (exerciseName: string | null) => {
   const [maxStrengthData, setMaxStrengthData] = useState<ChartDataPoint[]>([]); // Actual
   const [durationData, setDurationData] = useState<ChartDataPoint[]>([]);
   const [consistencyData, setConsistencyData] = useState<ChartDataPoint[]>([]);
+  const [bodyWeightData, setBodyWeightData] = useState<ChartDataPoint[]>([]); // <--- NEW
 
   const loadData = useCallback(async () => {
+    // 1. Fetch Workouts
     const allWorkouts = await WorkoutRepository.getWorkouts();
-    // Sort oldest to newest for the graph
     const sorted = allWorkouts.sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
     setSessions(sorted);
+
+    // 2. Fetch Body Weight
+    const weightHistory = await WorkoutRepository.getBodyWeightHistory();
+    const weightPoints: ChartDataPoint[] = weightHistory.map((w) => ({
+      x: w.date,
+      y: w.weight,
+    }));
+    setBodyWeightData(weightPoints);
+
+    // 3. Process Stats
     processGlobalStats(sorted);
     if (exerciseName) {
       processExerciseStats(sorted, exerciseName);
@@ -43,34 +54,26 @@ export const useExerciseStats = (exerciseName: string | null) => {
     // Consistency (Workouts per Week - Last 12 Weeks)
     const weekMap = new Map<string, number>();
     const now = new Date();
-
-    // Normalize "now" to the start of the current week (Monday)
-    const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday
-    // Calculate difference to get to Monday (if Sunday, go back 6 days)
+    const currentDay = now.getDay();
     const diffToMonday =
       now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
     const currentMonday = new Date(now.setDate(diffToMonday));
     currentMonday.setHours(0, 0, 0, 0);
 
-    // Initialize last 12 weeks with 0, using the Monday Date as the Key
     for (let i = 11; i >= 0; i--) {
       const d = new Date(currentMonday);
       d.setDate(d.getDate() - i * 7);
-      const key = d.toISOString().split("T")[0]; // YYYY-MM-DD format
+      const key = d.toISOString().split("T")[0];
       weekMap.set(key, 0);
     }
 
-    // Populate map with workout counts
     data.forEach((s) => {
       const d = new Date(s.date);
-      // Snap workout date to its Monday
       const day = d.getDay();
       const diff = d.getDate() - day + (day === 0 ? -6 : 1);
       const monday = new Date(d.setDate(diff));
       monday.setHours(0, 0, 0, 0);
-
       const key = monday.toISOString().split("T")[0];
-
       if (weekMap.has(key)) {
         weekMap.set(key, (weekMap.get(key) || 0) + 1);
       }
@@ -78,7 +81,7 @@ export const useExerciseStats = (exerciseName: string | null) => {
 
     const cons: ChartDataPoint[] = Array.from(weekMap.entries()).map(
       ([k, v]) => ({
-        x: k, // Now a valid Date String (e.g., "2023-10-23")
+        x: k,
         y: v,
       }),
     );
@@ -105,20 +108,13 @@ export const useExerciseStats = (exerciseName: string | null) => {
           if (!set.completed) return;
           const w = parseFloat(set.weight) || 0;
           const r = parseFloat(set.reps) || 0;
-
-          // Volume
           sessionVol += w * r;
-
-          // Actual Max
           if (w > sessionBestLift) sessionBestLift = w;
-
-          // Epley Formula: w * (1 + r/30)
           const epley = w * (1 + r / 30);
           if (epley > sessionEst1RM) sessionEst1RM = epley;
         });
 
         const dateStr = session.date.split("T")[0];
-
         if (sessionVol > 0) vol.push({ x: dateStr, y: sessionVol });
         if (sessionBestLift > 0)
           actMax.push({ x: dateStr, y: sessionBestLift });
@@ -138,6 +134,7 @@ export const useExerciseStats = (exerciseName: string | null) => {
     maxStrengthData,
     durationData,
     consistencyData,
+    bodyWeightData, // <--- EXPORT
     refresh: loadData,
   };
 };

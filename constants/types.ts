@@ -55,6 +55,12 @@ export type ExerciseNote = {
 
 export type NotesStorage = Record<string, ExerciseNote[]>;
 
+// --- NEW TYPE ---
+export type BodyWeightLog = {
+  date: string; // YYYY-MM-DD
+  weight: number;
+};
+
 export type WorkoutPost = {
   id: string;
   userId: string;
@@ -62,14 +68,9 @@ export type WorkoutPost = {
   message: string;
   imageUri?: string;
   date: string;
-  comments: PostComment[]; // Updated type definition below
-  reactions: any[];
-  workoutSummary?: {
-    id: string;
-    name: string;
-    duration: number;
-    exerciseCount: number;
-  };
+  comments: PostComment[];
+  reactions: PostReaction[];
+  workoutSummary?: WorkoutSummary;
 };
 
 export type PostComment = {
