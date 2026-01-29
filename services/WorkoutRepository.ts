@@ -506,27 +506,42 @@ export const WorkoutRepository = {
     text: string,
     parentCommentId?: string,
   ): Promise<PostComment | null> {
+    const user = auth.currentUser;
+    if (!user) return null;
+
+    const postRef = doc(db, "posts", postId);
+
     try {
-      const posts = await this.getPosts();
-      const postIndex = posts.findIndex((p) => p.id === postId);
+      // 1. Fetch User Details (for the Name)
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+      const userName = userData?.displayName || user.displayName || "Anonymous";
 
-      if (postIndex === -1) return null;
+      // 2. Fetch Current Post Data
+      const postSnap = await getDoc(postRef);
+      if (!postSnap.exists()) return null;
 
+      const postData = postSnap.data() as WorkoutPost;
+      const currentComments = postData.comments || [];
+
+      // 3. Create New Comment Object
       const newComment: PostComment = {
-        id: Date.now().toString(),
-        userId: "current-user",
-        userName: "Me",
-        text,
+        id: Date.now().toString(), // Simple ID
+        userId: user.uid,
+        userName: userName,
+        text: text,
         createdAt: new Date().toISOString(),
         replies: [],
       };
 
-      const post = posts[postIndex];
-      let updatedComments = [...(post.comments || [])];
+      let updatedComments = [...currentComments];
 
+      // 4. Handle Nesting Logic
       if (parentCommentId) {
         let rootFound = false;
+
         updatedComments = updatedComments.map((comment) => {
+          // A. If replying directly to a Root Comment
           if (comment.id === parentCommentId) {
             rootFound = true;
             return {
@@ -534,9 +549,13 @@ export const WorkoutRepository = {
               replies: [...(comment.replies || []), newComment],
             };
           }
+
+          // B. If replying to a Child Comment (Flatten to Root Parent)
+          // We check if the parentId exists inside this comment's replies
           const isReplyToChild = comment.replies?.some(
             (r) => r.id === parentCommentId,
           );
+
           if (isReplyToChild) {
             rootFound = true;
             return {
@@ -544,17 +563,27 @@ export const WorkoutRepository = {
               replies: [...(comment.replies || []), newComment],
             };
           }
+
           return comment;
         });
-        if (!rootFound) updatedComments.push(newComment);
+
+        // Fallback: If parent not found (deleted?), just add as root
+        if (!rootFound) {
+          updatedComments.push(newComment);
+        }
       } else {
+        // No parent = Root Comment
         updatedComments.push(newComment);
       }
 
-      posts[postIndex] = { ...post, comments: updatedComments };
-      await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(posts));
+      // 5. Update Firestore
+      await updateDoc(postRef, {
+        comments: updatedComments,
+      });
+
       return newComment;
     } catch (e) {
+      console.error("Failed to add comment", e);
       return null;
     }
   },
