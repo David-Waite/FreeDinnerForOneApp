@@ -8,15 +8,21 @@ import {
   PostComment,
   PostReaction,
   MasterExercise,
-  BodyWeightLog, // <--- Import
+  BodyWeightLog,
 } from "../constants/types";
+import { auth, db } from "../config/firebase"; // Import Firebase Auth & DB
+import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore"; // Import Firestore functions
+import CryptoJS from "crypto-js"; // Import Crypto
 
 const SESSION_KEY = "workout_sessions";
 const TEMPLATE_KEY = "workout_templates";
 const NOTES_KEY = "exercise_notes";
 const POSTS_KEY = "workout_posts";
 const MASTER_EXERCISE_KEY = "master_exercises";
-const WEIGHT_KEY = "body_weight_logs"; // <--- New Key
+const WEIGHT_KEY = "body_weight_logs";
+
+const APP_SECRET =
+  process.env.EXPO_PUBLIC_ENCRYPTION_KEY || "default-secret-key-change-me";
 
 export const WorkoutRepository = {
   // --- SESSIONS (History) ---
@@ -40,6 +46,7 @@ export const WorkoutRepository = {
     const names = workout.exercises.map((e) => e.name);
     await this.ensureExercisesExist(names);
 
+    // 1. Save Locally (AsyncStorage) - Always plaintext for the user's own device
     const existing = await this.getWorkouts();
     const index = existing.findIndex((w) => w.id === workout.id);
     let updated;
@@ -50,6 +57,57 @@ export const WorkoutRepository = {
       updated = [workout, ...existing];
     }
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+
+    // 2. Upload to Firebase (The Black Box Logic)
+    await this.uploadSession(workout);
+  },
+
+  async uploadSession(workout: WorkoutSession): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) return; // Can't upload if not logged in
+
+    try {
+      // 1. Fetch User's Privacy Settings
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const privacySettings = userDoc.data()?.privacySettings || {};
+      const shouldEncrypt = privacySettings.encryptWorkouts ?? false;
+
+      // 2. Prepare the Payload
+      let payload: any = {
+        id: workout.id,
+        date: workout.date,
+        duration: workout.duration,
+        name: workout.name,
+        isEncrypted: shouldEncrypt,
+      };
+
+      if (shouldEncrypt) {
+        //
+        // ENCRYPT: Turn the exercises array into a gibberish string
+        const jsonString = JSON.stringify(workout.exercises);
+        const uniqueKey = `${user.uid}-${APP_SECRET}`; // Unique key per user
+        const encryptedData = CryptoJS.AES.encrypt(
+          jsonString,
+          uniqueKey,
+        ).toString();
+
+        payload.data = encryptedData; // The Black Box
+        // Note: we do NOT include 'exercises' here
+      } else {
+        // PLAIN TEXT: Upload full details
+        payload.exercises = workout.exercises;
+      }
+
+      // 3. Upload to Firestore: users/{uid}/sessions/{sessionId}
+      const sessionRef = doc(db, "users", user.uid, "sessions", workout.id);
+      await setDoc(sessionRef, payload, { merge: true });
+
+      console.log(`Session uploaded. Encrypted: ${shouldEncrypt}`);
+    } catch (error) {
+      console.error("Failed to upload session to cloud:", error);
+      // We don't throw here to avoid breaking the local save flow
+    }
   },
 
   async deleteWorkout(id: string): Promise<void> {
@@ -57,6 +115,11 @@ export const WorkoutRepository = {
       const existingSessions = await this.getWorkouts();
       const filteredSessions = existingSessions.filter((w) => w.id !== id);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(filteredSessions));
+
+      const user = auth.currentUser;
+      if (user) {
+        await deleteDoc(doc(db, "users", user.uid, "sessions", id));
+      }
     } catch (e) {
       console.error("Failed to delete workout", e);
     }
