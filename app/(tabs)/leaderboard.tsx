@@ -181,9 +181,7 @@ export default function LeaderboardScreen() {
         )}
 
         <View style={styles.infoContainer}>
-          <Text style={styles.nameText}>
-            {item.displayName} {isMe && "(You)"}
-          </Text>
+          <Text style={styles.nameText}>{item.displayName}</Text>
           <Text style={styles.scoreText}>{item.score} Workouts</Text>
 
           {/* Debugging Text for Split Logic - Optional */}

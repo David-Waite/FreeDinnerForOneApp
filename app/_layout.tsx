@@ -14,7 +14,7 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
-  // Listen for Auth State Changes
+  // 1. Listen for Auth State
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
@@ -23,32 +23,28 @@ export default function RootLayout() {
     return unsubscribe;
   }, []);
 
+  // 2. Sync Global Data (Only if logged in)
   useEffect(() => {
-    const initData = async () => {
-      // Sync global exercises in the background
-      await WorkoutRepository.syncGlobalExercises();
-    };
-    initData();
-  }, []);
+    if (user) {
+      WorkoutRepository.syncGlobalExercises();
+    }
+  }, [user]);
 
-  // Handle Routing based on Auth State
+  // 3. Handle Redirects (FIXED)
   useEffect(() => {
     if (initializing) return;
 
-    // We only force-redirect from LOGIN.
-    // We let the Signup screen handle its own navigation (to profile pic).
-    const isLoginRoute = segments[0] === "login";
+    const inAuthGroup = segments[0] === "(tabs)";
+    const inPublicGroup = segments[0] === "login" || segments[0] === "signup";
 
-    // Also redirect if they are on the "signup" page but it's been a while?
-    // For simplicity, we just won't force-redirect from signup via this effect.
-    // The Signup component will handle the "success" case.
-
-    if (user && isLoginRoute) {
+    if (user && inPublicGroup) {
+      // If logged in and trying to go to login/signup, redirect to app
       router.replace("/(tabs)");
-    } else if (!user && segments[0] !== "login" && segments[0] !== "signup") {
-      // Protect app routes (tabs, modal, etc)
+    } else if (!user && !inPublicGroup) {
+      // If NOT logged in and trying to access protected routes, redirect to login
       router.replace("/login");
     }
+    // If logged in and in a modal (e.g. post-modal), DO NOTHING.
   }, [user, initializing, segments]);
 
   if (initializing) {
@@ -65,16 +61,16 @@ export default function RootLayout() {
         <GlobalWorkoutBanner />
         <View style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
-            {/* 1. Main App Content */}
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
             <Stack.Screen
               name="post-modal"
               options={{
-                presentation: "modal",
+                presentation: "modal", // This makes it slide up
                 headerShown: false,
               }}
             />
-            {/* 2. Other Full Screen Screens */}
+
             <Stack.Screen
               name="record-workout"
               options={{
@@ -84,22 +80,17 @@ export default function RootLayout() {
               }}
             />
 
-            {/* NEW: Settings Screen */}
             <Stack.Screen
               name="settings"
               options={{
-                headerShown: true, // Show header for back button
+                presentation: "modal",
                 title: "Settings",
-                presentation: "card", // Or 'modal' if you prefer that look
+                headerShown: true,
               }}
             />
+
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="signup" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="signup-profile-pic"
-              options={{ headerShown: false }}
-            />
-            {/* 3. Modals (Must be below the screens they appear over) */}
           </Stack>
         </View>
       </GestureHandlerRootView>

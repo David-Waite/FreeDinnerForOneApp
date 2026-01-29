@@ -30,7 +30,6 @@ import { getDownloadURL, ref, uploadBytes } from "@firebase/storage";
 const SESSION_KEY = "workout_sessions";
 const TEMPLATE_KEY = "workout_templates";
 const NOTES_KEY = "exercise_notes";
-const POSTS_KEY = "workout_posts";
 const MASTER_EXERCISE_KEY = "master_exercises";
 const WEIGHT_KEY = "body_weight_logs";
 
@@ -136,8 +135,14 @@ export const WorkoutRepository = {
         const jsonString = JSON.stringify(workout.exercises);
         const uniqueKey = `${user.uid}-${APP_SECRET}`;
         payload.data = CryptoJS.AES.encrypt(jsonString, uniqueKey).toString();
+
+        // CLEANUP: Remove plain exercises
+        payload.exercises = deleteField();
       } else {
         payload.exercises = workout.exercises;
+
+        // CLEANUP: Remove encrypted blob
+        payload.data = deleteField();
       }
 
       await setDoc(
@@ -204,43 +209,42 @@ export const WorkoutRepository = {
     if (!user) return;
 
     try {
-      // 1. Check Privacy Settings
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const privacySettings = userDoc.data()?.privacySettings || {};
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const shouldEncrypt =
+        userDoc.data()?.privacySettings?.encryptBodyWeight ?? true;
 
-      // Default to TRUE (Safe by default) if setting is missing
-      const shouldEncrypt = privacySettings.encryptBodyWeight ?? true;
-
-      // 2. Prepare Payload
-      // We use the Date (YYYY-MM-DD) as the ID, so it overwrites correctly
       let payload: any = {
         date: log.date,
         isEncrypted: shouldEncrypt,
       };
 
       if (shouldEncrypt) {
-        // ENCRYPT: Hide the weight value
-        // We convert the number to a string, then encrypt it
+        // ENCRYPTING:
         const uniqueKey = `${user.uid}-${APP_SECRET}`;
-        const encryptedData = CryptoJS.AES.encrypt(
+        payload.data = CryptoJS.AES.encrypt(
           String(log.weight),
           uniqueKey,
         ).toString();
 
-        payload.data = encryptedData;
+        // CLEANUP: Remove the plain 'weight' field if it exists
+        payload.weight = deleteField();
       } else {
-        // PLAIN TEXT
+        // PLAIN TEXT:
         payload.weight = log.weight;
+
+        // CLEANUP: Remove the encrypted 'data' field if it exists
+        payload.data = deleteField();
       }
 
-      // 3. Save to users/{uid}/weight_logs/{date}
-      const logRef = doc(db, "users", user.uid, "weight_logs", log.date);
-      await setDoc(logRef, payload, { merge: true });
-
-      console.log(`Weight log uploaded. Encrypted: ${shouldEncrypt}`);
-    } catch (error) {
-      console.error("Failed to upload weight log:", error);
+      // We still use merge: true to preserve any other fields (like createdAt if you added it),
+      // but deleteField() ensures we clean up the specific fields we targeted.
+      await setDoc(
+        doc(db, "users", user.uid, "weight_logs", log.date),
+        payload,
+        { merge: true },
+      );
+    } catch (e) {
+      console.error("Weight upload failed", e);
     }
   },
 
@@ -483,6 +487,7 @@ export const WorkoutRepository = {
   // --- POSTS ---
 
   async getPosts(): Promise<WorkoutPost[]> {
+    if (!auth.currentUser) return [];
     try {
       const querySnapshot = await getDocs(collection(db, "posts"));
       const posts: WorkoutPost[] = [];
