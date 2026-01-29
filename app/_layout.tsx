@@ -26,18 +26,18 @@ export default function RootLayout() {
   useEffect(() => {
     if (initializing) return;
 
-    const inTabsGroup = segments[0] === "(tabs)";
+    // We only force-redirect from LOGIN.
+    // We let the Signup screen handle its own navigation (to profile pic).
+    const isLoginRoute = segments[0] === "login";
 
-    // Define which segments are strictly for unauthenticated users
-    // (Add any other public/auth screens here if you have them)
-    const isAuthRoute = segments[0] === "login" || segments[0] === "signup";
+    // Also redirect if they are on the "signup" page but it's been a while?
+    // For simplicity, we just won't force-redirect from signup via this effect.
+    // The Signup component will handle the "success" case.
 
-    if (user && isAuthRoute) {
-      // 1. User is logged in but on login/signup page. Redirect to app.
+    if (user && isLoginRoute) {
       router.replace("/(tabs)");
-    } else if (!user && !isAuthRoute) {
-      // 2. User is NOT logged in but trying to access a protected route
-      // (like tabs, post-modal, or record-workout). Redirect to login.
+    } else if (!user && segments[0] !== "login" && segments[0] !== "signup") {
+      // Protect app routes (tabs, modal, etc)
       router.replace("/login");
     }
   }, [user, initializing, segments]);
@@ -86,6 +86,10 @@ export default function RootLayout() {
             />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="signup" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="signup-profile-pic"
+              options={{ headerShown: false }}
+            />
             {/* 3. Modals (Must be below the screens they appear over) */}
           </Stack>
         </View>

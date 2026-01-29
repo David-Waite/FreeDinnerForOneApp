@@ -1,12 +1,9 @@
+// FreeDinnerForOneApp/config/firebase.ts
+
 import { initializeApp, getApp, getApps } from "firebase/app";
-// 1. Import specific Auth functions
-import {
-  initializeAuth,
-  getReactNativePersistence,
-  getAuth,
-} from "firebase/auth";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-// 2. Import AsyncStorage
+import { getStorage } from "firebase/storage"; // <--- Add this
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
@@ -21,11 +18,11 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// 3. Initialize Auth with the Persistence adapter
 const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
 
 const db = getFirestore(app);
+const storage = getStorage(app); // <--- Initialize Storage
 
-export { auth, db };
+export { auth, db, storage }; // <--- Export Storage

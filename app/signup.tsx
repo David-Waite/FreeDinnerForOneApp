@@ -21,14 +21,13 @@ export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const router = useRouter();
   const handleSignup = async () => {
     if (!username || !email || !password)
       return Alert.alert("Error", "Please fill in all fields");
 
     setLoading(true);
     try {
-      // 1. Create the Authentication User
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -36,16 +35,14 @@ export default function SignupScreen() {
       );
       const user = userCredential.user;
 
-      // 2. Set the Display Name
       await updateProfile(user, { displayName: username });
 
-      // 3. Create the Database Profile (TheComp User Doc)
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         username: username,
         displayName: username,
         photoURL: "",
-        status: "active", // For the "Sick/Injured" rule later
+        status: "active",
         privacySettings: {
           encryptWorkouts: true,
           encryptBodyWeight: true,
@@ -53,7 +50,8 @@ export default function SignupScreen() {
         },
       });
 
-      // Redirect handled by _layout listener
+      // CHANGED: Navigate to the Profile Pic screen instead of letting _layout handle it
+      router.replace("/signup-profile-pic");
     } catch (error: any) {
       Alert.alert("Signup Failed", error.message);
     } finally {
