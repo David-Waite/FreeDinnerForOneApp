@@ -9,6 +9,7 @@ import {
   PostReaction,
   MasterExercise,
   BodyWeightLog,
+  UserProfile,
 } from "../constants/types";
 import { auth, db, storage } from "../config/firebase"; // Import Firebase Auth & DB
 import {
@@ -20,6 +21,8 @@ import {
   collection,
   updateDoc,
   deleteField,
+  query,
+  where,
 } from "firebase/firestore"; // Import Firestore functions
 import CryptoJS from "crypto-js"; // Import Crypto
 import { getDownloadURL, ref, uploadBytes } from "@firebase/storage";
@@ -834,6 +837,74 @@ export const WorkoutRepository = {
       return posts.find((p) => p.workoutSummary?.id === workoutId);
     } catch (e) {
       return undefined;
+    }
+  },
+  async getAllUsers(): Promise<UserProfile[]> {
+    try {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      const users: UserProfile[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Basic mapping
+        users.push({
+          uid: doc.id,
+          displayName: data.displayName || "Unknown",
+          photoURL: data.photoURL,
+          privacySettings: data.privacySettings,
+        });
+      });
+      return users;
+    } catch (e) {
+      console.error("Failed to fetch users", e);
+      return [];
+    }
+  },
+
+  // 2. Get Remote Workouts (Friend's Stats)
+  async getRemoteWorkouts(userId: string): Promise<WorkoutSession[]> {
+    try {
+      // Must filter by isEncrypted == false to satisfy Rules
+      const q = query(
+        collection(db, "users", userId, "sessions"),
+        where("isEncrypted", "==", false),
+      );
+
+      const snapshot = await getDocs(q);
+      const workouts: WorkoutSession[] = [];
+      snapshot.forEach((doc) => {
+        workouts.push(doc.data() as WorkoutSession);
+      });
+
+      // Sort in memory (or add orderBy to query if index exists)
+      return workouts.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+    } catch (e) {
+      console.error("Failed to fetch remote workouts", e);
+      return [];
+    }
+  },
+
+  // 3. Get Remote Body Weight (Friend's Stats)
+  async getRemoteBodyWeight(userId: string): Promise<BodyWeightLog[]> {
+    try {
+      const q = query(
+        collection(db, "users", userId, "weight_logs"),
+        where("isEncrypted", "==", false),
+      );
+
+      const snapshot = await getDocs(q);
+      const logs: BodyWeightLog[] = [];
+      snapshot.forEach((doc) => {
+        logs.push(doc.data() as BodyWeightLog);
+      });
+
+      return logs.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+    } catch (e) {
+      console.error("Failed to fetch remote weight logs", e);
+      return [];
     }
   },
 };

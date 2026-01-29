@@ -1,6 +1,14 @@
-// FreeDinnerForOneApp/constants/types.ts
+export type UserProfile = {
+  uid: string;
+  displayName: string;
+  photoURL?: string;
+  privacySettings?: {
+    encryptWorkouts: boolean;
+    encryptBodyWeight: boolean;
+    shareExercisesToGlobal: boolean;
+  };
+};
 
-// ... (Keep WorkoutSet, Exercise, WorkoutSession, TemplateExercise, WorkoutTemplate, MasterExercise types as they are) ...
 export type WorkoutSet = {
   id: string;
   weight: string;
