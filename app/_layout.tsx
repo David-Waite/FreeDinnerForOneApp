@@ -74,6 +74,16 @@ export default function RootLayout() {
                 presentation: "fullScreenModal",
               }}
             />
+
+            {/* NEW: Settings Screen */}
+            <Stack.Screen
+              name="settings"
+              options={{
+                headerShown: true, // Show header for back button
+                title: "Settings",
+                presentation: "card", // Or 'modal' if you prefer that look
+              }}
+            />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="signup" options={{ headerShown: false }} />
             {/* 3. Modals (Must be below the screens they appear over) */}

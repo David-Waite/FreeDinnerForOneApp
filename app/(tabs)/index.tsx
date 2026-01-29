@@ -63,11 +63,12 @@ export default function FeedScreen() {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <Text style={styles.headerTitle}>Community Feed</Text>
+      {/* CHANGED: Settings Icon instead of Camera */}
       <TouchableOpacity
         style={styles.iconButton}
-        onPress={() => router.push("/post-modal")}
+        onPress={() => router.push("/settings")} // Navigate to new Settings page
       >
-        <Ionicons name="camera-outline" size={26} color={Colors.text} />
+        <Ionicons name="settings-outline" size={26} color={Colors.text} />
       </TouchableOpacity>
     </View>
   );
