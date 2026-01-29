@@ -227,6 +227,7 @@ export const WorkoutRepository = {
       const names = template.exercises.map((e) => e.name);
       await this.ensureExercisesExist(names);
 
+      // 1. Save Locally
       const existing = await this.getTemplates();
       const index = existing.findIndex((t) => t.id === template.id);
       let updated;
@@ -237,15 +238,75 @@ export const WorkoutRepository = {
         updated = [template, ...existing];
       }
       await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
+
+      // 2. Upload to Firestore (as a Routine)
+      await this.uploadRoutine(template);
     } catch (e) {
       console.error("Failed to save template", e);
     }
   },
 
   async deleteTemplate(id: string): Promise<void> {
-    const existing = await this.getTemplates();
-    const filtered = existing.filter((t) => t.id !== id);
-    await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(filtered));
+    try {
+      // 1. Delete Local
+      const existing = await this.getTemplates();
+      const filtered = existing.filter((t) => t.id !== id);
+      await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(filtered));
+
+      // 2. Delete Remote
+      const user = auth.currentUser;
+      if (user) {
+        await deleteDoc(doc(db, "users", user.uid, "routines", id));
+      }
+    } catch (e) {
+      console.error("Failed to delete template", e);
+    }
+  },
+
+  async uploadRoutine(template: WorkoutTemplate): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      // 1. Check Privacy Settings
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const privacySettings = userDoc.data()?.privacySettings || {};
+
+      // Defaults to true if setting is missing, satisfying "encrypted by default"
+      const shouldEncrypt = privacySettings.encryptWorkouts ?? true;
+
+      // 2. Prepare Payload
+      let payload: any = {
+        id: template.id,
+        name: template.name,
+        lastPerformed: template.lastPerformed || null,
+        isEncrypted: shouldEncrypt,
+      };
+
+      if (shouldEncrypt) {
+        // ENCRYPT: Hide the exercises list
+        const jsonString = JSON.stringify(template.exercises);
+        const uniqueKey = `${user.uid}-${APP_SECRET}`;
+        const encryptedData = CryptoJS.AES.encrypt(
+          jsonString,
+          uniqueKey,
+        ).toString();
+
+        payload.data = encryptedData;
+      } else {
+        // PLAIN TEXT
+        payload.exercises = template.exercises;
+      }
+
+      // 3. Save to users/{uid}/routines/{id}
+      const routineRef = doc(db, "users", user.uid, "routines", template.id);
+      await setDoc(routineRef, payload, { merge: true });
+
+      console.log(`Routine uploaded. Encrypted: ${shouldEncrypt}`);
+    } catch (error) {
+      console.error("Failed to upload routine:", error);
+    }
   },
 
   // --- NOTES ---
