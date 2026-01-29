@@ -6,6 +6,7 @@ import { WorkoutProvider } from "../context/WorkoutContext";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import GlobalWorkoutBanner from "../components/GlobalWorkoutBanner";
+import { WorkoutRepository } from "../services/WorkoutRepository";
 
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
@@ -20,6 +21,14 @@ export default function RootLayout() {
       if (initializing) setInitializing(false);
     });
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const initData = async () => {
+      // Sync global exercises in the background
+      await WorkoutRepository.syncGlobalExercises();
+    };
+    initData();
   }, []);
 
   // Handle Routing based on Auth State

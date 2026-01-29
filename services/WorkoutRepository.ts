@@ -675,6 +675,10 @@ export const WorkoutRepository = {
 
   // --- MASTER EXERCISES ---
 
+  normalizeId(name: string): string {
+    return name.trim().toLowerCase().replace(/\s+/g, "_");
+  },
+
   async getMasterExercises(): Promise<MasterExercise[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(MASTER_EXERCISE_KEY);
@@ -704,33 +708,124 @@ export const WorkoutRepository = {
     return defaults;
   },
 
+  async syncGlobalExercises(): Promise<void> {
+    try {
+      // Fetch from Firestore
+      const querySnapshot = await getDocs(collection(db, "global_exercises"));
+      const globalExercises: MasterExercise[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.displayName) {
+          globalExercises.push({
+            id: data.displayName, // We use the name as ID locally for now to match your existing logic
+            name: data.displayName,
+          });
+        }
+      });
+
+      if (globalExercises.length === 0) return;
+
+      // Merge with Local (Prioritise Global existence)
+      const local = await this.getMasterExercises();
+      const localNames = new Set(local.map((e) => e.name.toLowerCase()));
+
+      const merged = [...local];
+      globalExercises.forEach((globalEx) => {
+        if (!localNames.has(globalEx.name.toLowerCase())) {
+          merged.push(globalEx);
+          localNames.add(globalEx.name.toLowerCase());
+        }
+      });
+
+      // Save merged list
+      await AsyncStorage.setItem(MASTER_EXERCISE_KEY, JSON.stringify(merged));
+      console.log(`Synced ${globalExercises.length} global exercises.`);
+    } catch (e) {
+      console.error("Failed to sync global exercises", e);
+    }
+  },
+
   async ensureExercisesExist(names: string[]): Promise<void> {
+    const user = auth.currentUser;
+    let shouldShare = false;
+    console.log("running");
+    // Check Privacy Setting
+    if (user) {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        shouldShare =
+          userDoc.data()?.privacySettings?.shareExercisesToGlobal ?? false;
+
+        console.log(shouldShare);
+      } catch (e) {
+        console.warn("Could not check global share setting", e);
+      }
+    }
+
     try {
       const existing = await this.getMasterExercises();
       const existingNames = new Set(
         existing.map((e) => e.name.toLowerCase().trim()),
       );
+
+      console.log(existingNames);
+
       let hasChanges = false;
       const updates = [...existing];
+      const newToUpload: string[] = [];
+
       names.forEach((name) => {
         const cleanName = name.trim();
+        // If it's a new exercise we haven't seen before
         if (cleanName && !existingNames.has(cleanName.toLowerCase())) {
+          // Add to Local
           updates.push({ id: cleanName, name: cleanName });
           existingNames.add(cleanName.toLowerCase());
           hasChanges = true;
+
+          console.log(`New exercise found: ${cleanName}`);
+
+          // Queue for Upload
+          newToUpload.push(cleanName);
         }
       });
+
+      console.log(newToUpload);
+
+      // Save Local
       if (hasChanges) {
+        console.log("Saving updated master exercise list locally...");
         await AsyncStorage.setItem(
           MASTER_EXERCISE_KEY,
           JSON.stringify(updates),
         );
       }
+
+      // Upload to Firestore (Only if setting is enabled)
+      if (shouldShare && user && newToUpload.length > 0) {
+        console.log(
+          `Uploading ${newToUpload.length} new exercises to Global...`,
+        );
+        for (const name of newToUpload) {
+          const normalizedId = this.normalizeId(name);
+          const docRef = doc(db, "global_exercises", normalizedId);
+
+          await setDoc(
+            docRef,
+            {
+              _id: normalizedId,
+              displayName: name,
+            },
+            { merge: true },
+          );
+        }
+        console.log("Upload Complete.");
+      }
     } catch (e) {
       console.error("Failed to harvest exercises", e);
     }
   },
-
   async getPostByWorkoutId(
     workoutId: string,
   ): Promise<WorkoutPost | undefined> {
