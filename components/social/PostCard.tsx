@@ -1,10 +1,11 @@
 import React, { useRef, useState } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { WorkoutPost, PostReaction } from "../../constants/types";
+import { WorkoutPost } from "../../constants/types"; // Removed PostReaction import
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import ReactionPicker from "./ReactionPicker";
 import Colors from "../../constants/Colors";
+import { auth } from "../../config/firebase"; // Import Auth to check current user
 
 type Props = {
   post: WorkoutPost;
@@ -17,48 +18,57 @@ export default function PostCard({
   onCommentPress,
   onWorkoutPress,
 }: Props) {
-  const [reactions, setReactions] = useState<PostReaction[]>(
-    post.reactions || [],
+  // Local state for optimistic updates
+  const [reactions, setReactions] = useState<Record<string, string>>(
+    post.reactions || {},
   );
+
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const heartButtonRef =
+    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
-  // const heartButtonRef =
-  //   useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const currentUserId = auth.currentUser?.uid;
 
-  // // Group reactions by emoji for display: { "❤️": 5, "🔥": 2 }
-  // const reactionCounts = reactions.reduce(
-  //   (acc, curr) => {
-  //     acc[curr.emoji] = (acc[curr.emoji] || 0) + 1;
-  //     return acc;
-  //   },
-  //   {} as Record<string, number>,
-  // );
+  // --- CHANGED: Calculate counts from Object values ---
+  const reactionValues = Object.values(reactions);
+  const reactionCounts = reactionValues.reduce(
+    (acc, emoji) => {
+      acc[emoji] = (acc[emoji] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
-  // const currentUserReaction = reactions.find(
-  //   (r) => r.userId === "current-user",
-  // );
+  // Check if I have reacted
+  const myReactionEmoji = currentUserId ? reactions[currentUserId] : undefined;
 
-  // const handleReaction = async (emoji: string) => {
-  //   const updated = await WorkoutRepository.toggleReaction(post.id, emoji);
-  //   if (updated) {
-  //     setReactions(updated);
-  //   }
-  // };
+  const handleReaction = async (emoji: string) => {
+    // Optimistic Update (Optional, but makes it snappy)
+    if (!currentUserId) return;
 
-  // const handleHeartPress = () => {
-  //   // If user already reacted, toggle 'heart'. If not, add 'heart'.
-  //   handleReaction("❤️");
-  // };
+    // Call Repo
+    const updatedReactions = await WorkoutRepository.toggleReaction(
+      post.id,
+      emoji,
+    );
+    if (updatedReactions) {
+      setReactions(updatedReactions);
+    }
+  };
 
-  // const handleLongPress = () => {
-  //   heartButtonRef.current?.measureInWindow((x, y, width, height) => {
-  //     setPickerPos({ x: x + width / 2, y: y });
-  //     setPickerVisible(true);
-  //   });
-  // };
+  const handleHeartPress = () => {
+    handleReaction("❤️");
+  };
+
+  const handleLongPress = () => {
+    heartButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setPickerPos({ x: x + width / 2, y: y });
+      setPickerVisible(true);
+    });
+  };
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -67,8 +77,8 @@ export default function PostCard({
 
   return (
     <View style={styles.card}>
+      {/* HEADER */}
       <View style={styles.header}>
-        {/* AVATAR: Use Image if available, else Initials */}
         {post.authorAvatar ? (
           <Image
             source={{ uri: post.authorAvatar }}
@@ -76,12 +86,10 @@ export default function PostCard({
           />
         ) : (
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{post.authorName[0]}</Text>
+            <Text style={styles.avatarText}>{post.authorName?.[0] || "?"}</Text>
           </View>
         )}
-
         <View>
-          {/* UPDATED FIELD NAMES */}
           <Text style={styles.userName}>{post.authorName}</Text>
           <Text style={styles.date}>
             {new Date(post.createdAt).toLocaleDateString()}
@@ -89,7 +97,7 @@ export default function PostCard({
         </View>
       </View>
 
-      {/* --- ATTACHED WORKOUT BANNER --- */}
+      {/* WORKOUT BANNER */}
       {post.workoutSummary && (
         <View style={styles.workoutContainer}>
           <TouchableOpacity
@@ -114,26 +122,27 @@ export default function PostCard({
         </View>
       )}
 
-      {/* --- MAIN IMAGE --- */}
+      {/* IMAGE */}
       {post.imageUri && (
         <Image source={{ uri: post.imageUri }} style={styles.postImage} />
       )}
 
-      {/* --- ACTION BAR --- */}
+      {/* ACTION BAR */}
       <View style={styles.actionBar}>
-        {/* <TouchableOpacity
+        <TouchableOpacity
           ref={heartButtonRef}
           style={styles.actionButton}
           onPress={handleHeartPress}
           onLongPress={handleLongPress}
           delayLongPress={200}
         >
+          {/* Change Icon if I have reacted */}
           <Ionicons
-            name={currentUserReaction ? "heart" : "heart-outline"}
+            name={myReactionEmoji ? "heart" : "heart-outline"}
             size={26}
-            color={currentUserReaction ? "#e91e63" : "#333"}
+            color={myReactionEmoji ? "#e91e63" : "#333"}
           />
-        </TouchableOpacity> */}
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.actionButton}
@@ -147,10 +156,10 @@ export default function PostCard({
         </TouchableOpacity>
       </View>
 
-      {/* --- CONTENT & COMMENTS --- */}
+      {/* CONTENT */}
       <View style={styles.content}>
         {/* Reaction Badges */}
-        {/* {Object.keys(reactionCounts).length > 0 && (
+        {Object.keys(reactionCounts).length > 0 && (
           <View style={styles.reactionRow}>
             {Object.keys(reactionCounts).map((emoji) => (
               <View key={emoji} style={styles.reactionBadge}>
@@ -160,14 +169,12 @@ export default function PostCard({
               </View>
             ))}
           </View>
-        )} */}
+        )}
 
-        {/* Caption */}
         <Text style={styles.caption}>
           <Text style={styles.boldName}>{post.authorName}</Text> {post.message}
         </Text>
 
-        {/* View Comments Link */}
         {post.comments && post.comments.length > 0 && (
           <TouchableOpacity onPress={() => onCommentPress(post)}>
             <Text style={styles.viewComments}>
@@ -177,13 +184,12 @@ export default function PostCard({
         )}
       </View>
 
-      {/* --- REACTION PICKER MODAL --- */}
-      {/* <ReactionPicker
+      <ReactionPicker
         visible={pickerVisible}
         position={pickerPos}
         onClose={() => setPickerVisible(false)}
         onSelect={handleReaction}
-      /> */}
+      />
     </View>
   );
 }
@@ -209,6 +215,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
+  avatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+    backgroundColor: "#ccc",
+  },
   avatarText: { color: "#fff", fontWeight: "bold" },
   userName: { fontWeight: "700", fontSize: 14 },
   date: { color: "#888", fontSize: 12 },
@@ -224,13 +237,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   actionButton: {},
-  avatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 10,
-    backgroundColor: "#ccc",
-  },
   content: {
     paddingHorizontal: 12,
     paddingBottom: 16,

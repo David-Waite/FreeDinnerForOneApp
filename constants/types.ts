@@ -73,7 +73,7 @@ export type WorkoutPost = {
 
   // We keep these arrays for UI compatibility, but we will convert to Maps for Firestore
   comments: PostComment[];
-  reactions: PostReaction[];
+  reactions: Record<string, string>;
 
   workoutSummary?: WorkoutSummary;
   sessionId?: string; // New

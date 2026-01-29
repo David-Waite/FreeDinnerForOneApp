@@ -18,6 +18,8 @@ import {
   deleteDoc,
   getDocs,
   collection,
+  updateDoc,
+  deleteField,
 } from "firebase/firestore"; // Import Firestore functions
 import CryptoJS from "crypto-js"; // Import Crypto
 import { getDownloadURL, ref, uploadBytes } from "@firebase/storage";
@@ -438,13 +440,10 @@ export const WorkoutRepository = {
 
   async getPosts(): Promise<WorkoutPost[]> {
     try {
-      // Fetch from Firestore
       const querySnapshot = await getDocs(collection(db, "posts"));
       const posts: WorkoutPost[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Convert Firestore Map reactions back to Array if needed, or handle in UI
-        // For now, simple mapping:
         posts.push(data as WorkoutPost);
       });
       return posts;
@@ -563,42 +562,43 @@ export const WorkoutRepository = {
   async toggleReaction(
     postId: string,
     emoji: string,
-  ): Promise<PostReaction[] | null> {
+  ): Promise<Record<string, string> | null> {
+    const user = auth.currentUser;
+    if (!user) return null;
+
+    const postRef = doc(db, "posts", postId);
+
     try {
-      const posts = await this.getPosts();
-      const postIndex = posts.findIndex((p) => p.id === postId);
-      if (postIndex === -1) return null;
+      // 1. Get current state to see if we are adding or removing
+      const postSnap = await getDoc(postRef);
+      if (!postSnap.exists()) return null;
 
-      const post = posts[postIndex];
-      const currentUserId = "current-user";
-      const existingReactions = post.reactions || [];
-      const existingReactionIndex = existingReactions.findIndex(
-        (r) => r.userId === currentUserId,
-      );
-      let updatedReactions = [...existingReactions];
+      const postData = postSnap.data() as WorkoutPost;
+      const currentReactions = postData.reactions || {};
+      const currentEmoji = currentReactions[user.uid];
 
-      if (existingReactionIndex >= 0) {
-        if (existingReactions[existingReactionIndex].emoji === emoji) {
-          updatedReactions.splice(existingReactionIndex, 1);
-        } else {
-          updatedReactions[existingReactionIndex] = {
-            ...updatedReactions[existingReactionIndex],
-            emoji: emoji,
-            createdAt: new Date().toISOString(),
-          };
-        }
-      } else {
-        updatedReactions.push({
-          userId: currentUserId,
-          emoji: emoji,
-          createdAt: new Date().toISOString(),
+      // 2. Prepare Update
+      if (currentEmoji === emoji) {
+        // Toggle OFF: Remove the field
+        await updateDoc(postRef, {
+          [`reactions.${user.uid}`]: deleteField(),
         });
-      }
 
-      posts[postIndex] = { ...post, reactions: updatedReactions };
-      await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(posts));
-      return updatedReactions;
+        // Return optimistic update for UI
+        delete currentReactions[user.uid];
+        return currentReactions;
+      } else {
+        // Toggle ON (or Switch Emoji): Update the field
+        await updateDoc(postRef, {
+          [`reactions.${user.uid}`]: emoji,
+        });
+
+        // Return optimistic update for UI
+        currentReactions[user.uid] = emoji;
+        return currentReactions;
+      }
     } catch (e) {
+      console.error("Failed to toggle reaction", e);
       return null;
     }
   },

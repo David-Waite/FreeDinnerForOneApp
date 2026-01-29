@@ -96,7 +96,7 @@ export default function PostModal() {
         imageUri: image, // Local URI (will be uploaded)
         createdAt: new Date().toISOString(),
         comments: [],
-        reactions: [],
+        reactions: {},
 
         // Pass the Session ID
         sessionId: selectedWorkout?.id,
