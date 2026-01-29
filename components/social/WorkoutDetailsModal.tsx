@@ -16,12 +16,14 @@ import Colors from "../../constants/Colors";
 type Props = {
   visible: boolean;
   workoutId: string | null;
+  authorId?: string | null;
   onClose: () => void;
 };
 
 export default function WorkoutDetailsModal({
   visible,
   workoutId,
+  authorId,
   onClose,
 }: Props) {
   const [workout, setWorkout] = useState<WorkoutSession | null>(null);
@@ -38,7 +40,10 @@ export default function WorkoutDetailsModal({
   const loadWorkout = async () => {
     setLoading(true);
     if (workoutId) {
-      const data = await WorkoutRepository.getWorkoutById(workoutId);
+      const data = await WorkoutRepository.getWorkoutById(
+        workoutId,
+        authorId || undefined,
+      );
       setWorkout(data || null);
     }
     setLoading(false);

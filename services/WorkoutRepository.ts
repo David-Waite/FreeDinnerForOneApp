@@ -47,9 +47,50 @@ export const WorkoutRepository = {
     }
   },
 
-  async getWorkoutById(id: string): Promise<WorkoutSession | undefined> {
-    const workouts = await this.getWorkouts();
-    return workouts.find((w) => w.id === id);
+  async getWorkoutById(
+    id: string,
+    authorId?: string,
+  ): Promise<WorkoutSession | undefined> {
+    const currentUser = auth.currentUser;
+    const isLocal = !authorId || authorId === currentUser?.uid;
+
+    if (isLocal) {
+      // 1. LOCAL STRATEGY
+      const workouts = await this.getWorkouts();
+      return workouts.find((w) => w.id === id);
+    } else {
+      // 2. REMOTE STRATEGY (Firebase)
+      try {
+        const docRef = doc(db, "users", authorId, "sessions", id);
+        const snap = await getDoc(docRef);
+
+        if (snap.exists()) {
+          const data = snap.data();
+
+          // Handle Encryption (Black Box)
+          // If the friend's workout is encrypted, we currently CANNOT read the exercises.
+          // We return the summary info, but the exercises list might be empty or hidden.
+          if (data.isEncrypted) {
+            console.log("This workout is encrypted by the user.");
+            // Return structure with empty exercises or special flag
+            return {
+              id: data.id,
+              name: data.name,
+              date: data.date,
+              duration: data.duration,
+              exercises: [], // Hidden
+              // You might add a custom field like 'isLocked': true here if you extend the type
+            } as WorkoutSession;
+          }
+
+          return data as WorkoutSession;
+        }
+        return undefined;
+      } catch (e) {
+        console.error("Failed to fetch remote workout", e);
+        return undefined;
+      }
+    }
   },
 
   async saveWorkout(workout: WorkoutSession): Promise<void> {

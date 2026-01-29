@@ -25,7 +25,9 @@ export default function FeedScreen() {
   const [posts, setPosts] = useState<WorkoutPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [viewWorkoutId, setViewWorkoutId] = useState<string | null>(null);
-  // --- COMMENTS STATE ---
+  const [viewWorkoutAuthorId, setViewWorkoutAuthorId] = useState<string | null>(
+    null,
+  );
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<WorkoutPost | null>(null);
 
@@ -40,7 +42,8 @@ export default function FeedScreen() {
     const data = await WorkoutRepository.getPosts();
     // Sort by newest first
     const sorted = data.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     setPosts(sorted);
   };
@@ -56,8 +59,9 @@ export default function FeedScreen() {
     setCommentsVisible(true);
   };
 
-  const handleOpenWorkout = (workoutId: string) => {
+  const handleOpenWorkout = (workoutId: string, authorId: string) => {
     setViewWorkoutId(workoutId);
+    setViewWorkoutAuthorId(authorId);
   };
 
   const renderHeader = () => (
@@ -82,7 +86,9 @@ export default function FeedScreen() {
           <PostCard
             post={item}
             onCommentPress={handleOpenComments}
-            onWorkoutPress={handleOpenWorkout} // <--- Connect Handler
+            onWorkoutPress={(workoutId) =>
+              handleOpenWorkout(workoutId, item.authorId)
+            }
           />
         )}
         contentContainerStyle={styles.listContent}
@@ -124,6 +130,7 @@ export default function FeedScreen() {
         visible={!!viewWorkoutId}
         workoutId={viewWorkoutId}
         onClose={() => setViewWorkoutId(null)}
+        authorId={viewWorkoutAuthorId}
       />
     </SafeAreaView>
   );
