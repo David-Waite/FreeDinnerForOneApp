@@ -1,5 +1,6 @@
 // FreeDinnerForOneApp/constants/types.ts
 
+// ... (Keep WorkoutSet, Exercise, WorkoutSession, TemplateExercise, WorkoutTemplate, MasterExercise types as they are) ...
 export type WorkoutSet = {
   id: string;
   weight: string;
@@ -55,22 +56,27 @@ export type ExerciseNote = {
 
 export type NotesStorage = Record<string, ExerciseNote[]>;
 
-// --- NEW TYPE ---
 export type BodyWeightLog = {
-  date: string; // YYYY-MM-DD
+  date: string;
   weight: number;
 };
 
+// --- UPDATED POST TYPE ---
 export type WorkoutPost = {
   id: string;
-  userId: string;
-  userName: string;
+  authorId: string; // Changed from userId
+  authorName: string; // Changed from userName
+  authorAvatar?: string; // New
   message: string;
-  imageUri?: string;
-  date: string;
+  imageUri: string;
+  createdAt: string; // Changed from date
+
+  // We keep these arrays for UI compatibility, but we will convert to Maps for Firestore
   comments: PostComment[];
   reactions: PostReaction[];
+
   workoutSummary?: WorkoutSummary;
+  sessionId?: string; // New
 };
 
 export type PostComment = {

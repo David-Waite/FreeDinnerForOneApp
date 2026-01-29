@@ -10,9 +10,17 @@ import {
   MasterExercise,
   BodyWeightLog,
 } from "../constants/types";
-import { auth, db } from "../config/firebase"; // Import Firebase Auth & DB
-import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore"; // Import Firestore functions
+import { auth, db, storage } from "../config/firebase"; // Import Firebase Auth & DB
+import {
+  doc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+  getDocs,
+  collection,
+} from "firebase/firestore"; // Import Firestore functions
 import CryptoJS from "crypto-js"; // Import Crypto
+import { getDownloadURL, ref, uploadBytes } from "@firebase/storage";
 
 const SESSION_KEY = "workout_sessions";
 const TEMPLATE_KEY = "workout_templates";
@@ -46,7 +54,7 @@ export const WorkoutRepository = {
     const names = workout.exercises.map((e) => e.name);
     await this.ensureExercisesExist(names);
 
-    // 1. Save Locally (AsyncStorage) - Always plaintext for the user's own device
+    // 1. Local Save
     const existing = await this.getWorkouts();
     const index = existing.findIndex((w) => w.id === workout.id);
     let updated;
@@ -58,22 +66,18 @@ export const WorkoutRepository = {
     }
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updated));
 
-    // 2. Upload to Firebase (The Black Box Logic)
+    // 2. Cloud Upload
     await this.uploadSession(workout);
   },
 
   async uploadSession(workout: WorkoutSession): Promise<void> {
     const user = auth.currentUser;
-    if (!user) return; // Can't upload if not logged in
-
+    if (!user) return;
     try {
-      // 1. Fetch User's Privacy Settings
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const privacySettings = userDoc.data()?.privacySettings || {};
-      const shouldEncrypt = privacySettings.encryptWorkouts ?? false;
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const shouldEncrypt =
+        userDoc.data()?.privacySettings?.encryptWorkouts ?? false;
 
-      // 2. Prepare the Payload
       let payload: any = {
         id: workout.id,
         date: workout.date,
@@ -83,30 +87,20 @@ export const WorkoutRepository = {
       };
 
       if (shouldEncrypt) {
-        //
-        // ENCRYPT: Turn the exercises array into a gibberish string
         const jsonString = JSON.stringify(workout.exercises);
-        const uniqueKey = `${user.uid}-${APP_SECRET}`; // Unique key per user
-        const encryptedData = CryptoJS.AES.encrypt(
-          jsonString,
-          uniqueKey,
-        ).toString();
-
-        payload.data = encryptedData; // The Black Box
-        // Note: we do NOT include 'exercises' here
+        const uniqueKey = `${user.uid}-${APP_SECRET}`;
+        payload.data = CryptoJS.AES.encrypt(jsonString, uniqueKey).toString();
       } else {
-        // PLAIN TEXT: Upload full details
         payload.exercises = workout.exercises;
       }
 
-      // 3. Upload to Firestore: users/{uid}/sessions/{sessionId}
-      const sessionRef = doc(db, "users", user.uid, "sessions", workout.id);
-      await setDoc(sessionRef, payload, { merge: true });
-
-      console.log(`Session uploaded. Encrypted: ${shouldEncrypt}`);
+      await setDoc(
+        doc(db, "users", user.uid, "sessions", workout.id),
+        payload,
+        { merge: true },
+      );
     } catch (error) {
-      console.error("Failed to upload session to cloud:", error);
-      // We don't throw here to avoid breaking the local save flow
+      console.error("Upload session failed", error);
     }
   },
 
@@ -444,20 +438,67 @@ export const WorkoutRepository = {
 
   async getPosts(): Promise<WorkoutPost[]> {
     try {
-      const jsonValue = await AsyncStorage.getItem(POSTS_KEY);
-      return jsonValue != null ? JSON.parse(jsonValue) : [];
+      // Fetch from Firestore
+      const querySnapshot = await getDocs(collection(db, "posts"));
+      const posts: WorkoutPost[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Convert Firestore Map reactions back to Array if needed, or handle in UI
+        // For now, simple mapping:
+        posts.push(data as WorkoutPost);
+      });
+      return posts;
     } catch (e) {
+      console.error("Failed to load posts", e);
       return [];
     }
   },
 
   async createPost(post: WorkoutPost): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User must be logged in");
+
     try {
-      const existing = await this.getPosts();
-      const updated = [post, ...existing];
-      await AsyncStorage.setItem(POSTS_KEY, JSON.stringify(updated));
+      // 1. Fetch User Details for Avatar
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+      const authorAvatar = userData?.photoURL || user.photoURL || "";
+      const authorName = userData?.displayName || user.displayName || "Unknown";
+
+      // 2. Upload Image to Storage
+      // Path: posts/{postId}/{filename}
+      const response = await fetch(post.imageUri);
+      const blob = await response.blob();
+      const imageRef = ref(storage, `posts/${post.id}/image.jpg`);
+      await uploadBytes(imageRef, blob);
+      const downloadURL = await getDownloadURL(imageRef);
+
+      // 3. Prepare Firestore Document
+      const firestorePost = {
+        id: post.id,
+        authorId: user.uid,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        imageUri: downloadURL, // Use the real cloud URL
+        message: post.message,
+        createdAt: post.createdAt, // You can use serverTimestamp() here if preferred
+
+        // Workout Summary & Session ID
+        workoutSummary: post.workoutSummary || null,
+        sessionId: post.sessionId || null,
+
+        // Initialize empty containers
+        reactions: {}, // Map as requested
+        comments: [],
+      };
+
+      // 4. Save to Firestore
+      await setDoc(doc(db, "posts", post.id), firestorePost);
+
+      console.log("Post uploaded successfully!");
     } catch (e) {
       console.error("Failed to create post", e);
+      throw e; // Re-throw to alert the user in the UI
     }
   },
 

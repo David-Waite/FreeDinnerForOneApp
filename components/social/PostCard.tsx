@@ -25,40 +25,40 @@ export default function PostCard({
     null,
   );
 
-  const heartButtonRef =
-    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  // const heartButtonRef =
+  //   useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
-  // Group reactions by emoji for display: { "❤️": 5, "🔥": 2 }
-  const reactionCounts = reactions.reduce(
-    (acc, curr) => {
-      acc[curr.emoji] = (acc[curr.emoji] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  // // Group reactions by emoji for display: { "❤️": 5, "🔥": 2 }
+  // const reactionCounts = reactions.reduce(
+  //   (acc, curr) => {
+  //     acc[curr.emoji] = (acc[curr.emoji] || 0) + 1;
+  //     return acc;
+  //   },
+  //   {} as Record<string, number>,
+  // );
 
-  const currentUserReaction = reactions.find(
-    (r) => r.userId === "current-user",
-  );
+  // const currentUserReaction = reactions.find(
+  //   (r) => r.userId === "current-user",
+  // );
 
-  const handleReaction = async (emoji: string) => {
-    const updated = await WorkoutRepository.toggleReaction(post.id, emoji);
-    if (updated) {
-      setReactions(updated);
-    }
-  };
+  // const handleReaction = async (emoji: string) => {
+  //   const updated = await WorkoutRepository.toggleReaction(post.id, emoji);
+  //   if (updated) {
+  //     setReactions(updated);
+  //   }
+  // };
 
-  const handleHeartPress = () => {
-    // If user already reacted, toggle 'heart'. If not, add 'heart'.
-    handleReaction("❤️");
-  };
+  // const handleHeartPress = () => {
+  //   // If user already reacted, toggle 'heart'. If not, add 'heart'.
+  //   handleReaction("❤️");
+  // };
 
-  const handleLongPress = () => {
-    heartButtonRef.current?.measureInWindow((x, y, width, height) => {
-      setPickerPos({ x: x + width / 2, y: y });
-      setPickerVisible(true);
-    });
-  };
+  // const handleLongPress = () => {
+  //   heartButtonRef.current?.measureInWindow((x, y, width, height) => {
+  //     setPickerPos({ x: x + width / 2, y: y });
+  //     setPickerVisible(true);
+  //   });
+  // };
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -67,15 +67,24 @@ export default function PostCard({
 
   return (
     <View style={styles.card}>
-      {/* --- HEADER --- */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{post.userName[0]}</Text>
-        </View>
+        {/* AVATAR: Use Image if available, else Initials */}
+        {post.authorAvatar ? (
+          <Image
+            source={{ uri: post.authorAvatar }}
+            style={styles.avatarImage}
+          />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{post.authorName[0]}</Text>
+          </View>
+        )}
+
         <View>
-          <Text style={styles.userName}>{post.userName}</Text>
+          {/* UPDATED FIELD NAMES */}
+          <Text style={styles.userName}>{post.authorName}</Text>
           <Text style={styles.date}>
-            {new Date(post.date).toLocaleDateString()}
+            {new Date(post.createdAt).toLocaleDateString()}
           </Text>
         </View>
       </View>
@@ -112,7 +121,7 @@ export default function PostCard({
 
       {/* --- ACTION BAR --- */}
       <View style={styles.actionBar}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           ref={heartButtonRef}
           style={styles.actionButton}
           onPress={handleHeartPress}
@@ -124,7 +133,7 @@ export default function PostCard({
             size={26}
             color={currentUserReaction ? "#e91e63" : "#333"}
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.actionButton}
@@ -141,7 +150,7 @@ export default function PostCard({
       {/* --- CONTENT & COMMENTS --- */}
       <View style={styles.content}>
         {/* Reaction Badges */}
-        {Object.keys(reactionCounts).length > 0 && (
+        {/* {Object.keys(reactionCounts).length > 0 && (
           <View style={styles.reactionRow}>
             {Object.keys(reactionCounts).map((emoji) => (
               <View key={emoji} style={styles.reactionBadge}>
@@ -151,11 +160,11 @@ export default function PostCard({
               </View>
             ))}
           </View>
-        )}
+        )} */}
 
         {/* Caption */}
         <Text style={styles.caption}>
-          <Text style={styles.boldName}>{post.userName}</Text> {post.message}
+          <Text style={styles.boldName}>{post.authorName}</Text> {post.message}
         </Text>
 
         {/* View Comments Link */}
@@ -169,12 +178,12 @@ export default function PostCard({
       </View>
 
       {/* --- REACTION PICKER MODAL --- */}
-      <ReactionPicker
+      {/* <ReactionPicker
         visible={pickerVisible}
         position={pickerPos}
         onClose={() => setPickerVisible(false)}
         onSelect={handleReaction}
-      />
+      /> */}
     </View>
   );
 }
@@ -215,6 +224,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   actionButton: {},
+  avatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+    backgroundColor: "#ccc",
+  },
   content: {
     paddingHorizontal: 12,
     paddingBottom: 16,

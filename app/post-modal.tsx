@@ -81,39 +81,43 @@ export default function PostModal() {
   };
 
   const handlePost = async () => {
-    // 1. ENFORCE IMAGE REQUIREMENT
     if (!image) {
-      Alert.alert(
-        "Image Required",
-        "All posts must include a photo of your workout/meal.",
-      );
+      Alert.alert("Image Required", "All posts must include a photo.");
       return;
     }
 
     setUploading(true);
+    try {
+      const newPost: WorkoutPost = {
+        id: Date.now().toString(),
+        authorId: "temp", // Will be overwritten by Repository
+        authorName: "temp", // Will be overwritten by Repository
+        message: message,
+        imageUri: image, // Local URI (will be uploaded)
+        createdAt: new Date().toISOString(),
+        comments: [],
+        reactions: [],
 
-    const newPost: WorkoutPost = {
-      id: Date.now().toString(),
-      userId: "current-user",
-      userName: "David",
-      message: message,
-      imageUri: image, // Image is now guaranteed
-      date: new Date().toISOString(),
-      comments: [],
-      reactions: [],
-      workoutSummary: selectedWorkout
-        ? {
-            id: selectedWorkout.id,
-            name: selectedWorkout.name,
-            duration: selectedWorkout.duration,
-            exerciseCount: selectedWorkout.exercises.length,
-          }
-        : undefined,
-    };
+        // Pass the Session ID
+        sessionId: selectedWorkout?.id,
 
-    await WorkoutRepository.createPost(newPost);
-    setUploading(false);
-    router.back();
+        workoutSummary: selectedWorkout
+          ? {
+              id: selectedWorkout.id,
+              name: selectedWorkout.name,
+              duration: selectedWorkout.duration,
+              exerciseCount: selectedWorkout.exercises.length,
+            }
+          : undefined,
+      };
+
+      await WorkoutRepository.createPost(newPost);
+      router.back();
+    } catch (error: any) {
+      Alert.alert("Upload Failed", error.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const formatDuration = (seconds: number) => {
