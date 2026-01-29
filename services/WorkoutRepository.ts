@@ -132,7 +132,6 @@ export const WorkoutRepository = {
       const jsonValue = await AsyncStorage.getItem(WEIGHT_KEY);
       const data: BodyWeightLog[] =
         jsonValue != null ? JSON.parse(jsonValue) : [];
-      // Ensure sorted by date ascending
       return data.sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
       );
@@ -152,8 +151,56 @@ export const WorkoutRepository = {
       const updated = [...filtered, newEntry];
 
       await AsyncStorage.setItem(WEIGHT_KEY, JSON.stringify(updated));
+
+      // NEW: Upload to Cloud
+      await this.uploadBodyWeight(newEntry);
     } catch (e) {
       console.error("Failed to save body weight", e);
+    }
+  },
+
+  async uploadBodyWeight(log: BodyWeightLog): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      // 1. Check Privacy Settings
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const privacySettings = userDoc.data()?.privacySettings || {};
+
+      // Default to TRUE (Safe by default) if setting is missing
+      const shouldEncrypt = privacySettings.encryptBodyWeight ?? true;
+
+      // 2. Prepare Payload
+      // We use the Date (YYYY-MM-DD) as the ID, so it overwrites correctly
+      let payload: any = {
+        date: log.date,
+        isEncrypted: shouldEncrypt,
+      };
+
+      if (shouldEncrypt) {
+        // ENCRYPT: Hide the weight value
+        // We convert the number to a string, then encrypt it
+        const uniqueKey = `${user.uid}-${APP_SECRET}`;
+        const encryptedData = CryptoJS.AES.encrypt(
+          String(log.weight),
+          uniqueKey,
+        ).toString();
+
+        payload.data = encryptedData;
+      } else {
+        // PLAIN TEXT
+        payload.weight = log.weight;
+      }
+
+      // 3. Save to users/{uid}/weight_logs/{date}
+      const logRef = doc(db, "users", user.uid, "weight_logs", log.date);
+      await setDoc(logRef, payload, { merge: true });
+
+      console.log(`Weight log uploaded. Encrypted: ${shouldEncrypt}`);
+    } catch (error) {
+      console.error("Failed to upload weight log:", error);
     }
   },
 
