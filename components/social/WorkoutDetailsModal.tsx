@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
@@ -94,7 +93,7 @@ export default function WorkoutDetailsModal({
               contentContainerStyle={styles.content}
               showsVerticalScrollIndicator={false}
             >
-              {/* Summary Card (Hero Section) */}
+              {/* Summary Card */}
               <View style={styles.summaryCard}>
                 <View style={styles.iconCircle}>
                   <MaterialCommunityIcons
@@ -146,37 +145,37 @@ export default function WorkoutDetailsModal({
                     </View>
                   </View>
 
-                  {/* Sets Table Header */}
-                  <View style={styles.tableHeader}>
-                    <Text style={styles.colLabelSet}>SET</Text>
-                    <Text style={styles.colLabel}>WEIGHT</Text>
-                    <Text style={styles.colLabel}>REPS</Text>
-                  </View>
-
-                  {/* Sets Rows */}
-                  {exercise.sets.map((set, idx) => (
-                    <View
-                      key={set.id}
-                      style={[
-                        styles.setRow,
-                        set.completed && styles.rowCompleted,
-                      ]}
-                    >
-                      <View style={styles.colSetContent}>
-                        <View style={styles.setNumberBadge}>
-                          <Text style={styles.setNumberText}>{idx + 1}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.colDataText}>
-                        {set.weight || "0"}{" "}
-                        <Text style={styles.unitText}>KG</Text>
-                      </Text>
-                      <Text style={styles.colDataText}>
-                        {set.reps || "0"}{" "}
-                        <Text style={styles.unitText}>REPS</Text>
-                      </Text>
+                  <View style={styles.exerciseContentWrapper}>
+                    <View style={styles.tableHeader}>
+                      <Text style={styles.colLabelSet}>SET</Text>
+                      <Text style={styles.colLabel}>WEIGHT</Text>
+                      <Text style={styles.colLabel}>REPS</Text>
                     </View>
-                  ))}
+
+                    {exercise.sets.map((set, idx) => (
+                      <View
+                        key={set.id}
+                        style={[
+                          styles.setRow,
+                          set.completed && styles.rowCompleted,
+                        ]}
+                      >
+                        <View style={styles.colSetContent}>
+                          <View style={styles.setNumberBadge}>
+                            <Text style={styles.setNumberText}>{idx + 1}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.colDataText}>
+                          {set.weight || "0"}{" "}
+                          <Text style={styles.unitText}>KG</Text>
+                        </Text>
+                        <Text style={styles.colDataText}>
+                          {set.reps || "0"}{" "}
+                          <Text style={styles.unitText}>REPS</Text>
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
               ))}
               <View style={{ height: 40 }} />
@@ -203,7 +202,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    overflow: "hidden",
+    // REMOVED overflow: 'hidden'
   },
   header: {
     padding: 16,
@@ -213,6 +212,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
+    // ADDED manual radii (24px - 3px border = 21px)
+    borderTopLeftRadius: 21,
+    borderTopRightRadius: 21,
   },
   headerTitle: {
     fontSize: 16,
@@ -285,14 +287,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 20,
     marginBottom: 16,
-    overflow: "hidden",
+    // REMOVED overflow: 'hidden'
     borderWidth: 2,
     borderColor: Colors.border,
     borderBottomWidth: 5,
   },
   exerciseHeader: {
     padding: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: "transparent", // Transparent to match card
     borderBottomWidth: 2,
     borderBottomColor: Colors.border,
     flexDirection: "row",
@@ -309,7 +311,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   restText: { fontSize: 10, fontWeight: "800", color: Colors.textMuted },
-
+  exerciseContentWrapper: {
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    overflow: "hidden",
+  },
   tableHeader: {
     flexDirection: "row",
     paddingVertical: 10,
@@ -317,9 +323,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     alignItems: "center",
   },
-  // Fix the SET label to match the badge width
   colLabelSet: {
-    width: 40, // Match colSetContent width
+    width: 40,
     fontSize: 11,
     fontWeight: "900",
     color: Colors.placeholder,
@@ -332,7 +337,6 @@ const styles = StyleSheet.create({
     color: Colors.placeholder,
     textAlign: "center",
   },
-
   setRow: {
     flexDirection: "row",
     paddingVertical: 12,
@@ -341,7 +345,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  // Container for the badge to ensure it stays centered under the "SET" header
   colSetContent: {
     width: 40,
     alignItems: "center",
@@ -364,9 +367,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: "center",
   },
-  rowCompleted: { backgroundColor: "#233610" }, // Subdued Success Green
-
+  rowCompleted: { backgroundColor: "#233610" },
   setNumberText: { fontSize: 14, fontWeight: "900", color: Colors.text },
-
   unitText: { fontSize: 10, color: Colors.textMuted, fontWeight: "700" },
 });

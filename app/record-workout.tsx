@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Platform,
   UIManager,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // IMPORT
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
@@ -30,7 +30,7 @@ if (
 export default function RecordWorkoutScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets(); // HOOK
+  const insets = useSafeAreaInsets();
   const { templateId } = useLocalSearchParams<{ templateId: string }>();
 
   const {
@@ -59,6 +59,9 @@ export default function RecordWorkoutScreen() {
   );
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
 
+  // Trigger to open the bottom drawer
+  const [controlsExpandTrigger, setControlsExpandTrigger] = useState<number>(0);
+
   // Modal states
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [currentNoteExercise, setCurrentNoteExercise] = useState<string>("");
@@ -83,6 +86,13 @@ export default function RecordWorkoutScreen() {
     if (!isActive && !sessionId && !isExiting) startWorkout(templateId);
   }, [isActive, sessionId, templateId, isExiting]);
 
+  // 1. AUTO-EXPAND FIRST EXERCISE
+  useEffect(() => {
+    if (exercises.length > 0 && expandedExerciseId === null) {
+      setExpandedExerciseId(exercises[0].id);
+    }
+  }, [exercises.length]); // Run when exercises load
+
   useEffect(() => {
     const removeListener = navigation.addListener("beforeRemove", (e) => {
       if (isExiting) return;
@@ -95,6 +105,62 @@ export default function RecordWorkoutScreen() {
     });
     return removeListener;
   }, [navigation, isExiting]);
+
+  // 2. & 3. SMART VALIDATION & AUTO-ADVANCE LOGIC
+  const handleSetDone = (exerciseId: string, setId: string) => {
+    const exerciseIndex = exercises.findIndex((e) => e.id === exerciseId);
+    if (exerciseIndex === -1) return;
+
+    const exercise = exercises[exerciseIndex];
+    const set = exercise.sets.find((s) => s.id === setId);
+    if (!set) return;
+
+    const isInvalid = !set.reps || set.reps === "0";
+    const isAlreadyHighlighted = highlightedSets.has(setId);
+
+    // Validation Check
+    if (isInvalid && !isAlreadyHighlighted) {
+      // First click with error: Highlight RED
+      setHighlightedSets((prev) => new Set(prev).add(setId));
+      return;
+    }
+
+    // Valid OR Second Click (Forced): Complete the set
+    if (isAlreadyHighlighted) {
+      setHighlightedSets((prev) => {
+        const next = new Set(prev);
+        next.delete(setId);
+        return next;
+      });
+    }
+
+    markSetComplete(exerciseId, setId);
+
+    // Auto-Advance Logic
+    const setIndex = exercise.sets.findIndex((s) => s.id === setId);
+    const isLastSet = setIndex === exercise.sets.length - 1;
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    if (!isLastSet) {
+      // Go to next set
+      setExpandedSetId(exercise.sets[setIndex + 1].id);
+    } else {
+      // Exercise Complete
+      if (exerciseIndex < exercises.length - 1) {
+        // Open next exercise
+        const nextExercise = exercises[exerciseIndex + 1];
+        setExpandedExerciseId(nextExercise.id);
+        // Optional: Expand first set of next exercise
+        if (nextExercise.sets.length > 0) {
+          setExpandedSetId(nextExercise.sets[0].id);
+        }
+      } else {
+        // Last Exercise Complete: Open Controls
+        setControlsExpandTrigger(Date.now());
+      }
+    }
+  };
 
   const handleFinish = async () => {
     const invalidIds = new Set<string>();
@@ -146,13 +212,11 @@ export default function RecordWorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Manual SafeArea using padding to avoid clipping */}
       <View style={[styles.topSafeArea, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Text style={styles.headerSubtitle}>CURRENT MISSION</Text>
           <Text style={styles.headerTitle}>{sessionName?.toUpperCase()}</Text>
 
-          {/* Duo-style Progress Bar */}
           <View style={styles.progressBarBg}>
             <View
               style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
@@ -208,13 +272,7 @@ export default function RecordWorkoutScreen() {
               setActiveSetForTimer({ exId: exercise.id, setId });
               setTimerVisible(true);
             }}
-            onSetDone={(setId) => {
-              markSetComplete(exercise.id, setId);
-              const idx = exercise.sets.findIndex((s) => s.id === setId);
-              if (idx < exercise.sets.length - 1) {
-                setExpandedSetId(exercise.sets[idx + 1].id);
-              }
-            }}
+            onSetDone={(setId) => handleSetDone(exercise.id, setId)}
           />
         ))}
         <View style={{ height: 180 }} />
@@ -223,6 +281,7 @@ export default function RecordWorkoutScreen() {
       <ActiveWorkoutControls
         elapsedSeconds={elapsedSeconds}
         isPaused={isPaused}
+        autoExpandTrigger={controlsExpandTrigger}
         onPauseToggle={togglePause}
         onFinish={handleFinish}
         onCancel={handleCancel}
@@ -262,7 +321,7 @@ export default function RecordWorkoutScreen() {
         onComplete={() => {
           setTimerVisible(false);
           if (activeSetForTimer) {
-            markSetComplete(activeSetForTimer.exId, activeSetForTimer.setId);
+            handleSetDone(activeSetForTimer.exId, activeSetForTimer.setId);
             setActiveSetForTimer(null);
           }
         }}
@@ -277,7 +336,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
-    // No edges or SafeAreaView here, manual padding handled in JSX
   },
   header: {
     padding: 16,

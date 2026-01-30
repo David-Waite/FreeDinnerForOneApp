@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../../constants/Colors";
 import { ExerciseNote } from "../../constants/types";
@@ -54,16 +54,18 @@ export default function NotesModal({
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        // Increase this value to account for the header + status bar
+        keyboardVerticalOffset={Platform.OS === "ios" ? 110 : 0}
       >
         <View style={styles.container}>
+          {/* 3D DUO HEADER */}
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Notes</Text>
-              <Text style={styles.subtitle}>{exerciseName}</Text>
+              <Text style={styles.subtitle}>EXERCISE INTEL</Text>
+              <Text style={styles.title}>{exerciseName.toUpperCase()}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+            <TouchableOpacity onPress={onClose} style={styles.closeCircle}>
+              <Ionicons name="close" size={24} color={Colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -71,13 +73,25 @@ export default function NotesModal({
             data={notes}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            keyboardDismissMode="interactive" // iOS only: follows the finger
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
-              <View style={styles.noteItem}>
+              <View
+                style={[styles.noteItem, item.isPinned && styles.pinnedNote]}
+              >
                 <View style={styles.noteContent}>
                   <Text style={styles.noteText}>{item.text}</Text>
-                  <Text style={styles.noteDate}>
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </Text>
+                  <View style={styles.dateRow}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={10}
+                      color={Colors.placeholder}
+                    />
+                    <Text style={styles.noteDate}>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.actions}>
                   <TouchableOpacity
@@ -86,41 +100,55 @@ export default function NotesModal({
                   >
                     <Ionicons
                       name={item.isPinned ? "pin" : "pin-outline"}
-                      size={20}
-                      color={item.isPinned ? Colors.primary : Colors.placeholder}
+                      size={18}
+                      color={item.isPinned ? Colors.gold : Colors.placeholder}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onDeleteNote(item.id)}
                     style={styles.actionBtn}
                   >
-                    <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={Colors.error}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
             )}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  No notes yet for this exercise.
+                <MaterialCommunityIcons
+                  name="notebook-edit"
+                  size={60}
+                  color={Colors.border}
+                />
+                <Text style={styles.emptyText}>NO NOTES YET</Text>
+                <Text style={styles.emptySubText}>
+                  Add tips or cues for your future self!
                 </Text>
               </View>
             }
           />
 
+          {/* CHUNKY INPUT AREA */}
           <View
             style={[
               styles.inputContainer,
               { paddingBottom: Math.max(insets.bottom, 20) },
             ]}
           >
-            <TextInput
-              style={styles.input}
-              placeholder="Add a note..."
-              value={text}
-              onChangeText={setText}
-              multiline
-            />
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Type a cue..."
+                placeholderTextColor={Colors.placeholder}
+                value={text}
+                onChangeText={setText}
+                multiline
+              />
+            </View>
             <TouchableOpacity
               style={[
                 styles.sendButton,
@@ -129,11 +157,7 @@ export default function NotesModal({
               disabled={!text.trim()}
               onPress={handleSave}
             >
-              <Ionicons
-                name="arrow-up"
-                size={24}
-                color={text.trim() ? Colors.white : Colors.placeholder}
-              />
+              <Ionicons name="arrow-up" size={24} color={Colors.white} />
             </TouchableOpacity>
           </View>
         </View>
@@ -145,62 +169,141 @@ export default function NotesModal({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    backgroundColor: Colors.white,
-    padding: 16,
+    backgroundColor: Colors.surface,
+    padding: 20,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 1,
+    borderBottomWidth: 3,
     borderBottomColor: Colors.border,
   },
-  title: { fontSize: 20, fontWeight: "bold", color: Colors.text },
-  subtitle: { fontSize: 14, color: Colors.textMuted, marginTop: 2 },
-  closeButton: { padding: 4 },
+  title: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 2,
+  },
+  closeCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  inputContainer: {
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderTopWidth: 3,
+    borderTopColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+    // Ensure the container itself has a solid base
+    minHeight: 80,
+  },
   listContent: { padding: 16 },
   noteItem: {
-    backgroundColor: Colors.white,
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 20,
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "flex-start",
-    shadowColor: Colors.black,
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4, // Duo depth
+  },
+  pinnedNote: {
+    borderColor: Colors.gold,
+    borderBottomColor: "#cc9f00",
   },
   noteContent: { flex: 1 },
-  noteText: { fontSize: 16, color: Colors.text, marginBottom: 4 },
-  noteDate: { fontSize: 12, color: Colors.placeholder },
-  actions: { flexDirection: "row", paddingLeft: 8, gap: 8 },
-  actionBtn: { padding: 4 },
-  emptyContainer: { alignItems: "center", marginTop: 40 },
-  emptyText: { color: Colors.placeholder, fontSize: 16 },
-  inputContainer: {
-    backgroundColor: Colors.white,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+  noteText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  dateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 4,
+    marginTop: 8,
   },
-  input: {
+  noteDate: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: Colors.placeholder,
+    letterSpacing: 0.5,
+  },
+  actions: { flexDirection: "row", paddingLeft: 12, gap: 4 },
+  actionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 60,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    color: Colors.textMuted,
+    fontSize: 16,
+    fontWeight: "900",
+    marginTop: 16,
+    letterSpacing: 1,
+  },
+  emptySubText: {
+    color: Colors.placeholder,
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 4,
+  },
+
+  inputWrapper: {
     flex: 1,
     backgroundColor: Colors.background,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  input: {
     fontSize: 16,
+    fontWeight: "600",
     maxHeight: 100,
     color: Colors.text,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
+    borderBottomWidth: 4,
+    borderBottomColor: "#46a302",
   },
-  sendButtonDisabled: { backgroundColor: Colors.border },
+  sendButtonDisabled: {
+    backgroundColor: Colors.border,
+    borderBottomWidth: 0,
+    opacity: 0.5,
+  },
 });

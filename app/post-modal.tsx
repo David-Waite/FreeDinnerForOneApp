@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    overflow: "hidden",
+    // REMOVED overflow: 'hidden'
   },
   header: {
     flexDirection: "row",
@@ -311,6 +311,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
+    // ADDED Radii to Header
+    borderTopLeftRadius: 21,
+    borderTopRightRadius: 21,
   },
   headerTitle: {
     fontSize: 16,
@@ -345,7 +348,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlignVertical: "top",
   },
-
   attachedWorkoutCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -379,7 +381,6 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   removeWorkoutBtn: { padding: 4 },
-
   imageContainer: {
     borderRadius: 20,
     overflow: "hidden",
@@ -398,7 +399,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: "#a62626",
   },
-
   mediaButtonsContainer: { flexDirection: "row", gap: 15, marginBottom: 20 },
   mediaBtn: {
     flex: 1,
@@ -425,7 +425,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: 0.5,
   },
-
   addWorkoutFooterBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -456,6 +455,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    // REMOVED overflow: 'hidden'
   },
   pickerHeader: {
     flexDirection: "row",
@@ -464,6 +464,10 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 2,
     borderBottomColor: Colors.border,
+    // ADDED Radii to Header
+    borderTopLeftRadius: 21,
+    borderTopRightRadius: 21,
+    backgroundColor: Colors.surface, // Ensure it has a background
   },
   pickerTitle: {
     fontSize: 16,

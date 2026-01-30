@@ -111,21 +111,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 24,
     marginBottom: 16,
-    overflow: "hidden",
+    // REMOVED overflow: "hidden",
     borderWidth: 2,
     borderColor: Colors.border,
     borderBottomWidth: 6, // The "Duo" 3D Shelf
   },
   cardComplete: {
     borderColor: Colors.primary,
-    borderBottomColor: "#46a302", // Darker primary green
+    borderBottomColor: "#46a302",
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    backgroundColor: Colors.surface,
+    // REMOVED backgroundColor: Colors.surface so it doesn't need its own radius
   },
   cardHeaderActive: {
     borderBottomWidth: 2,
@@ -162,6 +162,9 @@ const styles = StyleSheet.create({
   cardBody: {
     padding: 12,
     backgroundColor: Colors.background,
+    // Manually mask the bottom corners
+    borderBottomLeftRadius: 18, // 24px - 6px border
+    borderBottomRightRadius: 18,
   },
   cardFooter: {
     flexDirection: "row",

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Animated,
   PanResponder,
-  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
@@ -14,6 +13,7 @@ import Colors from "../../constants/Colors";
 type Props = {
   elapsedSeconds: number;
   isPaused: boolean;
+  autoExpandTrigger?: number; // New prop to force open
   onPauseToggle: () => void;
   onFinish: () => void;
   onCancel: () => void;
@@ -36,6 +36,7 @@ const formatTime = (totalSeconds: number) => {
 export default function ActiveWorkoutControls({
   elapsedSeconds,
   isPaused,
+  autoExpandTrigger,
   onPauseToggle,
   onFinish,
   onCancel,
@@ -50,9 +51,18 @@ export default function ActiveWorkoutControls({
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  // Sync with Paused state
   useEffect(() => {
-    setIsOpen(isPaused);
+    if (isPaused) setIsOpen(true);
   }, [isPaused]);
+
+  // Watch for external trigger (e.g., workout finish)
+  useEffect(() => {
+    if (autoExpandTrigger && autoExpandTrigger > 0) {
+      setIsOpen(true);
+    }
+  }, [autoExpandTrigger]);
 
   useEffect(() => {
     Animated.spring(animValue, {
@@ -76,6 +86,7 @@ export default function ActiveWorkoutControls({
       },
       onPanResponderRelease: (_, gestureState) => {
         if (isOpenRef.current) {
+          // If open, close if dragged down significantly
           if (gestureState.dy > 60) setIsOpen(false);
           else
             Animated.spring(animValue, {
@@ -83,6 +94,7 @@ export default function ActiveWorkoutControls({
               useNativeDriver: true,
             }).start();
         } else {
+          // If closed, open if dragged up significantly
           if (gestureState.dy < -60) setIsOpen(true);
           else
             Animated.spring(animValue, {
@@ -102,7 +114,6 @@ export default function ActiveWorkoutControls({
       <View style={styles.header}>
         <View style={styles.dragHandle} />
         <View style={styles.timerRow}>
-          <Text style={styles.timerSubtitle}>ELAPSED TIME</Text>
           <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
         </View>
         <View style={styles.controlsRow}>

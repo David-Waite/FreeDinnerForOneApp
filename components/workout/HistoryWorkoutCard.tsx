@@ -147,13 +147,13 @@ export default function HistoryWorkoutCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surface, // Background is on the PARENT
     borderRadius: 20,
     marginBottom: 16,
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 5, // Duo 3D Effect
-    overflow: "hidden",
+    borderBottomWidth: 5,
+    // overflow: 'hidden' REMOVED so border doesn't get cut off
   },
   cardExpanded: {
     borderBottomWidth: 5,
@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
+    backgroundColor: "transparent", // Transparent so it uses Parent's top radius
   },
   headerLeft: { flex: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -206,9 +207,13 @@ const styles = StyleSheet.create({
   detailsContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: Colors.background, // Contrast background for expanded area
+    backgroundColor: Colors.background,
     borderTopWidth: 2,
     borderTopColor: Colors.border,
+    // INNER RADIUS CALCULATION:
+    // Outer Radius (20) - Bottom Border (5) = 15
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
   },
   exerciseBlock: {
     marginTop: 16,
