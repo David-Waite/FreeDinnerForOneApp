@@ -6,8 +6,10 @@ import {
   TouchableOpacity,
   Animated,
   PanResponder,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Colors from "../../constants/Colors";
 
 type Props = {
   elapsedSeconds: number;
@@ -15,7 +17,7 @@ type Props = {
   onPauseToggle: () => void;
   onFinish: () => void;
   onCancel: () => void;
-  onMinimize: () => void; // Added
+  onMinimize: () => void;
 };
 
 const DRAWER_HEIGHT = 420;
@@ -100,26 +102,27 @@ export default function ActiveWorkoutControls({
       <View style={styles.header}>
         <View style={styles.dragHandle} />
         <View style={styles.timerRow}>
+          <Text style={styles.timerSubtitle}>ELAPSED TIME</Text>
           <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
         </View>
         <View style={styles.controlsRow}>
           <View style={styles.leftContainer}>
             <TouchableOpacity style={styles.homeButton} onPress={onMinimize}>
-              <Ionicons name="home" size={24} color="#333" />
+              <Ionicons name="home" size={24} color={Colors.textMuted} />
             </TouchableOpacity>
           </View>
           <View style={styles.centerContainer}>
             <TouchableOpacity
               style={[
                 styles.mainActionButton,
-                isPaused ? styles.resumeColor : styles.pauseColor,
+                isPaused ? styles.resumeBtn : styles.pauseBtn,
               ]}
               onPress={onPauseToggle}
             >
               <Ionicons
                 name={isPaused ? "play" : "pause"}
                 size={38}
-                color="#000"
+                color={Colors.white}
               />
             </TouchableOpacity>
           </View>
@@ -129,10 +132,10 @@ export default function ActiveWorkoutControls({
       <View style={styles.body}>
         <View style={styles.actionsContainer}>
           <TouchableOpacity style={styles.finishButton} onPress={onFinish}>
-            <Text style={styles.finishText}>End Workout</Text>
+            <Text style={styles.finishText}>END WORKOUT</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelText}>Cancel Workout</Text>
+            <Text style={styles.cancelText}>ABANDON SESSION</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -147,12 +150,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: DRAWER_HEIGHT,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderColor: Colors.border,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.3,
     elevation: 20,
     zIndex: 1000,
   },
@@ -160,21 +167,27 @@ const styles = StyleSheet.create({
     height: HEADER_HEIGHT,
     paddingTop: 12,
     alignItems: "center",
-    paddingBottom: 20,
   },
   dragHandle: {
-    width: 48,
-    height: 6,
-    backgroundColor: "#e0e0e0",
+    width: 40,
+    height: 5,
+    backgroundColor: Colors.border,
     borderRadius: 3,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  timerRow: { marginBottom: 20, alignItems: "center" },
+  timerRow: { marginBottom: 16, alignItems: "center" },
+  timerSubtitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
   timerText: {
-    fontSize: 48,
-    fontWeight: "800",
+    fontSize: 54,
+    fontWeight: "900",
     fontVariant: ["tabular-nums"],
-    color: "#333",
+    color: Colors.text,
     letterSpacing: -1,
   },
   controlsRow: {
@@ -182,52 +195,76 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 40,
     alignItems: "center",
-    height: 80,
+    height: 84,
   },
   leftContainer: { flex: 1, alignItems: "flex-start" },
   centerContainer: { flex: 1, alignItems: "center" },
   rightContainer: { flex: 1 },
   homeButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#f2f2f7",
+    width: 54,
+    height: 54,
+    borderRadius: 15,
+    backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
   },
   mainActionButton: {
     width: 84,
     height: 84,
-    borderRadius: 42,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    elevation: 6,
+    borderBottomWidth: 6,
   },
-  pauseColor: { backgroundColor: "#FFD60A" },
-  resumeColor: { backgroundColor: "#32D74B" },
+  pauseBtn: {
+    backgroundColor: Colors.gold,
+    borderBottomColor: "#cc9f00",
+  },
+  resumeBtn: {
+    backgroundColor: Colors.primary,
+    borderBottomColor: "#46a302",
+  },
   body: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.surface,
+    borderTopWidth: 2,
+    borderTopColor: Colors.border,
   },
   actionsContainer: { gap: 16 },
   finishButton: {
     width: "100%",
-    backgroundColor: "#1c1c1e",
-    borderRadius: 18,
-    paddingVertical: 20,
+    backgroundColor: Colors.primary,
+    borderRadius: 20,
+    paddingVertical: 18,
     alignItems: "center",
+    borderBottomWidth: 5,
+    borderBottomColor: "#46a302",
   },
-  finishText: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  finishText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
   cancelButton: {
     width: "100%",
-    backgroundColor: "#ffeeee",
-    borderRadius: 18,
-    paddingVertical: 20,
+    backgroundColor: Colors.background,
+    borderRadius: 20,
+    paddingVertical: 18,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
   },
-  cancelText: { color: "#FF453A", fontSize: 20, fontWeight: "700" },
+  cancelText: {
+    color: Colors.error,
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
 });

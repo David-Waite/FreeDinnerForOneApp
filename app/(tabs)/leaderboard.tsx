@@ -7,7 +7,7 @@ import {
   Image,
   RefreshControl,
   ActivityIndicator,
-  ScrollView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
@@ -21,7 +21,7 @@ type LeaderboardUser = UserProfile & {
   score: number;
   rank: number;
   payment: number;
-  deficit: number; // For debugging/display
+  deficit: number;
 };
 
 const DINNER_PRICE = 320;
@@ -37,22 +37,17 @@ export default function LeaderboardScreen() {
 
   const calculateLeaderboard = async () => {
     try {
-      // 1. Fetch All Data
       const [users, posts] = await Promise.all([
         WorkoutRepository.getAllUsers(),
         WorkoutRepository.getPosts(),
       ]);
 
-      // 2. Count Scores
       const scores: Record<string, number> = {};
       users.forEach((u) => (scores[u.uid] = 0));
       posts.forEach((post) => {
-        if (scores[post.authorId] !== undefined) {
-          scores[post.authorId]++;
-        }
+        if (scores[post.authorId] !== undefined) scores[post.authorId]++;
       });
 
-      // 3. Create Ranked List
       let rankedUsers: LeaderboardUser[] = users.map((u) => ({
         ...u,
         score: scores[u.uid] || 0,
@@ -61,85 +56,58 @@ export default function LeaderboardScreen() {
         deficit: 0,
       }));
 
-      // Sort Descending
       rankedUsers.sort((a, b) => b.score - a.score);
 
-      // Assign Ranks (Handle ties correctly in ranking display)
-      // If two people have rank 1, the next person is rank 3
       let currentRank = 1;
       for (let i = 0; i < rankedUsers.length; i++) {
-        if (i > 0 && rankedUsers[i].score < rankedUsers[i - 1].score) {
+        if (i > 0 && rankedUsers[i].score < rankedUsers[i - 1].score)
           currentRank = i + 1;
-        }
         rankedUsers[i].rank = currentRank;
       }
 
-      // 4. Calculate Payments
       const playerCount = rankedUsers.length;
       const totalCost = DINNER_PRICE * playerCount;
       setTotalPool(totalCost);
 
       if (playerCount > 0) {
         const topScore = rankedUsers[0].score;
-
-        // Identify Winners (Everyone tied for first)
         const winners = rankedUsers.filter((u) => u.score === topScore);
         const losers = rankedUsers.filter((u) => u.score < topScore);
 
-        // CASE 1: Everyone is Equal
         if (losers.length === 0) {
-          // Everyone pays an equal share
           const equalShare = totalCost / playerCount;
           rankedUsers.forEach((u) => (u.payment = equalShare));
-          setSplitMode("friendly"); // Default to friendly UI
+          setSplitMode("friendly");
         } else {
-          // CASE 2: There are winners and losers
-          // Determine Split Mode based on gap between last and second last
           const lastPlace = rankedUsers[playerCount - 1];
           const secondLast = rankedUsers[playerCount - 2];
-          const gap = secondLast.score - lastPlace.score;
-          const isMotivational = gap >= 20;
-
+          const isMotivational = secondLast.score - lastPlace.score >= 20;
           setSplitMode(isMotivational ? "motivational" : "friendly");
 
-          // Winners always pay $0 (unless everyone is equal, handled above)
           winners.forEach((u) => (u.payment = 0));
-
           if (isMotivational) {
-            // --- MOTIVATIONAL SPLIT ---
-            // Losers pay based on their deficit from the winner
             let totalDeficit = 0;
             losers.forEach((u) => {
               u.deficit = topScore - u.score;
               totalDeficit += u.deficit;
             });
-
-            if (totalDeficit > 0) {
-              losers.forEach((u) => {
-                u.payment = (u.deficit / totalDeficit) * totalCost;
-              });
-            }
+            losers.forEach(
+              (u) => (u.payment = (u.deficit / totalDeficit) * totalCost),
+            );
           } else {
-            // --- FRIENDLY SPLIT ---
-            // Losers pay based on inverse proportion
             let sumInverse = 0;
-            losers.forEach((u) => {
-              // Ensure score is at least 0.1 to avoid divide by zero
-              const safeScore = Math.max(u.score, 0.1);
-              sumInverse += 1 / safeScore;
-            });
-
-            losers.forEach((u) => {
-              const safeScore = Math.max(u.score, 0.1);
-              u.payment = (1 / safeScore / sumInverse) * totalCost;
-            });
+            losers.forEach((u) => (sumInverse += 1 / Math.max(u.score, 0.1)));
+            losers.forEach(
+              (u) =>
+                (u.payment =
+                  (1 / Math.max(u.score, 0.1) / sumInverse) * totalCost),
+            );
           }
         }
       }
-
       setLeaderboardData(rankedUsers);
     } catch (e) {
-      console.error("Leaderboard calc failed", e);
+      console.error(e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -152,40 +120,35 @@ export default function LeaderboardScreen() {
     }, []),
   );
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    calculateLeaderboard();
-  };
-
   const renderItem = ({ item }: { item: LeaderboardUser }) => {
     const isMe = item.uid === auth.currentUser?.uid;
     const isWinner = item.rank === 1;
-    const isLast = item.rank === leaderboardData.length;
 
     return (
       <View style={[styles.card, isMe && styles.myCard]}>
         <View style={styles.rankContainer}>
           {isWinner ? (
-            <MaterialCommunityIcons name="crown" size={24} color="#FFD700" />
+            <MaterialCommunityIcons
+              name="crown"
+              size={28}
+              color={Colors.gold}
+            />
           ) : (
-            <Text style={styles.rankText}>#{item.rank}</Text>
+            <Text style={styles.rankText}>{item.rank}</Text>
           )}
         </View>
 
         {item.photoURL ? (
           <Image source={{ uri: item.photoURL }} style={styles.avatar} />
         ) : (
-          <View style={styles.avatarPlaceholder}>
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
             <Text style={styles.avatarLetter}>{item.displayName?.[0]}</Text>
           </View>
         )}
 
         <View style={styles.infoContainer}>
           <Text style={styles.nameText}>{item.displayName}</Text>
-          <Text style={styles.scoreText}>{item.score} Workouts</Text>
-
-          {/* Debugging Text for Split Logic - Optional */}
-          {/* <Text style={{fontSize: 10, color: '#999'}}>Deficit: {item.deficit}</Text> */}
+          <Text style={styles.scoreText}>{item.score} POINTS</Text>
         </View>
 
         <View style={styles.paymentContainer}>
@@ -193,35 +156,26 @@ export default function LeaderboardScreen() {
           <Text
             style={[
               styles.paymentAmount,
-              item.payment === 0
-                ? styles.freeText
-                : item.payment > 320
-                  ? styles.highCost
-                  : null,
+              item.payment === 0 && { color: Colors.primary },
             ]}
           >
-            ${item.payment.toFixed(2)}
+            ${item.payment.toFixed(0)}
           </Text>
         </View>
       </View>
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Dinner Comp</Text>
+        <View>
+          <Text style={styles.headerSubtitle}>DINNER COMP</Text>
+          <Text style={styles.title}>Leaderboard</Text>
+        </View>
         <View style={styles.poolBadge}>
-          <Text style={styles.poolLabel}>TOTAL POT</Text>
           <Text style={styles.poolValue}>${totalPool}</Text>
+          <Text style={styles.poolLabel}>TOTAL POT</Text>
         </View>
       </View>
 
@@ -234,9 +188,9 @@ export default function LeaderboardScreen() {
         ]}
       >
         <Ionicons
-          name={splitMode === "motivational" ? "flame" : "people"}
+          name={splitMode === "motivational" ? "flame" : "shield-checkmark"}
           size={20}
-          color="#fff"
+          color={Colors.white}
         />
         <Text style={styles.modeText}>
           {splitMode === "motivational"
@@ -251,7 +205,14 @@ export default function LeaderboardScreen() {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              calculateLeaderboard();
+            }}
+            tintColor={Colors.primary}
+          />
         }
         ListFooterComponent={
           <Text style={styles.footerText}>
@@ -267,94 +228,112 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f7" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    padding: 20,
-    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: Colors.background,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
   },
-  title: { fontSize: 24, fontWeight: "800", color: "#333" },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: Colors.textMuted,
+    letterSpacing: 1,
+  },
+  title: { fontSize: 28, fontWeight: "900", color: Colors.text },
 
   poolBadge: {
-    alignItems: "flex-end",
+    backgroundColor: Colors.surface,
+    padding: 10,
+    borderRadius: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.border,
+    alignItems: "center",
   },
-  poolLabel: { fontSize: 10, fontWeight: "700", color: "#888" },
-  poolValue: { fontSize: 20, fontWeight: "900", color: Colors.primary },
+  poolLabel: { fontSize: 8, fontWeight: "800", color: Colors.textMuted },
+  poolValue: { fontSize: 18, fontWeight: "900", color: Colors.gold },
 
   modeBanner: {
+    margin: 16,
     padding: 12,
+    borderRadius: 15,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+    borderBottomWidth: 4,
   },
-  modeFriendly: { backgroundColor: "#34C759" }, // Green
-  modeMotivational: { backgroundColor: "#FF3B30" }, // Red
-  modeText: { color: "#fff", fontWeight: "800", letterSpacing: 1 },
+  modeFriendly: { backgroundColor: Colors.info, borderBottomColor: "#1899d6" },
+  modeMotivational: {
+    backgroundColor: Colors.error,
+    borderBottomColor: "#d33131",
+  },
+  modeText: {
+    color: Colors.white,
+    fontWeight: "900",
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
 
   listContent: { padding: 16 },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.surface,
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderRadius: 20,
+    marginBottom: 14,
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.border,
   },
   myCard: {
-    borderWidth: 2,
+    backgroundColor: "#233640", // Darker blue-navy
     borderColor: Colors.primary,
-    backgroundColor: "#f0f9ff",
+    borderBottomColor: "#46a302",
+    borderWidth: 2,
+    borderBottomWidth: 5,
   },
-  rankContainer: {
-    width: 30,
-    alignItems: "center",
-    marginRight: 10,
-  },
-  rankText: { fontSize: 16, fontWeight: "700", color: "#666" },
+  rankContainer: { width: 35, alignItems: "center", marginRight: 10 },
+  rankText: { fontSize: 18, fontWeight: "900", color: Colors.textMuted },
 
-  avatar: { width: 48, height: 48, borderRadius: 24, marginRight: 12 },
+  avatar: {
+    width: 55,
+    height: 55,
+    borderRadius: 15,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
   avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#ddd",
+    backgroundColor: Colors.border,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
-  avatarLetter: { fontSize: 20, fontWeight: "bold", color: "#fff" },
+  avatarLetter: { fontSize: 22, fontWeight: "900", color: Colors.text },
 
   infoContainer: { flex: 1 },
-  nameText: { fontSize: 16, fontWeight: "700", color: "#333", marginBottom: 2 },
-  scoreText: { fontSize: 14, color: "#666" },
+  nameText: { fontSize: 17, fontWeight: "800", color: Colors.text },
+  scoreText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
 
   paymentContainer: { alignItems: "flex-end" },
-  paymentLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#ccc",
-    marginBottom: 2,
-  },
-  paymentAmount: { fontSize: 18, fontWeight: "700", color: "#333" },
-  freeText: { color: "#34C759" }, // Green for $0
-  highCost: { color: "#FF3B30" }, // Red for high cost
+  paymentLabel: { fontSize: 10, fontWeight: "800", color: Colors.placeholder },
+  paymentAmount: { fontSize: 20, fontWeight: "900", color: Colors.text },
 
+  footerContainer: { marginTop: "auto", padding: 20, alignItems: "center" },
   footerText: {
     textAlign: "center",
-    marginTop: 20,
-    color: "#999",
-    fontSize: 12,
-    lineHeight: 18,
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

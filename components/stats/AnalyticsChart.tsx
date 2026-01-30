@@ -104,7 +104,7 @@ export default function AnalyticsChart({
           padding={{ top: 10, bottom: 0, left: 0, right: 0 }}
           axisOptions={{
             font,
-            labelColor: "#000",
+            labelColor: Colors.text,
             formatXLabel: (v) => {
               const d = new Date(v);
               return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
@@ -165,7 +165,7 @@ export default function AnalyticsChart({
 const styles = StyleSheet.create({
   container: {
     height: 320,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 8,
   },
@@ -175,19 +175,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyText: { color: "#999" },
+  emptyText: { color: Colors.placeholder },
   activeLabel: { alignItems: "center", marginTop: 12, height: 70 },
   activeValue: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: Colors.text,
     textAlign: "center",
     width: "100%",
     padding: 0,
   },
   activeDate: {
     fontSize: 14,
-    color: "#888",
+    color: Colors.placeholder,
     marginTop: -5,
     textAlign: "center",
     width: "100%",

@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Colors from "../../constants/Colors";
 
 type Props = {
   visible: boolean;
@@ -95,7 +96,7 @@ export default function ReactionPicker({
             <View style={styles.divider} />
 
             <TouchableOpacity style={styles.plusBtn} onPress={handlePlusPress}>
-              <Ionicons name="add" size={20} color="#555" />
+              <Ionicons name="add" size={20} color={Colors.textMuted} />
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -121,12 +122,12 @@ const styles = StyleSheet.create({
   barContainer: {
     position: "absolute",
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 30,
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -139,13 +140,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 18,
-    backgroundColor: "#f5f5f7",
+    backgroundColor: Colors.background,
   },
   emojiText: { fontSize: 22 },
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: "#eee",
+    backgroundColor: Colors.border,
     marginHorizontal: 4,
   },
   plusBtn: {
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 18,
-    backgroundColor: "#eee",
+    backgroundColor: Colors.border,
   },
   hiddenInputContainer: {
     position: "absolute",

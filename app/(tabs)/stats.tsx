@@ -9,9 +9,10 @@ import {
   Modal,
   FlatList,
   Image,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useExerciseStats } from "../../hooks/useExerciseStats";
 import AnalyticsChart from "../../components/stats/AnalyticsChart";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
@@ -28,23 +29,18 @@ type ChartMode =
   | "weight";
 
 export default function StatsScreen() {
-  // 1. User Selection State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [userModalVisible, setUserModalVisible] = useState(false);
-
-  // 2. Exercise Selection
   const [selectedExercise, setSelectedExercise] =
     useState<MasterExercise | null>(null);
   const [exerciseList, setExerciseList] = useState<MasterExercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [mode, setMode] = useState<ChartMode>("volume");
 
-  // 3. Determine User ID for the hook (Undefined = Me, String = Friend)
   const targetUserId =
     currentUser?.uid === auth.currentUser?.uid ? undefined : currentUser?.uid;
 
-  // 4. USE THE HOOK (Handles both Local and Remote)
   const {
     volumeData,
     oneRMData,
@@ -55,7 +51,6 @@ export default function StatsScreen() {
     refreshStats,
   } = useExerciseStats(selectedExercise?.name || null, targetUserId);
 
-  // Initial Load
   useEffect(() => {
     loadInitData();
   }, []);
@@ -65,31 +60,18 @@ export default function StatsScreen() {
       WorkoutRepository.getAllUsers(),
       WorkoutRepository.getMasterExercises(),
     ]);
-
     setAllUsers(users);
     setExerciseList(exercises);
-
-    // Default to Me
     const me = users.find((u) => u.uid === auth.currentUser?.uid);
     if (me) setCurrentUser(me);
-
-    // Default Exercise
     if (exercises.length > 0) setSelectedExercise(exercises[0]);
   };
 
-  const handleUserSelect = (user: UserProfile) => {
-    setCurrentUser(user);
-    setUserModalVisible(false);
-  };
-
-  // Determine Permissions / Visibility
   const isMe = !targetUserId;
   const showWorkouts = isMe || !currentUser?.privacySettings?.encryptWorkouts;
   const showWeight = isMe || !currentUser?.privacySettings?.encryptBodyWeight;
 
-  // Chart Configuration
-  let chartData = [];
-  let chartType: "line" | "bar" = "line"; // <--- Explicit Type
+  let chartData: any[] = [];
   let unit = "";
   let color = Colors.primary;
 
@@ -97,55 +79,52 @@ export default function StatsScreen() {
     case "volume":
       chartData = volumeData;
       unit = "kg";
-      color = "#32ADE6";
+      color = Colors.info;
       break;
     case "actual":
       chartData = maxStrengthData;
       unit = "kg";
-      color = "#34C759";
+      color = Colors.success;
       break;
     case "estimated":
       chartData = oneRMData;
       unit = "kg";
-      color = "#FF9500";
+      color = Colors.gold;
       break;
     case "consistency":
       chartData = consistencyData;
-      chartType = "bar"; // <--- Bar Chart
-      unit = "Workouts";
-      color = "#AF52DE";
+      unit = "days";
+      color = Colors.purple;
       break;
     case "time":
       chartData = durationData;
-      unit = "mins";
-      color = "#FF2D55";
+      unit = "min";
+      color = Colors.error;
       break;
     case "weight":
       chartData = bodyWeightData;
       unit = "kg";
-      color = "#007AFF";
+      color = Colors.primary;
       break;
   }
 
-  // Hide specific exercise modes if user has hidden workouts
-  useEffect(() => {
-    if (!showWorkouts && mode !== "weight") {
-      setMode("weight"); // Fallback if workouts are hidden
-    }
-  }, [showWorkouts]);
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* HEADER */}
+      {/* 1. HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Analytics</Text>
+        <View>
+          <Text style={styles.headerSubtitle}>YOUR PROGRESS</Text>
+          <Text style={styles.headerTitle}>Analytics</Text>
+        </View>
         <TouchableOpacity
           style={styles.userSelector}
           onPress={() => setUserModalVisible(true)}
         >
-          <Text style={styles.selectorText}>
-            {isMe ? "My Stats" : currentUser?.displayName}
-          </Text>
+          <View style={styles.smallAvatar}>
+            <Text style={styles.smallAvatarText}>
+              {currentUser?.displayName?.[0]}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color={Colors.primary} />
         </TouchableOpacity>
       </View>
@@ -153,22 +132,26 @@ export default function StatsScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={false} onRefresh={refreshStats} />
+          <RefreshControl
+            refreshing={false}
+            onRefresh={refreshStats}
+            tintColor={Colors.primary}
+          />
         }
       >
-        {/* TABS */}
+        {/* 2. MODE TABS */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.tabsContainer}
         >
           {[
-            { key: "volume", label: "Volume", visible: showWorkouts },
-            { key: "actual", label: "Max Strength", visible: showWorkouts },
-            { key: "estimated", label: "Est. 1RM", visible: showWorkouts },
-            { key: "consistency", label: "Consistency", visible: showWorkouts },
-            { key: "time", label: "Duration", visible: showWorkouts },
-            { key: "weight", label: "Body Weight", visible: showWeight },
+            { key: "volume", label: "VOLUME", visible: showWorkouts },
+            { key: "actual", label: "STRENGTH", visible: showWorkouts },
+            { key: "estimated", label: "1RM", visible: showWorkouts },
+            { key: "consistency", label: "CONSISTENCY", visible: showWorkouts },
+            { key: "time", label: "DURATION", visible: showWorkouts },
+            { key: "weight", label: "WEIGHT", visible: showWeight },
           ].map(
             (m) =>
               m.visible && (
@@ -190,59 +173,66 @@ export default function StatsScreen() {
           )}
         </ScrollView>
 
-        {/* LOCKED STATE */}
+        {/* 3. CHART & CONTROLS */}
         {(!showWorkouts && mode !== "weight") ||
         (!showWeight && mode === "weight") ? (
           <View style={styles.privateCard}>
-            <Ionicons name="lock-closed-outline" size={48} color="#ccc" />
-            <Text style={styles.privateText}>This data is private.</Text>
+            <MaterialCommunityIcons
+              name="shield-lock"
+              size={64}
+              color={Colors.border}
+            />
+            <Text style={styles.privateTitle}>PRIVATE LEAGUE</Text>
+            <Text style={styles.privateText}>
+              This user has locked their stats board.
+            </Text>
           </View>
         ) : (
           <>
-            {/* EXERCISE SELECTOR (Only for specific modes) */}
             {["volume", "actual", "estimated"].includes(mode) && (
               <TouchableOpacity
                 style={styles.exerciseSelector}
                 onPress={() => setPickerVisible(true)}
               >
                 <View>
-                  <Text style={styles.selectorLabel}>
-                    Tracking Analysis For
-                  </Text>
+                  <Text style={styles.selectorLabel}>CURRENT EXERCISE</Text>
                   <Text style={styles.selectorValue}>
-                    {selectedExercise?.name || "Select Exercise"}
+                    {selectedExercise?.name || "SELECT..."}
                   </Text>
                 </View>
-                <Ionicons name="chevron-down" size={20} color="#999" />
+                <View style={styles.selectorIconCircle}>
+                  <Ionicons name="search" size={18} color={Colors.primary} />
+                </View>
               </TouchableOpacity>
             )}
 
-            {/* CHART */}
-            <View style={styles.chartContainer}>
+            <View style={styles.chartCard}>
               <AnalyticsChart
                 data={chartData}
-                type={chartType} // <--- Correctly Typed
+                type="line"
                 color={color}
                 unit={unit}
               />
             </View>
 
-            {/* STATS GRID */}
+            {/* 4. STATS GRID */}
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Data Points</Text>
+                <Text style={styles.statLabel}>ENTRIES</Text>
                 <Text style={styles.statValue}>{chartData.length}</Text>
               </View>
-              <View style={styles.statBox}>
+              <View
+                style={[styles.statBox, { borderBottomColor: Colors.gold }]}
+              >
                 <Text style={styles.statLabel}>
-                  {mode === "weight" ? "Current" : "Peak"}
+                  {mode === "weight" ? "CURRENT" : "PEAK"}
                 </Text>
-                <Text style={styles.statValue}>
+                <Text style={[styles.statValue, { color: Colors.gold }]}>
                   {chartData.length > 0
                     ? mode === "weight"
                       ? chartData[chartData.length - 1].y
                       : Math.max(...chartData.map((d) => d.y))
-                    : "-"}{" "}
+                    : "-"}
                   {unit}
                 </Text>
               </View>
@@ -251,220 +241,287 @@ export default function StatsScreen() {
         )}
       </ScrollView>
 
-      {/* MODALS */}
-      {/* Exercise Picker */}
-      <Modal
-        visible={pickerVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Select Exercise</Text>
-          <TouchableOpacity onPress={() => setPickerVisible(false)}>
-            <Text style={styles.closeText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={exerciseList}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.pickerItem}
-              onPress={() => {
-                setSelectedExercise(item);
-                setPickerVisible(false);
-              }}
-            >
-              <Text style={styles.pickerItemText}>{item.name}</Text>
-              {selectedExercise?.id === item.id && (
-                <Ionicons name="checkmark" size={20} color={Colors.primary} />
-              )}
-            </TouchableOpacity>
-          )}
-        />
-      </Modal>
-
-      {/* User Picker */}
+      {/* USER PICKER MODAL */}
       <Modal
         visible={userModalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Select User</Text>
-          <TouchableOpacity onPress={() => setUserModalVisible(false)}>
-            <Text style={styles.closeText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={allUsers}
-          keyExtractor={(item) => item.uid}
-          renderItem={({ item }) => {
-            const isHidden =
-              item.privacySettings?.encryptWorkouts &&
-              item.privacySettings?.encryptBodyWeight;
-            const isSelected = item.uid === currentUser?.uid;
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.pickerItem,
-                  isSelected && { backgroundColor: "#f0f9ff" },
-                ]}
-                onPress={() => handleUserSelect(item)}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
+        <View style={styles.modalWrapper}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>SELECT ATHLETE</Text>
+              <TouchableOpacity onPress={() => setUserModalVisible(false)}>
+                <Ionicons name="close" size={28} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={allUsers}
+              keyExtractor={(item) => item.uid}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.pickerItem,
+                    item.uid === currentUser?.uid && styles.activePickerItem,
+                  ]}
+                  onPress={() => {
+                    setCurrentUser(item);
+                    setUserModalVisible(false);
                   }}
                 >
-                  {/* Avatar Placeholder */}
-                  <View
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: Colors.primary,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                  <View style={styles.pickerAvatar}>
+                    <Text style={styles.pickerAvatarText}>
                       {item.displayName[0]}
                     </Text>
                   </View>
-                  <View>
-                    <Text
-                      style={[
-                        styles.pickerItemText,
-                        isHidden && { color: "#999" },
-                      ]}
-                    >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pickerItemText}>
                       {item.uid === auth.currentUser?.uid
-                        ? "Me"
+                        ? "Me (Champion)"
                         : item.displayName}
                     </Text>
-                    {isHidden && (
-                      <Text style={{ fontSize: 10, color: "#999" }}>
-                        Private Profile
-                      </Text>
-                    )}
                   </View>
-                </View>
-                {isSelected && (
-                  <Ionicons name="checkmark" size={20} color={Colors.primary} />
-                )}
+                  {item.uid === currentUser?.uid && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={24}
+                      color={Colors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* EXERCISE PICKER MODAL */}
+      <Modal
+        visible={pickerVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalWrapper}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>SELECT EXERCISE</Text>
+              <TouchableOpacity onPress={() => setPickerVisible(false)}>
+                <Ionicons name="close" size={28} color={Colors.textMuted} />
               </TouchableOpacity>
-            );
-          }}
-        />
+            </View>
+            <FlatList
+              data={exerciseList}
+              keyExtractor={(i) => i.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.pickerItem}
+                  onPress={() => {
+                    setSelectedExercise(item);
+                    setPickerVisible(false);
+                  }}
+                >
+                  <Text style={styles.pickerItemText}>{item.name}</Text>
+                  {selectedExercise?.id === item.id && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={24}
+                      color={Colors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f7" },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    padding: 20,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 28, fontWeight: "bold", color: Colors.text },
+  headerSubtitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+  },
+  headerTitle: { fontSize: 28, fontWeight: "900", color: Colors.text },
   userSelector: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#eef2ff",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    backgroundColor: Colors.surface,
+    padding: 8,
+    borderRadius: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.border,
+    gap: 8,
   },
-  selectorText: { color: Colors.primary, fontWeight: "600", fontSize: 14 },
+  smallAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  smallAvatarText: { color: Colors.white, fontSize: 12, fontWeight: "900" },
+
   scrollContent: { padding: 16 },
 
-  // Tabs
-  tabsContainer: { flexDirection: "row", marginBottom: 16, height: 40 },
+  tabsContainer: { marginBottom: 20 },
   tab: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "#fff",
+    borderRadius: 15,
+    backgroundColor: Colors.surface,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.border,
   },
-  activeTab: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  tabText: { fontWeight: "600", color: "#666" },
-  activeTabText: { color: "#fff" },
+  activeTab: { backgroundColor: Colors.primary, borderBottomColor: "#46a302" },
+  tabText: { fontWeight: "900", color: Colors.textMuted, fontSize: 12 },
+  activeTabText: { color: Colors.white },
 
-  // Selectors
   exerciseSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.surface,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     marginBottom: 16,
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.border,
   },
   selectorLabel: {
-    fontSize: 12,
-    color: "#999",
-    textTransform: "uppercase",
-    marginBottom: 4,
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.placeholder,
+    letterSpacing: 1,
   },
-  selectorValue: { fontSize: 18, fontWeight: "600", color: "#333" },
+  selectorValue: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: Colors.text,
+    marginTop: 4,
+  },
+  selectorIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 
-  chartContainer: { marginBottom: 16 },
+  chartCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.border,
+  },
 
-  // Stats Grid
-  statsGrid: { flexDirection: "row", gap: 12 },
+  statsGrid: { flexDirection: "row", gap: 12, marginBottom: 30 },
   statBox: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.surface,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: "center",
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.border,
   },
-  statLabel: { fontSize: 12, color: "#999", marginBottom: 4 },
-  statValue: { fontSize: 20, fontWeight: "bold", color: "#333" },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.placeholder,
+    marginBottom: 4,
+  },
+  statValue: { fontSize: 22, fontWeight: "900", color: Colors.text },
 
-  // Private Card
   privateCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
     padding: 40,
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.border,
   },
-  privateText: { marginTop: 10, color: "#999", fontSize: 16 },
+  privateTitle: {
+    marginTop: 15,
+    fontSize: 18,
+    fontWeight: "900",
+    color: Colors.text,
+  },
+  privateText: {
+    marginTop: 5,
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 
-  // Modals
+  modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderTopWidth: 3,
+    borderColor: Colors.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
   modalHeader: {
-    padding: 16,
+    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold" },
-  closeText: { color: Colors.primary, fontSize: 16, fontWeight: "600" },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 1,
+  },
   pickerItem: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 15,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.border,
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  activePickerItem: {
+    borderColor: Colors.primary,
+    borderBottomColor: "#46a302",
+    borderWidth: 2,
+  },
+  pickerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
     alignItems: "center",
   },
-  pickerItemText: { fontSize: 16, color: "#333" },
+  pickerAvatarText: { color: Colors.white, fontWeight: "900", fontSize: 18 },
+  pickerItemText: { fontSize: 16, fontWeight: "800", color: Colors.text },
 });

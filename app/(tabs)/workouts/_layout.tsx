@@ -3,17 +3,22 @@ import Colors from "../../../constants/Colors";
 
 export default function WorkoutsLayout() {
   return (
-    <Stack screenOptions={{ headerTintColor: Colors.primary }}>
-      {/* 1. Dashboard (Calendar) */}
-      <Stack.Screen name="index" options={{ title: "History" }} />
+    <Stack
+      screenOptions={{
+        headerTintColor: Colors.primary,
+        headerStyle: { backgroundColor: Colors.background },
+        headerTitleStyle: { fontWeight: "900" },
+        headerShadowVisible: false,
+      }}
+    >
+      {/* Disable native header for History to use custom Duo header */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
 
-      {/* 2. New Workout (Template Picker) */}
-      <Stack.Screen name="new" options={{ title: "Start Workout" }} />
+      <Stack.Screen name="new" options={{ title: "START WORKOUT" }} />
 
-      {/* 3. Editor */}
       <Stack.Screen
         name="template-editor"
-        options={{ title: "Edit Template", presentation: "modal" }}
+        options={{ title: "EDIT TEMPLATE", presentation: "modal" }}
       />
     </Stack>
   );

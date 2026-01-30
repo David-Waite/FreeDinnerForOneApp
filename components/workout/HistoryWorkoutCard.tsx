@@ -12,7 +12,7 @@ import {
   WorkoutSession,
   NotesStorage,
   ExerciseNote,
-} from "../..//constants/types";
+} from "../../constants/types";
 import Colors from "../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -26,7 +26,7 @@ if (
 type Props = {
   workout: WorkoutSession;
   defaultExpanded: boolean;
-  allNotes: NotesStorage; // Pass all notes to check against
+  allNotes: NotesStorage;
   onViewNotes: (notes: ExerciseNote[]) => void;
 };
 
@@ -47,61 +47,58 @@ export default function HistoryWorkoutCard({
     setExpanded(!expanded);
   };
 
-  // Logic: Find notes for these exercises that were created on the SAME DAY as the workout
   const sessionNotes = useMemo(() => {
     const relevantNotes: ExerciseNote[] = [];
-
     workout.exercises.forEach((ex) => {
       const exerciseNotes = allNotes[ex.name] || [];
       const notesForSession = exerciseNotes.filter(
         (n) => n.sessionId === workout.id,
       );
-
-      // Inject exerciseName if missing (for legacy data or safety)
       const notesWithContext = notesForSession.map((n) => ({
         ...n,
         exerciseName: n.exerciseName || ex.name,
       }));
-
       relevantNotes.push(...notesWithContext);
     });
-
     return relevantNotes;
   }, [workout, allNotes]);
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, expanded && styles.cardExpanded]}>
       <TouchableOpacity
         style={styles.cardHeader}
         onPress={toggle}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         <View style={styles.headerLeft}>
-          <Text style={styles.cardTitle}>{workout.name}</Text>
-          <Text style={styles.cardTime}>
-            {new Date(workout.date).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
+          <Text style={styles.cardTitle}>{workout.name.toUpperCase()}</Text>
+          <View style={styles.timeBadge}>
+            <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+            <Text style={styles.cardTime}>
+              {new Date(workout.date).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.headerRight}>
-          {/* Notes Icon - Only visible if there are notes for this session */}
           {sessionNotes.length > 0 && (
             <TouchableOpacity
               style={styles.noteIcon}
               onPress={() => onViewNotes(sessionNotes)}
             >
-              <Ionicons name="document-text" size={20} color={Colors.primary} />
+              <Ionicons name="document-text" size={18} color={Colors.primary} />
             </TouchableOpacity>
           )}
-
-          <Ionicons
-            name={expanded ? "chevron-up" : "chevron-down"}
-            size={20}
-            color="#999"
-          />
+          <View style={styles.chevronCircle}>
+            <Ionicons
+              name={expanded ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={Colors.textMuted}
+            />
+          </View>
         </View>
       </TouchableOpacity>
 
@@ -113,27 +110,35 @@ export default function HistoryWorkoutCard({
 
             return (
               <View key={ex.id} style={styles.exerciseBlock}>
-                <Text style={styles.exerciseName}>{ex.name}</Text>
-                <View style={styles.setRowHeader}>
-                  <Text style={[styles.colText, styles.colSet]}>Set</Text>
-                  <Text style={styles.colText}>kg</Text>
-                  <Text style={styles.colText}>Reps</Text>
+                <View style={styles.exerciseHeader}>
+                  <Text style={styles.exerciseName}>{ex.name}</Text>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countText}>
+                      {completedSets.length} SETS
+                    </Text>
+                  </View>
                 </View>
+
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.colText, styles.colSet]}>SET</Text>
+                  <Text style={styles.colText}>KG</Text>
+                  <Text style={styles.colText}>REPS</Text>
+                </View>
+
                 {completedSets.map((set, index) => (
                   <View key={set.id} style={styles.setRow}>
-                    <View style={styles.setBadge}>
-                      <Text style={styles.setText}>{index + 1}</Text>
+                    <View style={styles.setNumberContainer}>
+                      <View style={styles.setBadge}>
+                        <Text style={styles.setText}>{index + 1}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.valText}>{set.weight}</Text>
-                    <Text style={styles.valText}>{set.reps}</Text>
+                    <Text style={styles.valText}>{set.weight || "-"}</Text>
+                    <Text style={styles.valText}>{set.reps || "-"}</Text>
                   </View>
                 ))}
               </View>
             );
           })}
-          {workout.exercises.every(
-            (e) => e.sets.filter((s) => s.completed).length === 0,
-          ) && <Text style={styles.emptyText}>No sets completed.</Text>}
         </View>
       )}
     </View>
@@ -142,14 +147,16 @@ export default function HistoryWorkoutCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 5, // Duo 3D Effect
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+  },
+  cardExpanded: {
+    borderBottomWidth: 5,
   },
   cardHeader: {
     flexDirection: "row",
@@ -158,67 +165,126 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   headerLeft: { flex: 1 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  noteIcon: { padding: 4, backgroundColor: "#f0f9ff", borderRadius: 8 },
-  cardTitle: { fontSize: 18, fontWeight: "700", color: Colors.text },
-  cardTime: { fontSize: 14, color: "#888", marginTop: 2 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 0.5,
+  },
+  timeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  cardTime: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: "700",
+  },
+
+  noteIcon: {
+    padding: 6,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  chevronCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
   detailsContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#f5f5f5",
+    backgroundColor: Colors.background, // Contrast background for expanded area
+    borderTopWidth: 2,
+    borderTopColor: Colors.border,
   },
-  exerciseBlock: { marginTop: 16 },
-  exerciseName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#444",
-    marginBottom: 8,
+  exerciseBlock: {
+    marginTop: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 15,
+    padding: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
   },
-  setRowHeader: {
+  exerciseHeader: {
     flexDirection: "row",
-    marginBottom: 6,
-    paddingHorizontal: 10,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  exerciseName: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: Colors.text,
+  },
+  countBadge: {
+    backgroundColor: Colors.primaryBackground,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  countText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.primary,
+  },
+
+  tableHeader: {
+    flexDirection: "row",
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
   colText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#aaa",
+    fontSize: 11,
+    fontWeight: "900",
+    color: Colors.placeholder,
     textAlign: "center",
   },
-  colSet: { textAlign: "left", paddingLeft: 4 },
+  colSet: { textAlign: "left", width: 35, flex: 0 },
+
   setRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
-    backgroundColor: "#fafafa",
+    marginBottom: 4,
+    backgroundColor: Colors.background,
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  setNumberContainer: {
+    width: 35,
+    alignItems: "center",
   },
   setBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#eee",
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: Colors.surface,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
-    flex: 1,
-    maxWidth: 30,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  setText: { fontSize: 11, fontWeight: "bold", color: "#666" },
+  setText: { fontSize: 11, fontWeight: "900", color: Colors.text },
   valText: {
     flex: 1,
     textAlign: "center",
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#333",
-  },
-  emptyText: {
-    textAlign: "center",
-    color: "#999",
-    marginTop: 10,
-    fontStyle: "italic",
+    fontSize: 16,
+    fontWeight: "900",
+    color: Colors.text,
   },
 });

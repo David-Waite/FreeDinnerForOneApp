@@ -7,6 +7,7 @@ import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import GlobalWorkoutBanner from "../components/GlobalWorkoutBanner";
 import { WorkoutRepository } from "../services/WorkoutRepository";
+import Colors from "../constants/Colors";
 
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
@@ -49,8 +50,15 @@ export default function RootLayout() {
 
   if (initializing) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: Colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -58,17 +66,16 @@ export default function RootLayout() {
   return (
     <WorkoutProvider>
       <GestureHandlerRootView style={styles.container}>
+        {/* If this returns null, the View below will snap to the top */}
         <GlobalWorkoutBanner />
+
         <View style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
             <Stack.Screen
               name="post-modal"
-              options={{
-                presentation: "modal", // This makes it slide up
-                headerShown: false,
-              }}
+              options={{ presentation: "modal", headerShown: false }}
             />
 
             <Stack.Screen
@@ -82,11 +89,7 @@ export default function RootLayout() {
 
             <Stack.Screen
               name="settings"
-              options={{
-                presentation: "modal",
-                title: "Settings",
-                headerShown: true,
-              }}
+              options={{ presentation: "modal", headerShown: false }}
             />
 
             <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -99,5 +102,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
+  container: { flex: 1, backgroundColor: Colors.background },
 });

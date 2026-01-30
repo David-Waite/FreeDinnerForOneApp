@@ -7,13 +7,14 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { updateProfile } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage } from "../config/firebase"; // Import storage
+import { auth, db, storage } from "../config/firebase";
 import Colors from "../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -29,16 +30,16 @@ export default function SignupProfilePicScreen() {
       aspect: [1, 1],
       quality: 0.5,
     });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setImage(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permission Required", "Camera access is needed.");
+      Alert.alert(
+        "PERMISSION REQUIRED",
+        "Camera access is needed to capture your gains!",
+      );
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -46,96 +47,97 @@ export default function SignupProfilePicScreen() {
       aspect: [1, 1],
       quality: 0.5,
     });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setImage(result.assets[0].uri);
   };
 
   const handleSave = async () => {
     if (!image) return;
     setUploading(true);
     const user = auth.currentUser;
-
     if (!user) {
-      Alert.alert("Error", "No user found.");
+      Alert.alert("ERROR", "No user found.");
       setUploading(false);
       return;
     }
 
     try {
-      // 1. Convert URI to Blob
       const response = await fetch(image);
       const blob = await response.blob();
-
-      // 2. Upload to Firebase Storage
       const storageRef = ref(storage, `profile/${user.uid}`);
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
 
-      // 3. Update Auth Profile
       await updateProfile(user, { photoURL: downloadURL });
-
-      // 4. Update Firestore User Doc
       const userDocRef = doc(db, "users", user.uid);
       await updateDoc(userDocRef, { photoURL: downloadURL });
 
-      // 5. Navigate to App
       router.replace("/(tabs)");
     } catch (error: any) {
       console.error(error);
-      Alert.alert("Upload Failed", error.message);
+      Alert.alert("UPLOAD FAILED", error.message);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleSkip = () => {
-    router.replace("/(tabs)");
-  };
+  const handleSkip = () => router.replace("/(tabs)");
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Add a Profile Picture</Text>
-      <Text style={styles.subtitle}>
-        Let others recognize you on the leaderboard!
-      </Text>
+      {/* HEADER SECTION */}
+      <View style={styles.headerArea}>
+        <Text style={styles.title}>IDENTIFY YOURSELF</Text>
+        <Text style={styles.subtitle}>
+          Add a profile picture so friends recognize you on the leaderboard!
+        </Text>
+      </View>
 
+      {/* SQUIRCLE AVATAR AREA */}
       <View style={styles.imageArea}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.previewImage} />
-        ) : (
-          <View style={styles.placeholder}>
-            <Ionicons name="person" size={80} color="#ccc" />
-          </View>
-        )}
+        <View style={styles.imageShadowBase}>
+          {image ? (
+            <Image source={{ uri: image }} style={styles.previewImage} />
+          ) : (
+            <View style={styles.placeholder}>
+              <Ionicons name="person" size={80} color={Colors.textMuted} />
+            </View>
+          )}
+        </View>
 
-        {/* Edit Button overlay */}
-        <TouchableOpacity style={styles.editBtn} onPress={pickImage}>
-          <Ionicons name="pencil" size={20} color="#fff" />
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={pickImage}
+          activeOpacity={0.9}
+        >
+          <Ionicons name="pencil" size={20} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.secondaryBtn} onPress={takePhoto}>
-          <Ionicons name="camera" size={20} color={Colors.primary} />
-          <Text style={styles.secondaryBtnText}>Take Photo</Text>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={takePhoto}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="camera" size={24} color={Colors.primary} />
+          <Text style={styles.secondaryBtnText}>TAKE PHOTO</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.primaryBtn, !image && styles.disabledBtn]}
           onPress={handleSave}
           disabled={!image || uploading}
+          activeOpacity={0.8}
         >
           {uploading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Colors.white} />
           ) : (
-            <Text style={styles.primaryBtnText}>Save & Continue</Text>
+            <Text style={styles.primaryBtnText}>SAVE & CONTINUE</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip for now</Text>
+          <Text style={styles.skipText}>SKIP FOR NOW</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -148,64 +150,109 @@ const styles = StyleSheet.create({
     padding: 30,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.background,
   },
+  headerArea: { alignItems: "center", marginBottom: 40 },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
+    fontSize: 26,
+    fontWeight: "900",
+    color: Colors.text,
     textAlign: "center",
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 40,
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.textMuted,
+    marginTop: 8,
     textAlign: "center",
+    lineHeight: 20,
   },
-  imageArea: { position: "relative", marginBottom: 40 },
-  previewImage: { width: 160, height: 160, borderRadius: 80 },
+  imageArea: { position: "relative", marginBottom: 50 },
+  // 3D base for the avatar
+  imageShadowBase: {
+    width: 170,
+    height: 170,
+    backgroundColor: Colors.border,
+    borderRadius: 45, // Squircle look
+    justifyContent: "flex-start",
+  },
+  previewImage: {
+    width: 170,
+    height: 164,
+    borderRadius: 45,
+    borderWidth: 3,
+    borderColor: Colors.border,
+  },
   placeholder: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "#f2f2f7",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  editBtn: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    backgroundColor: Colors.primary,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 170,
+    height: 164,
+    borderRadius: 45,
+    backgroundColor: Colors.surface,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: "#fff",
+    borderColor: Colors.border,
   },
-  buttonContainer: { width: "100%", gap: 15 },
+  editBtn: {
+    position: "absolute",
+    bottom: -10,
+    right: -10,
+    backgroundColor: Colors.info,
+    width: 48,
+    height: 48,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: Colors.background,
+    borderBottomWidth: 6,
+    borderBottomColor: "#1899d6",
+  },
+  buttonContainer: { width: "100%", gap: 16 },
   primaryBtn: {
     backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 20,
     alignItems: "center",
+    borderBottomWidth: 5,
+    borderBottomColor: "#46a302",
   },
-  disabledBtn: { backgroundColor: "#ccc" },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  disabledBtn: {
+    backgroundColor: Colors.surface,
+    borderBottomColor: Colors.border,
+    opacity: 0.5,
+  },
+  primaryBtnText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
   secondaryBtn: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    marginBottom: 10,
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.border,
   },
-  secondaryBtnText: { color: Colors.primary, fontSize: 16, fontWeight: "600" },
-  skipBtn: { padding: 10, alignItems: "center" },
-  skipText: { color: "#888", fontSize: 16 },
+  secondaryBtnText: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  skipBtn: { marginTop: 10, padding: 10, alignItems: "center" },
+  skipText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
 });

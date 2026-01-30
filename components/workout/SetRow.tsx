@@ -17,7 +17,7 @@ type Props = {
   set: WorkoutSet;
   index: number;
   isExpanded: boolean;
-  isError?: boolean; // <--- New Prop
+  isError?: boolean;
   onToggleExpand: () => void;
   onUpdate: (field: keyof WorkoutSet, value: number) => void;
   onDone: () => void;
@@ -53,7 +53,7 @@ export default function SetRow({
     return (
       <View style={styles.deleteAction}>
         <Animated.View style={{ transform: [{ scale }] }}>
-          <Ionicons name="trash" size={30} color="#fff" />
+          <Ionicons name="trash" size={26} color={Colors.white} />
         </Animated.View>
       </View>
     );
@@ -70,11 +70,11 @@ export default function SetRow({
         style={[
           styles.container,
           set.completed && !isExpanded && styles.containerCompleted,
-          isError && styles.containerError, // <--- Apply Error Style
+          isError && styles.containerError,
         ]}
       >
-        {/* TOP ROW: Inputs */}
         <View style={styles.topRow}>
+          {/* SQUIRCLE BADGE */}
           <View style={[styles.badge, set.completed && styles.badgeCompleted]}>
             <Text
               style={[
@@ -91,10 +91,15 @@ export default function SetRow({
               style={styles.input}
               keyboardType="numeric"
               placeholder="0"
-              value={set.weight === "0" || set.weight === "" ? "" : set.weight}
+              placeholderTextColor={Colors.placeholder}
+              value={
+                set.weight === "0" || set.weight === ""
+                  ? ""
+                  : String(set.weight)
+              }
               onChangeText={(v) => onUpdate("weight", Number(v))}
             />
-            <Text style={styles.unit}>kg</Text>
+            <Text style={styles.unit}>KG</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -102,29 +107,30 @@ export default function SetRow({
               style={styles.input}
               keyboardType="numeric"
               placeholder={set.previousReps || "0"}
-              placeholderTextColor={set.previousReps ? "#aaa" : "#ccc"}
-              value={set.reps === "0" || set.reps === "" ? "" : set.reps}
+              placeholderTextColor={Colors.placeholder}
+              value={
+                set.reps === "0" || set.reps === "" ? "" : String(set.reps)
+              }
               onChangeText={(v) => onUpdate("reps", Number(v))}
             />
-            <Text style={styles.unit}>reps</Text>
+            <Text style={styles.unit}>REPS</Text>
           </View>
         </View>
 
-        {/* BOTTOM ROW: Buttons (Visible only when Expanded) */}
         {isExpanded && (
           <View style={styles.bottomRow}>
             <TouchableOpacity style={styles.timerBtn} onPress={onStartTimer}>
               <MaterialCommunityIcons
                 name="timer-outline"
-                size={24}
+                size={20}
                 color={Colors.primary}
               />
-              <Text style={styles.timerText}>Rest Timer</Text>
+              <Text style={styles.timerText}>REST</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.doneBtn} onPress={onDone}>
-              <Ionicons name="checkmark" size={24} color="#fff" />
-              <Text style={styles.doneText}>Done</Text>
+              <Ionicons name="checkmark-sharp" size={20} color={Colors.white} />
+              <Text style={styles.doneText}>DONE</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -135,40 +141,44 @@ export default function SetRow({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    marginBottom: 8,
     padding: 12,
-    borderWidth: 1,
-    borderColor: "#eee",
-    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4, // 3D Effect
   },
   containerCompleted: {
-    backgroundColor: "#e8f5e9",
-    borderColor: "#c8e6c9",
+    backgroundColor: "#233610", // Subdued Dark Green
+    borderColor: Colors.primary,
+    borderBottomColor: "#46a302",
   },
   containerError: {
-    // <--- New Style
-    borderColor: "#ff4444",
-    borderWidth: 1.5,
+    borderColor: Colors.error,
+    borderBottomColor: "#a62626",
   },
   topRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
   },
   badge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: "#f0f2f5",
+    borderRadius: 8,
+    backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  badgeCompleted: { backgroundColor: Colors.primary },
-  badgeText: { fontSize: 12, fontWeight: "bold", color: "#666" },
-  badgeTextCompleted: { color: "#fff" },
+  badgeCompleted: {
+    backgroundColor: Colors.primary,
+    borderColor: "#46a302",
+  },
+  badgeText: { fontSize: 13, fontWeight: "900", color: Colors.text },
+  badgeTextCompleted: { color: Colors.white },
 
   inputGroup: {
     flexDirection: "row",
@@ -177,54 +187,72 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   input: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    fontSize: 18,
-    fontWeight: "600",
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    fontSize: 20,
+    fontWeight: "900",
     textAlign: "center",
-    minWidth: 60,
+    minWidth: 55,
     marginRight: 6,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  unit: { fontSize: 14, color: "#888", fontWeight: "500" },
+  unit: { fontSize: 10, color: Colors.textMuted, fontWeight: "800" },
 
   bottomRow: {
     flexDirection: "row",
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    gap: 12,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: Colors.border,
+    gap: 10,
   },
   timerBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#e3f2fd",
-    padding: 12,
-    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
   },
-  timerText: { color: Colors.primary, fontWeight: "600", marginLeft: 6 },
+  timerText: {
+    color: Colors.primary,
+    fontWeight: "900",
+    marginLeft: 6,
+    fontSize: 12,
+  },
   doneBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.primary,
-    padding: 12,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 12,
+    borderBottomWidth: 4,
+    borderBottomColor: "#46a302",
   },
-  doneText: { color: "#fff", fontWeight: "bold", marginLeft: 6 },
+  doneText: {
+    color: Colors.white,
+    fontWeight: "900",
+    marginLeft: 6,
+    fontSize: 12,
+  },
 
   deleteAction: {
-    backgroundColor: "#ff4444",
+    backgroundColor: Colors.error,
     justifyContent: "center",
     alignItems: "flex-end",
-    marginBottom: 10,
+    marginBottom: 8,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     flex: 1,
   },
 });

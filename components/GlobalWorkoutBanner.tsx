@@ -10,17 +10,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
 import { useWorkoutContext } from "../context/WorkoutContext";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Colors from "../constants/Colors";
 
 export default function GlobalWorkoutBanner() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isActive, elapsedSeconds, sessionId } = useWorkoutContext();
+  const { isActive, elapsedSeconds, sessionId, sessionName } =
+    useWorkoutContext();
 
-  // SAFETY CHECK:
-  // 1. Must be active
-  // 2. Must have a valid session ID
-  // 3. Must NOT be on the record screen (to avoid double headers)
+  // CRITICAL: Return null before any wrappers or SafeAreas if not active
   if (!isActive || !sessionId || pathname === "/record-workout") {
     return null;
   }
@@ -33,8 +32,7 @@ export default function GlobalWorkoutBanner() {
 
   return (
     <View style={styles.wrapper}>
-      {/* SafeAreaView ensures we don't overlap the notch/status bar on iOS */}
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <TouchableOpacity
           style={styles.container}
           onPress={() => router.push("/record-workout")}
@@ -42,13 +40,27 @@ export default function GlobalWorkoutBanner() {
         >
           <View style={styles.content}>
             <View style={styles.leftSide}>
-              <View style={styles.activeDot} />
-              <Text style={styles.label}>Workout in Progress</Text>
+              <View style={styles.iconCircle}>
+                <MaterialCommunityIcons
+                  name="lightning-bolt"
+                  size={16}
+                  color={Colors.white}
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>LIVE SESSION</Text>
+                <Text style={styles.sessionTitle} numberOfLines={1}>
+                  {sessionName || "Workout"}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.rightSide}>
-              <Text style={styles.timer}>{formatTime(elapsedSeconds)}</Text>
-              <Ionicons name="chevron-forward" size={16} color="#065f46" />
+              <View style={styles.timerContainer}>
+                <Ionicons name="time" size={14} color={Colors.white} />
+                <Text style={styles.timer}>{formatTime(elapsedSeconds)}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.white} />
             </View>
           </View>
         </TouchableOpacity>
@@ -57,60 +69,84 @@ export default function GlobalWorkoutBanner() {
   );
 }
 
+// Keep your existing styles exactly as they are.
+// The logic change above prevents the 'wrapper' from existing when hidden.
+
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: "#d1fae5", // Match container color
-    width: "100%",
-    zIndex: 9999, // Ensure it sits on top of everything
-    // Shadow for elevation
+    position: "absolute", // Change from relative to absolute
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "transparent", // Let the SafeArea handle the color
+    zIndex: 9999,
+    // Ensure the shelf shadow shows over the content below
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 8,
   },
   safeArea: {
-    backgroundColor: "#d1fae5",
-    // Android status bar padding handling if not using Translucent
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    backgroundColor: Colors.primary, // Duo Green
   },
   container: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: "#d1fae5",
-    borderBottomWidth: 1,
-    borderBottomColor: "#a7f3d0",
+    backgroundColor: Colors.primary,
+    borderBottomWidth: 4,
+    borderBottomColor: "#46a302", // Darker 3D base
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    height: 44,
   },
   leftSide: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
+    flex: 1,
+  },
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  label: {
+    color: Colors.white,
+    fontWeight: "900",
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  sessionTitle: {
+    color: Colors.white,
+    fontWeight: "800",
+    fontSize: 14,
+    marginTop: -2,
   },
   rightSide: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
-  activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#059669", // Green dot
-  },
-  label: {
-    color: "#065f46",
-    fontWeight: "600",
-    fontSize: 14,
+  timerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 6,
   },
   timer: {
-    color: "#065f46",
-    fontWeight: "700",
-    fontSize: 16,
+    color: Colors.white,
+    fontWeight: "900",
+    fontSize: 15,
     fontVariant: ["tabular-nums"],
   },
 });

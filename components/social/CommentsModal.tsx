@@ -166,7 +166,7 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: Colors.border }} // The "Outer" color
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
@@ -174,7 +174,7 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Comments</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#000" />
+              <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -200,7 +200,11 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
                 </Text>
               </Text>
               <TouchableOpacity onPress={cancelReply}>
-                <Ionicons name="close-circle" size={20} color="#666" />
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={Colors.textMuted}
+                />
               </TouchableOpacity>
             </View>
           )}
@@ -219,7 +223,7 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
                 ref={inputRef}
                 style={styles.input}
                 placeholder={post ? `Add a comment...` : "Comment..."}
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
@@ -242,23 +246,33 @@ export default function CommentsModal({ visible, onClose, post }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.border,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    // Duolingo style headers usually have that thick bottom border too
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: "bold",
     flex: 1,
     textAlign: "center",
+    color: Colors.text,
   },
   listContent: { padding: 16, paddingBottom: 20 },
-  emptyText: { textAlign: "center", color: "#999", marginTop: 20 },
+  emptyText: { textAlign: "center", color: Colors.placeholder, marginTop: 20 },
   commentRow: { flexDirection: "row", marginBottom: 16 },
   avatar: {
     width: 36,
@@ -269,7 +283,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  avatarText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
+  avatarText: { color: Colors.white, fontWeight: "bold", fontSize: 14 },
   commentContent: { flex: 1 },
   commentHeader: {
     flexDirection: "row",
@@ -277,13 +291,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 2,
   },
-  userName: { fontWeight: "bold", fontSize: 14 },
-  timeText: { color: "#999", fontSize: 12 },
-  commentText: { fontSize: 14, color: "#333", lineHeight: 20 },
+  userName: { fontWeight: "bold", fontSize: 14, color: Colors.text },
+  timeText: { color: Colors.placeholder, fontSize: 12 },
+  commentText: { fontSize: 14, color: Colors.text, lineHeight: 20 },
 
   // Reply Styles
   replyButton: { marginTop: 4, alignSelf: "flex-start" },
-  replyButtonText: { fontSize: 12, fontWeight: "600", color: "#666" },
+  replyButtonText: { fontSize: 12, fontWeight: "600", color: Colors.textMuted },
   repliesContainer: { marginTop: 12, paddingLeft: 8 },
   replyRow: { flexDirection: "row", marginBottom: 12, gap: 10 },
   avatarSmallDisplay: {
@@ -302,43 +316,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: Colors.background,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopColor: Colors.border,
   },
-  replyingText: { fontSize: 13, color: "#666" },
+  replyingText: { fontSize: 13, color: Colors.textMuted },
 
   // Input Styles
   inputContainerWrapper: {
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    backgroundColor: "#fff",
+    borderTopWidth: 2,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.surface,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
+    paddingBottom: 0,
     gap: 12,
   },
   avatarSmall: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#ccc",
+    backgroundColor: Colors.border,
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarTextSmall: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  avatarTextSmall: { color: Colors.white, fontSize: 12, fontWeight: "bold" },
   input: {
     flex: 1,
     fontSize: 15,
     maxHeight: 100,
     paddingTop: 8,
     paddingBottom: 8,
+    color: Colors.text,
   },
   postButton: { paddingHorizontal: 8 },
   postButtonText: {
-    color: Colors.primary,
+    color: Colors.text,
     fontWeight: "bold",
     fontSize: 15,
   },

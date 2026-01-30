@@ -63,7 +63,7 @@ export default function NotesModal({
               <Text style={styles.subtitle}>{exerciseName}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -87,14 +87,14 @@ export default function NotesModal({
                     <Ionicons
                       name={item.isPinned ? "pin" : "pin-outline"}
                       size={20}
-                      color={item.isPinned ? Colors.primary : "#999"}
+                      color={item.isPinned ? Colors.primary : Colors.placeholder}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onDeleteNote(item.id)}
                     style={styles.actionBtn}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                    <Ionicons name="trash-outline" size={20} color={Colors.error} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -132,7 +132,7 @@ export default function NotesModal({
               <Ionicons
                 name="arrow-up"
                 size={24}
-                color={text.trim() ? "#fff" : "#999"}
+                color={text.trim() ? Colors.white : Colors.placeholder}
               />
             </TouchableOpacity>
           </View>
@@ -143,55 +143,56 @@ export default function NotesModal({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f7" },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e5ea",
+    borderBottomColor: Colors.border,
   },
-  title: { fontSize: 20, fontWeight: "bold" },
-  subtitle: { fontSize: 14, color: "#666", marginTop: 2 },
+  title: { fontSize: 20, fontWeight: "bold", color: Colors.text },
+  subtitle: { fontSize: 14, color: Colors.textMuted, marginTop: 2 },
   closeButton: { padding: 4 },
   listContent: { padding: 16 },
   noteItem: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     padding: 12,
     borderRadius: 12,
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "flex-start",
-    shadowColor: "#000",
+    shadowColor: Colors.black,
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   noteContent: { flex: 1 },
-  noteText: { fontSize: 16, color: "#333", marginBottom: 4 },
-  noteDate: { fontSize: 12, color: "#999" },
+  noteText: { fontSize: 16, color: Colors.text, marginBottom: 4 },
+  noteDate: { fontSize: 12, color: Colors.placeholder },
   actions: { flexDirection: "row", paddingLeft: 8, gap: 8 },
   actionBtn: { padding: 4 },
   emptyContainer: { alignItems: "center", marginTop: 40 },
-  emptyText: { color: "#999", fontSize: 16 },
+  emptyText: { color: Colors.placeholder, fontSize: 16 },
   inputContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: "#e5e5ea",
+    borderTopColor: Colors.border,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
   input: {
     flex: 1,
-    backgroundColor: "#f2f2f7",
+    backgroundColor: Colors.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 16,
     maxHeight: 100,
+    color: Colors.text,
   },
   sendButton: {
     width: 40,
@@ -201,5 +202,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  sendButtonDisabled: { backgroundColor: "#e5e5ea" },
+  sendButtonDisabled: { backgroundColor: Colors.border },
 });

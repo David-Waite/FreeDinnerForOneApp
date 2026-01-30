@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
@@ -52,11 +53,8 @@ export default function WorkoutDetailsModal({
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins}m`;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
   };
-
-  if (!visible) return null;
 
   return (
     <Modal
@@ -65,177 +63,273 @@ export default function WorkoutDetailsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Workout Details</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close-circle" size={30} color="#ccc" />
-          </TouchableOpacity>
-        </View>
+      <View style={styles.modalWrapper}>
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>WORKOUT STATS</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
 
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        ) : !workout ? (
-          <View style={styles.center}>
-            <MaterialCommunityIcons
-              name="alert-circle-outline"
-              size={48}
-              color="#ccc"
-            />
-            <Text style={styles.errorText}>Workout details not found.</Text>
-            <Text style={styles.errorSub}>
-              This workout might have been deleted from the device.
-            </Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.content}>
-            {/* Workout Summary Card */}
-            <View style={styles.summaryCard}>
-              <Text style={styles.workoutName}>{workout.name}</Text>
-              <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="calendar-outline" size={16} color="#666" />
-                  <Text style={styles.metaText}>
-                    {new Date(workout.date).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="time-outline" size={16} color="#666" />
-                  <Text style={styles.metaText}>
-                    {formatDuration(workout.duration)}
-                  </Text>
-                </View>
-              </View>
+          {loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={Colors.primary} />
             </View>
-
-            {/* Exercises List */}
-            {workout.exercises.map((exercise, index) => (
-              <View key={`${exercise.id}-${index}`} style={styles.exerciseCard}>
-                <View style={styles.exerciseHeader}>
-                  <Text style={styles.exerciseName}>{exercise.name}</Text>
-                  <Text style={styles.restText}>
-                    Rest: {exercise.restTime}s
-                  </Text>
+          ) : !workout ? (
+            <View style={styles.center}>
+              <MaterialCommunityIcons
+                name="alert-circle-outline"
+                size={60}
+                color={Colors.border}
+              />
+              <Text style={styles.errorText}>SESSION NOT FOUND</Text>
+              <Text style={styles.errorSub}>
+                This workout might have been lost in the streak.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              contentContainerStyle={styles.content}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Summary Card (Hero Section) */}
+              <View style={styles.summaryCard}>
+                <View style={styles.iconCircle}>
+                  <MaterialCommunityIcons
+                    name="lightning-bolt"
+                    size={32}
+                    color={Colors.gold}
+                  />
                 </View>
-
-                {/* Sets Table Header */}
-                <View style={styles.tableHeader}>
-                  <Text style={styles.colSet}>SET</Text>
-                  <Text style={styles.colData}>KG</Text>
-                  <Text style={styles.colData}>REPS</Text>
-                </View>
-
-                {/* Sets Rows */}
-                {exercise.sets.map((set, idx) => (
+                <Text style={styles.workoutName}>
+                  {workout.name.toUpperCase()}
+                </Text>
+                <View style={styles.metaRow}>
+                  <View style={styles.metaBadge}>
+                    <Ionicons name="time" size={14} color={Colors.white} />
+                    <Text style={styles.metaText}>
+                      {formatDuration(workout.duration)}
+                    </Text>
+                  </View>
                   <View
-                    key={set.id}
                     style={[
-                      styles.setRow,
-                      idx % 2 === 0 ? styles.rowEven : styles.rowOdd,
-                      set.completed && styles.rowCompleted,
+                      styles.metaBadge,
+                      { backgroundColor: Colors.secondary },
                     ]}
                   >
-                    <View style={styles.setNumberBadge}>
-                      <Text style={styles.setNumberText}>{idx + 1}</Text>
-                    </View>
-                    <Text style={styles.colDataText}>{set.weight || "-"}</Text>
-                    <Text style={styles.colDataText}>{set.reps || "-"}</Text>
+                    <MaterialCommunityIcons
+                      name="arm-flex"
+                      size={14}
+                      color={Colors.white}
+                    />
+                    <Text style={styles.metaText}>
+                      {workout.exercises.length} EXERCISES
+                    </Text>
                   </View>
-                ))}
+                </View>
               </View>
-            ))}
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
+
+              {/* Exercises List */}
+              {workout.exercises.map((exercise, index) => (
+                <View
+                  key={`${exercise.id}-${index}`}
+                  style={styles.exerciseCard}
+                >
+                  <View style={styles.exerciseHeader}>
+                    <Text style={styles.exerciseName}>{exercise.name}</Text>
+                    <View style={styles.restBadge}>
+                      <Text style={styles.restText}>
+                        {exercise.restTime}s REST
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Sets Table Header */}
+                  <View style={styles.tableHeader}>
+                    <Text style={styles.colLabelSet}>SET</Text>
+                    <Text style={styles.colLabel}>WEIGHT</Text>
+                    <Text style={styles.colLabel}>REPS</Text>
+                  </View>
+
+                  {/* Sets Rows */}
+                  {exercise.sets.map((set, idx) => (
+                    <View
+                      key={set.id}
+                      style={[
+                        styles.setRow,
+                        set.completed && styles.rowCompleted,
+                      ]}
+                    >
+                      <View style={styles.colSetContent}>
+                        <View style={styles.setNumberBadge}>
+                          <Text style={styles.setNumberText}>{idx + 1}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.colDataText}>
+                        {set.weight || "0"}{" "}
+                        <Text style={styles.unitText}>KG</Text>
+                      </Text>
+                      <Text style={styles.colDataText}>
+                        {set.reps || "0"}{" "}
+                        <Text style={styles.unitText}>REPS</Text>
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ))}
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          )}
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f7" },
+  modalWrapper: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    paddingTop: 10,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderColor: Colors.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
   header: {
     padding: 16,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.surface,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e5ea",
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 18, fontWeight: "bold" },
-  closeBtn: { padding: 4 },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+  },
+  closeBtn: { position: "absolute", right: 16 },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 40,
   },
-  errorText: { marginTop: 16, fontSize: 18, fontWeight: "600", color: "#666" },
-  errorSub: { marginTop: 8, fontSize: 14, color: "#999", textAlign: "center" },
+  errorText: {
+    marginTop: 16,
+    fontSize: 20,
+    fontWeight: "900",
+    color: Colors.text,
+  },
+  errorSub: {
+    marginTop: 8,
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: "center",
+    fontWeight: "600",
+  },
   content: { padding: 16 },
 
   summaryCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 24,
     marginBottom: 20,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.border,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
   },
   workoutName: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Colors.primary,
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: "900",
+    color: Colors.text,
+    marginBottom: 12,
     textAlign: "center",
   },
-  metaRow: { flexDirection: "row", gap: 20 },
-  metaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  metaText: { color: "#666", fontSize: 14, fontWeight: "500" },
+  metaRow: { flexDirection: "row", gap: 10 },
+  metaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  metaText: { color: Colors.white, fontSize: 13, fontWeight: "800" },
 
   exerciseCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
     marginBottom: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 5,
   },
   exerciseHeader: {
     padding: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  exerciseName: { fontSize: 16, fontWeight: "700", color: "#333" },
-  restText: { fontSize: 12, color: "#999" },
+  exerciseName: { fontSize: 17, fontWeight: "800", color: Colors.text },
+  restBadge: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  restText: { fontSize: 10, fontWeight: "800", color: Colors.textMuted },
 
   tableHeader: {
     flexDirection: "row",
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: "#fafafa",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    backgroundColor: Colors.background,
+    alignItems: "center",
   },
-  colSet: { width: 50, fontSize: 12, fontWeight: "bold", color: "#aaa" },
-  colData: {
+  // Fix the SET label to match the badge width
+  colLabelSet: {
+    width: 40, // Match colSetContent width
+    fontSize: 11,
+    fontWeight: "900",
+    color: Colors.placeholder,
+    textAlign: "center",
+  },
+  colLabel: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#aaa",
+    fontSize: 11,
+    fontWeight: "900",
+    color: Colors.placeholder,
     textAlign: "center",
   },
 
@@ -244,26 +338,35 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  rowEven: { backgroundColor: "#fff" },
-  rowOdd: { backgroundColor: "#fcfcfc" },
-  rowCompleted: { backgroundColor: "#f0fdf4" }, // Very light green
-
+  // Container for the badge to ensure it stays centered under the "SET" header
+  colSetContent: {
+    width: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   setNumberBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#eee",
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 26, // Align with colSet
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  setNumberText: { fontSize: 12, fontWeight: "bold", color: "#666" },
   colDataText: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 18,
+    fontWeight: "900",
+    color: Colors.text,
     textAlign: "center",
   },
+  rowCompleted: { backgroundColor: "#233610" }, // Subdued Success Green
+
+  setNumberText: { fontSize: 14, fontWeight: "900", color: Colors.text },
+
+  unitText: { fontSize: 10, color: Colors.textMuted, fontWeight: "700" },
 });

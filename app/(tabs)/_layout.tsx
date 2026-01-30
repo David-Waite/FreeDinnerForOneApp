@@ -6,7 +6,7 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Platform } from "react-native";
 
 export default function TabLayout() {
   const router = useRouter();
@@ -16,17 +16,22 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors.tabIconSelected,
         tabBarInactiveTintColor: Colors.tabIconDefault,
-        headerShown: false, // We handle headers inside the screens now
+        headerShown: false,
         tabBarShowLabel: false,
+        tabBarStyle: styles.tabBar,
       }}
     >
-      {/* 1. Feed (Maps to app/(tabs)/index.tsx) */}
+      {/* 1. Feed */}
       <Tabs.Screen
         name="index"
         options={{
           title: "Feed",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="home" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
@@ -36,28 +41,33 @@ export default function TabLayout() {
         name="leaderboard"
         options={{
           title: "Leaderboard",
-          headerShown: true,
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="trophy" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "trophy" : "trophy-outline"}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
 
-      {/* 3. Create (The Middle Button) */}
+      {/* 3. Create (The 3D Middle Button) */}
       <Tabs.Screen
         name="create"
         options={{
           title: "Post",
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: () => (
             <View style={styles.plusButton}>
-              <Ionicons name="add" size={32} color="#fff" />
+              <View style={styles.plusButtonInner}>
+                <Ionicons name="add" size={32} color={Colors.white} />
+              </View>
             </View>
           ),
         }}
         listeners={() => ({
           tabPress: (e) => {
-            e.preventDefault(); // Stop default navigation
-            router.push("/post-modal"); // Open the root modal
+            e.preventDefault();
+            router.push("/post-modal");
           },
         })}
       />
@@ -67,9 +77,12 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: "Stats",
-
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="bar-chart" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "stats-chart" : "stats-chart-outline"}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
@@ -79,9 +92,12 @@ export default function TabLayout() {
         name="workouts"
         options={{
           title: "Workouts",
-          headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="dumbbell" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? "dumbbell" : "dumbbell"}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />
@@ -90,17 +106,31 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: Colors.surface,
+    borderTopWidth: 3,
+    borderTopColor: Colors.border,
+    height: Platform.OS === "ios" ? 88 : 64,
+    paddingTop: 8,
+    // Add subtle depth
+    elevation: 0,
+    shadowOpacity: 0,
+  },
   plusButton: {
-    width: 50,
+    width: 54,
     height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#46a302", // Darker green for the "3D base"
+    borderRadius: 14,
+    justifyContent: "flex-start",
+    marginTop: -4,
+  },
+  plusButtonInner: {
+    width: 54,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: Colors.primary, // Signature Duo Green
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    // This creates the "pop" effect from the base
   },
 });

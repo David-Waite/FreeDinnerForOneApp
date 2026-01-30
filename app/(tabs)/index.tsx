@@ -9,7 +9,7 @@ import {
   Image,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // --- IMPORTS ---
@@ -31,7 +31,6 @@ export default function FeedScreen() {
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<WorkoutPost | null>(null);
 
-  // Load posts whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadPosts();
@@ -40,7 +39,6 @@ export default function FeedScreen() {
 
   const loadPosts = async () => {
     const data = await WorkoutRepository.getPosts();
-    // Sort by newest first
     const sorted = data.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -66,13 +64,16 @@ export default function FeedScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <Text style={styles.headerTitle}>Community Feed</Text>
-      {/* CHANGED: Settings Icon instead of Camera */}
+      <View>
+        <Text style={styles.headerSubtitle}>GLOBAL LEAGUE</Text>
+        <Text style={styles.headerTitle}>Feed</Text>
+      </View>
+
       <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => router.push("/settings")} // Navigate to new Settings page
+        style={styles.settingsButton}
+        onPress={() => router.push("/settings")}
       >
-        <Ionicons name="settings-outline" size={26} color={Colors.text} />
+        <Ionicons name="settings-sharp" size={22} color={Colors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -83,49 +84,50 @@ export default function FeedScreen() {
         data={posts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PostCard
-            post={item}
-            onCommentPress={handleOpenComments}
-            onWorkoutPress={(workoutId) =>
-              handleOpenWorkout(workoutId, item.authorId)
-            }
-          />
+          <View style={styles.postWrapper}>
+            <PostCard
+              post={item}
+              onCommentPress={handleOpenComments}
+              onWorkoutPress={(workoutId) =>
+                handleOpenWorkout(workoutId, item.authorId)
+              }
+            />
+          </View>
         )}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={renderHeader}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>No posts yet.</Text>
+          <View style={styles.emptyCard}>
+            <MaterialCommunityIcons
+              name="account-group"
+              size={64}
+              color={Colors.border}
+            />
+            <Text style={styles.emptyText}>NO ACTIVITY YET</Text>
             <Text style={styles.emptySubText}>
-              Be the first to share a workout!
+              Your league is quiet. Be the champion and share your first
+              workout!
             </Text>
           </View>
         }
       />
 
-      {/* Floating Action Button (Alternative to Header Button) */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push("/post-modal")}
-      >
-        <Ionicons name="add" size={30} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Comments Modal */}
       <CommentsModal
         visible={commentsVisible}
         post={selectedPost}
         onClose={() => {
           setCommentsVisible(false);
-          loadPosts(); // Reload to update comment counts after closing
+          loadPosts();
         }}
       />
 
-      {/* NEW: Workout Details Modal */}
       <WorkoutDetailsModal
         visible={!!viewWorkoutId}
         workoutId={viewWorkoutId}
@@ -137,57 +139,75 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f7" },
+  container: { flex: 1, backgroundColor: Colors.background },
   listContent: { paddingBottom: 100 },
+
+  // DUO HEADER
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e5ea",
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.border,
+    marginBottom: 16,
+  },
+  headerSubtitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 2,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 32,
+    fontWeight: "900",
     color: Colors.text,
+    marginTop: -4,
   },
-  iconButton: {
-    padding: 8,
+  settingsButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4, // 3D Effect
   },
-  emptyContainer: {
+
+  postWrapper: {
+    marginBottom: 16,
+  },
+
+  // EMPTY STATE
+  emptyCard: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 60,
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: 40,
+    padding: 40,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderStyle: "dashed",
   },
   emptyText: {
     marginTop: 16,
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#888",
+    fontSize: 16,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 1,
   },
   emptySubText: {
     marginTop: 8,
     fontSize: 14,
-    color: "#aaa",
-  },
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
+    color: Colors.textMuted,
+    textAlign: "center",
+    fontWeight: "600",
+    lineHeight: 20,
   },
 });

@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   StyleProp,
   ViewStyle,
@@ -12,6 +11,7 @@ import {
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { MasterExercise } from "../../constants/types";
 import Colors from "../../constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = {
   value: string;
@@ -45,7 +45,6 @@ export default function ExerciseAutocomplete({
       const filtered = allExercises.filter((ex) =>
         ex.name.toLowerCase().includes(text.toLowerCase()),
       );
-      // Don't show if the only suggestion is exactly what we typed
       if (
         filtered.length === 1 &&
         filtered[0].name.toLowerCase() === text.toLowerCase()
@@ -69,8 +68,9 @@ export default function ExerciseAutocomplete({
   return (
     <View style={styles.wrapper}>
       <TextInput
-        style={style}
+        style={[styles.baseInput, style]}
         placeholder={placeholder}
+        placeholderTextColor={Colors.placeholder}
         value={value}
         onChangeText={handleTextChange}
         onBlur={() => {
@@ -86,7 +86,15 @@ export default function ExerciseAutocomplete({
               style={styles.suggestionItem}
               onPress={() => handleSelect(item.name)}
             >
-              <Text style={styles.suggestionText}>{item.name}</Text>
+              <Ionicons
+                name="flash"
+                size={14}
+                color={Colors.gold}
+                style={styles.itemIcon}
+              />
+              <Text style={styles.suggestionText}>
+                {item.name.toUpperCase()}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -97,31 +105,45 @@ export default function ExerciseAutocomplete({
 
 const styles = StyleSheet.create({
   wrapper: {
-    zIndex: 10, // Ensure suggestions float above other elements
+    zIndex: 999, // Critical for the dropdown to sit on top
     position: "relative",
+  },
+  baseInput: {
+    // This allows the custom editor styles to pass through while keeping fonts consistent
+    fontWeight: "900",
   },
   suggestionContainer: {
     position: "absolute",
-    top: "100%",
+    top: "110%", // Small gap between input and list
     left: 0,
     right: 0,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 999,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    // Duo 3D shadow for the dropdown
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 10,
+    overflow: "hidden",
   },
   suggestionItem: {
-    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: Colors.border,
+  },
+  itemIcon: {
+    marginRight: 10,
   },
   suggestionText: {
-    fontSize: 16,
-    color: "#333",
+    fontSize: 13,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 0.5,
   },
 });

@@ -9,7 +9,7 @@ type Props = {
   exercise: Exercise;
   isExpanded: boolean;
   expandedSetId: string | null;
-  highlightedSets?: Set<string>; // <--- New Prop
+  highlightedSets?: Set<string>;
   onToggle: () => void;
   onSetExpand: (setId: string | null) => void;
   onUpdateSet: (
@@ -42,23 +42,29 @@ export default function ExerciseCard({
     exercise.sets.every((s) => s.completed) && exercise.sets.length > 0;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isComplete && styles.cardComplete]}>
       <TouchableOpacity
         style={[styles.cardHeader, isExpanded && styles.cardHeaderActive]}
         onPress={onToggle}
+        activeOpacity={0.8}
       >
         <View style={styles.cardHeaderLeft}>
-          <Text style={styles.exerciseName}>{exercise.name}</Text>
+          <Text style={styles.exerciseName}>{exercise.name.toUpperCase()}</Text>
           <Text style={styles.setCountText}>
-            {exercise.sets.length} Sets • Rest: {exercise.restTime}s
+            {exercise.sets.length} SETS • REST: {exercise.restTime}S
           </Text>
         </View>
-        <Ionicons
-          name={isComplete ? "checkmark-circle" : "checkmark-circle-outline"}
-          size={28}
-          color={isComplete ? Colors.primary : "#ccc"}
-        />
+        <View
+          style={[styles.statusIcon, isComplete && styles.statusIconComplete]}
+        >
+          <Ionicons
+            name={isComplete ? "checkmark-sharp" : "chevron-down"}
+            size={20}
+            color={isComplete ? Colors.white : Colors.textMuted}
+          />
+        </View>
       </TouchableOpacity>
+
       {isExpanded && (
         <View style={styles.cardBody}>
           {exercise.sets.map((set, index) => (
@@ -67,7 +73,7 @@ export default function ExerciseCard({
               set={set}
               index={index}
               isExpanded={expandedSetId === set.id}
-              isError={highlightedSets?.has(set.id)} // <--- Pass Error State
+              isError={highlightedSets?.has(set.id)}
               onToggleExpand={() =>
                 onSetExpand(expandedSetId === set.id ? null : set.id)
               }
@@ -77,16 +83,21 @@ export default function ExerciseCard({
               onRemove={() => onRemoveSet(set.id)}
             />
           ))}
+
           <View style={styles.cardFooter}>
             <TouchableOpacity style={styles.addSetButton} onPress={onAddSet}>
-              <Text style={styles.addSetText}>+ Add Set</Text>
+              <Ionicons name="add" size={18} color={Colors.text} />
+              <Text style={styles.addSetText}>ADD SET</Text>
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.notesButton} onPress={onOpenNotes}>
-              <Ionicons
-                name="document-text-outline"
-                size={24}
-                color={Colors.primary}
-              />
+              <View style={styles.notesIconCircle}>
+                <Ionicons
+                  name="document-text"
+                  size={20}
+                  color={Colors.primary}
+                />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -97,37 +108,98 @@ export default function ExerciseCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    marginBottom: 16,
     overflow: "hidden",
-    elevation: 1,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 6, // The "Duo" 3D Shelf
+  },
+  cardComplete: {
+    borderColor: Colors.primary,
+    borderBottomColor: "#46a302", // Darker primary green
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.surface,
   },
-  cardHeaderActive: { borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
+  cardHeaderActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
+  },
   cardHeaderLeft: { flex: 1 },
-  exerciseName: { fontSize: 18, fontWeight: "600", color: Colors.text },
-  setCountText: { fontSize: 13, color: "#888", marginTop: 4 },
-  cardBody: { padding: 16, backgroundColor: "#fafafa" },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 0.5,
+  },
+  setCountText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: Colors.textMuted,
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
+  statusIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  statusIconComplete: {
+    backgroundColor: Colors.primary,
+    borderColor: "#46a302",
+  },
+  cardBody: {
+    padding: 12,
+    backgroundColor: Colors.background,
+  },
   cardFooter: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     marginTop: 8,
+    paddingHorizontal: 4,
   },
   addSetButton: {
-    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "#eee",
-    marginRight: 16,
+    borderRadius: 15,
+    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
+    gap: 6,
   },
-  addSetText: { fontSize: 12, fontWeight: "600", color: "#555" },
-  notesButton: { padding: 8 },
+  addSetText: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 0.5,
+  },
+  notesButton: {
+    padding: 2,
+  },
+  notesIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
+  },
 });
