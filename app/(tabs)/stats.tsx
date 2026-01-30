@@ -9,27 +9,21 @@ import {
   Modal,
   FlatList,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // Import
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useExerciseStats } from "../../hooks/useExerciseStats";
-import AnalyticsChart from "../../components/stats/AnalyticsChart";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { UserProfile, MasterExercise } from "../../constants/types";
 import { auth } from "../../config/firebase";
 import Colors from "../../constants/Colors";
-import { useWorkoutContext } from "../../context/WorkoutContext"; // Import
-
-type ChartMode =
-  | "volume"
-  | "actual"
-  | "estimated"
-  | "consistency"
-  | "time"
-  | "weight";
+import { useWorkoutContext } from "../../context/WorkoutContext";
+import AnalyticsMiniCard from "../../components/stats/AnalyticsMiniCard";
 
 export default function StatsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isActive } = useWorkoutContext(); // Get State
+  const { isActive } = useWorkoutContext();
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -38,7 +32,6 @@ export default function StatsScreen() {
     useState<MasterExercise | null>(null);
   const [exerciseList, setExerciseList] = useState<MasterExercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [mode, setMode] = useState<ChartMode>("volume");
 
   const targetUserId =
     currentUser?.uid === auth.currentUser?.uid ? undefined : currentUser?.uid;
@@ -73,46 +66,20 @@ export default function StatsScreen() {
   const showWorkouts = isMe || !currentUser?.privacySettings?.encryptWorkouts;
   const showWeight = isMe || !currentUser?.privacySettings?.encryptBodyWeight;
 
-  let chartData: any[] = [];
-  let unit = "";
-  let color = Colors.primary;
-
-  switch (mode) {
-    case "volume":
-      chartData = volumeData;
-      unit = "kg";
-      color = Colors.info;
-      break;
-    case "actual":
-      chartData = maxStrengthData;
-      unit = "kg";
-      color = Colors.success;
-      break;
-    case "estimated":
-      chartData = oneRMData;
-      unit = "kg";
-      color = Colors.gold;
-      break;
-    case "consistency":
-      chartData = consistencyData;
-      unit = "days";
-      color = Colors.purple;
-      break;
-    case "time":
-      chartData = durationData;
-      unit = "min";
-      color = Colors.error;
-      break;
-    case "weight":
-      chartData = bodyWeightData;
-      unit = "kg";
-      color = Colors.primary;
-      break;
-  }
+  const navigateToDetail = (mode: string) => {
+    router.push({
+      pathname: "/stats-detail",
+      params: {
+        mode,
+        exerciseName: selectedExercise?.name,
+        targetUserId: targetUserId,
+      },
+    });
+  };
 
   return (
-    // FIX: Conditional Padding
     <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
+      {/* 1. HEADER */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSubtitle}>YOUR PROGRESS</Text>
@@ -141,42 +108,7 @@ export default function StatsScreen() {
           />
         }
       >
-        {/* 2. MODE TABS */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tabsContainer}
-        >
-          {[
-            { key: "volume", label: "VOLUME", visible: showWorkouts },
-            { key: "actual", label: "STRENGTH", visible: showWorkouts },
-            { key: "estimated", label: "1RM", visible: showWorkouts },
-            { key: "consistency", label: "CONSISTENCY", visible: showWorkouts },
-            { key: "time", label: "DURATION", visible: showWorkouts },
-            { key: "weight", label: "WEIGHT", visible: showWeight },
-          ].map(
-            (m) =>
-              m.visible && (
-                <TouchableOpacity
-                  key={m.key}
-                  style={[styles.tab, mode === m.key && styles.activeTab]}
-                  onPress={() => setMode(m.key as ChartMode)}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      mode === m.key && styles.activeTabText,
-                    ]}
-                  >
-                    {m.label}
-                  </Text>
-                </TouchableOpacity>
-              ),
-          )}
-        </ScrollView>
-
-        {(!showWorkouts && mode !== "weight") ||
-        (!showWeight && mode === "weight") ? (
+        {!showWorkouts && !showWeight ? (
           <View style={styles.privateCard}>
             <MaterialCommunityIcons
               name="shield-lock"
@@ -185,12 +117,13 @@ export default function StatsScreen() {
             />
             <Text style={styles.privateTitle}>PRIVATE LEAGUE</Text>
             <Text style={styles.privateText}>
-              This user has locked their stats board.
+              This athlete has hidden their statistics.
             </Text>
           </View>
         ) : (
           <>
-            {["volume", "actual", "estimated"].includes(mode) && (
+            {/* 2. EXERCISE SELECTOR */}
+            {showWorkouts && (
               <TouchableOpacity
                 style={styles.exerciseSelector}
                 onPress={() => setPickerVisible(true)}
@@ -207,41 +140,69 @@ export default function StatsScreen() {
               </TouchableOpacity>
             )}
 
-            <View style={styles.chartCard}>
-              <AnalyticsChart
-                data={chartData}
-                type="line"
-                color={color}
-                unit={unit}
-              />
-            </View>
-
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>ENTRIES</Text>
-                <Text style={styles.statValue}>{chartData.length}</Text>
-              </View>
-              <View
-                style={[styles.statBox, { borderBottomColor: Colors.gold }]}
-              >
-                <Text style={styles.statLabel}>
-                  {mode === "weight" ? "CURRENT" : "PEAK"}
-                </Text>
-                <Text style={[styles.statValue, { color: Colors.gold }]}>
-                  {chartData.length > 0
-                    ? mode === "weight"
-                      ? chartData[chartData.length - 1].y
-                      : Math.max(...chartData.map((d) => d.y))
-                    : "-"}
-                  {unit}
-                </Text>
-              </View>
+            {/* 3. MINI STATS GRID */}
+            <Text style={styles.sectionHeader}>INSIGHTS & PERFORMANCE</Text>
+            <View style={styles.grid}>
+              {showWorkouts && (
+                <>
+                  <AnalyticsMiniCard
+                    title="Volume"
+                    data={volumeData}
+                    type="bar"
+                    color={Colors.info}
+                    unit="kg"
+                    onPress={() => navigateToDetail("volume")}
+                  />
+                  <AnalyticsMiniCard
+                    title="Strength"
+                    data={maxStrengthData}
+                    type="line"
+                    color={Colors.success}
+                    unit="kg"
+                    onPress={() => navigateToDetail("actual")}
+                  />
+                  <AnalyticsMiniCard
+                    title="Est. 1RM"
+                    data={oneRMData}
+                    type="line"
+                    color={Colors.gold}
+                    unit="kg"
+                    onPress={() => navigateToDetail("estimated")}
+                  />
+                  <AnalyticsMiniCard
+                    title="Consistency"
+                    data={consistencyData}
+                    type="bar"
+                    color={Colors.purple}
+                    unit="days"
+                    onPress={() => navigateToDetail("consistency")}
+                  />
+                  <AnalyticsMiniCard
+                    title="Duration"
+                    data={durationData}
+                    type="bar"
+                    color={Colors.error}
+                    unit="min"
+                    onPress={() => navigateToDetail("time")}
+                  />
+                </>
+              )}
+              {showWeight && (
+                <AnalyticsMiniCard
+                  title="Weight"
+                  data={bodyWeightData}
+                  type="line"
+                  color={Colors.primary}
+                  unit="kg"
+                  onPress={() => navigateToDetail("weight")}
+                />
+              )}
             </View>
           </>
         )}
       </ScrollView>
 
-      {/* USER PICKER MODAL */}
+      {/* MODALS (EXERCISE & USER PICKERS) */}
       <Modal
         visible={userModalVisible}
         animationType="slide"
@@ -277,7 +238,7 @@ export default function StatsScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.pickerItemText}>
                       {item.uid === auth.currentUser?.uid
-                        ? "Me (Champion)"
+                        ? "Me"
                         : item.displayName}
                     </Text>
                   </View>
@@ -295,7 +256,6 @@ export default function StatsScreen() {
         </View>
       </Modal>
 
-      {/* EXERCISE PICKER MODAL */}
       <Modal
         visible={pickerVisible}
         animationType="slide"
@@ -345,7 +305,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
-    backgroundColor: Colors.background,
     borderBottomWidth: 2,
     borderBottomColor: Colors.border,
   },
@@ -376,19 +335,6 @@ const styles = StyleSheet.create({
   },
   smallAvatarText: { color: Colors.white, fontSize: 12, fontWeight: "900" },
   scrollContent: { padding: 16 },
-  tabsContainer: { marginBottom: 20 },
-  tab: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 15,
-    backgroundColor: Colors.surface,
-    marginRight: 8,
-    borderBottomWidth: 4,
-    borderBottomColor: Colors.border,
-  },
-  activeTab: { backgroundColor: Colors.primary, borderBottomColor: "#46a302" },
-  tabText: { fontWeight: "900", color: Colors.textMuted, fontSize: 12 },
-  activeTabText: { color: Colors.white },
   exerciseSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -396,9 +342,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     padding: 16,
     borderRadius: 20,
-    marginBottom: 16,
-    borderBottomWidth: 4,
-    borderBottomColor: Colors.border,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 5,
   },
   selectorLabel: {
     fontSize: 10,
@@ -420,31 +367,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  chartCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 16,
-    borderBottomWidth: 5,
-    borderBottomColor: Colors.border,
-  },
-  statsGrid: { flexDirection: "row", gap: 12, marginBottom: 30 },
-  statBox: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    padding: 16,
-    borderRadius: 20,
-    alignItems: "center",
-    borderBottomWidth: 4,
-    borderBottomColor: Colors.border,
-  },
-  statLabel: {
-    fontSize: 10,
+  sectionHeader: {
+    fontSize: 12,
     fontWeight: "900",
-    color: Colors.placeholder,
-    marginBottom: 4,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 16,
   },
-  statValue: { fontSize: 22, fontWeight: "900", color: Colors.text },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
   privateCard: {
     backgroundColor: Colors.surface,
     borderRadius: 24,
