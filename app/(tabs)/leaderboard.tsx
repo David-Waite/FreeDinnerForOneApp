@@ -6,16 +6,15 @@ import {
   FlatList,
   Image,
   RefreshControl,
-  ActivityIndicator,
-  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // Changed import
 import { useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
-import { UserProfile, WorkoutPost } from "../../constants/types";
+import { UserProfile } from "../../constants/types";
 import Colors from "../../constants/Colors";
 import { auth } from "../../config/firebase";
+import { useWorkoutContext } from "../../context/WorkoutContext"; // Import Context
 
 type LeaderboardUser = UserProfile & {
   score: number;
@@ -27,6 +26,9 @@ type LeaderboardUser = UserProfile & {
 const DINNER_PRICE = 320;
 
 export default function LeaderboardScreen() {
+  const insets = useSafeAreaInsets();
+  const { isActive } = useWorkoutContext(); // Get Active State
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardUser[]>([]);
@@ -167,7 +169,8 @@ export default function LeaderboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    // FIX: Conditional Padding
+    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSubtitle}>DINNER COMP</Text>
@@ -223,7 +226,7 @@ export default function LeaderboardScreen() {
           </Text>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -246,7 +249,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   title: { fontSize: 28, fontWeight: "900", color: Colors.text },
-
   poolBadge: {
     backgroundColor: Colors.surface,
     padding: 10,
@@ -257,7 +259,6 @@ const styles = StyleSheet.create({
   },
   poolLabel: { fontSize: 8, fontWeight: "800", color: Colors.textMuted },
   poolValue: { fontSize: 18, fontWeight: "900", color: Colors.gold },
-
   modeBanner: {
     margin: 16,
     padding: 12,
@@ -279,7 +280,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.5,
   },
-
   listContent: { padding: 16 },
   card: {
     flexDirection: "row",
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   myCard: {
-    backgroundColor: "#233640", // Darker blue-navy
+    backgroundColor: "#233640",
     borderColor: Colors.primary,
     borderBottomColor: "#46a302",
     borderWidth: 2,
@@ -300,7 +300,6 @@ const styles = StyleSheet.create({
   },
   rankContainer: { width: 35, alignItems: "center", marginRight: 10 },
   rankText: { fontSize: 18, fontWeight: "900", color: Colors.textMuted },
-
   avatar: {
     width: 55,
     height: 55,
@@ -315,7 +314,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarLetter: { fontSize: 22, fontWeight: "900", color: Colors.text },
-
   infoContainer: { flex: 1 },
   nameText: { fontSize: 17, fontWeight: "800", color: Colors.text },
   scoreText: {
@@ -324,11 +322,9 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
   },
-
   paymentContainer: { alignItems: "flex-end" },
   paymentLabel: { fontSize: 10, fontWeight: "800", color: Colors.placeholder },
   paymentAmount: { fontSize: 20, fontWeight: "900", color: Colors.text },
-
   footerContainer: { marginTop: "auto", padding: 20, alignItems: "center" },
   footerText: {
     textAlign: "center",

@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  StatusBar,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
 import { useWorkoutContext } from "../context/WorkoutContext";
@@ -19,7 +12,7 @@ export default function GlobalWorkoutBanner() {
   const { isActive, elapsedSeconds, sessionId, sessionName } =
     useWorkoutContext();
 
-  // CRITICAL: Return null before any wrappers or SafeAreas if not active
+  // Return null if not active or if we are currently ON the recording screen
   if (!isActive || !sessionId || pathname === "/record-workout") {
     return null;
   }
@@ -69,18 +62,12 @@ export default function GlobalWorkoutBanner() {
   );
 }
 
-// Keep your existing styles exactly as they are.
-// The logic change above prevents the 'wrapper' from existing when hidden.
-
 const styles = StyleSheet.create({
   wrapper: {
-    position: "absolute", // Change from relative to absolute
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "transparent", // Let the SafeArea handle the color
+    // REMOVED absolute positioning.
+    // This allows the banner to push the content down, preventing overlap.
+    backgroundColor: Colors.primary,
     zIndex: 9999,
-    // Ensure the shelf shadow shows over the content below
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -88,14 +75,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   safeArea: {
-    backgroundColor: Colors.primary, // Duo Green
+    backgroundColor: Colors.primary,
   },
   container: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     backgroundColor: Colors.primary,
     borderBottomWidth: 4,
-    borderBottomColor: "#46a302", // Darker 3D base
+    borderBottomColor: "#46a302",
   },
   content: {
     flexDirection: "row",

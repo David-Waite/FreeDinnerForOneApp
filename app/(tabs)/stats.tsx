@@ -8,10 +8,8 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-  Image,
-  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // Import
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useExerciseStats } from "../../hooks/useExerciseStats";
 import AnalyticsChart from "../../components/stats/AnalyticsChart";
@@ -19,6 +17,7 @@ import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { UserProfile, MasterExercise } from "../../constants/types";
 import { auth } from "../../config/firebase";
 import Colors from "../../constants/Colors";
+import { useWorkoutContext } from "../../context/WorkoutContext"; // Import
 
 type ChartMode =
   | "volume"
@@ -29,6 +28,9 @@ type ChartMode =
   | "weight";
 
 export default function StatsScreen() {
+  const insets = useSafeAreaInsets();
+  const { isActive } = useWorkoutContext(); // Get State
+
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [userModalVisible, setUserModalVisible] = useState(false);
@@ -109,8 +111,8 @@ export default function StatsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* 1. HEADER */}
+    // FIX: Conditional Padding
+    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSubtitle}>YOUR PROGRESS</Text>
@@ -173,7 +175,6 @@ export default function StatsScreen() {
           )}
         </ScrollView>
 
-        {/* 3. CHART & CONTROLS */}
         {(!showWorkouts && mode !== "weight") ||
         (!showWeight && mode === "weight") ? (
           <View style={styles.privateCard}>
@@ -215,7 +216,6 @@ export default function StatsScreen() {
               />
             </View>
 
-            {/* 4. STATS GRID */}
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
                 <Text style={styles.statLabel}>ENTRIES</Text>
@@ -334,7 +334,7 @@ export default function StatsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -375,9 +375,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   smallAvatarText: { color: Colors.white, fontSize: 12, fontWeight: "900" },
-
   scrollContent: { padding: 16 },
-
   tabsContainer: { marginBottom: 20 },
   tab: {
     paddingVertical: 10,
@@ -391,7 +389,6 @@ const styles = StyleSheet.create({
   activeTab: { backgroundColor: Colors.primary, borderBottomColor: "#46a302" },
   tabText: { fontWeight: "900", color: Colors.textMuted, fontSize: 12 },
   activeTabText: { color: Colors.white },
-
   exerciseSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -423,7 +420,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   chartCard: {
     backgroundColor: Colors.surface,
     borderRadius: 24,
@@ -432,7 +428,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 5,
     borderBottomColor: Colors.border,
   },
-
   statsGrid: { flexDirection: "row", gap: 12, marginBottom: 30 },
   statBox: {
     flex: 1,
@@ -450,7 +445,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statValue: { fontSize: 22, fontWeight: "900", color: Colors.text },
-
   privateCard: {
     backgroundColor: Colors.surface,
     borderRadius: 24,
@@ -472,7 +466,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-
   modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
   modalContainer: {
     flex: 1,

@@ -6,13 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  Image,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- IMPORTS ---
+import { useWorkoutContext } from "../../context/WorkoutContext"; // IMPORT THIS
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { WorkoutPost } from "../../constants/types";
 import Colors from "../../constants/Colors";
@@ -22,6 +22,9 @@ import WorkoutDetailsModal from "../../components/social/WorkoutDetailsModal";
 
 export default function FeedScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { isActive } = useWorkoutContext(); // GET ACTIVE STATE
+
   const [posts, setPosts] = useState<WorkoutPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [viewWorkoutId, setViewWorkoutId] = useState<string | null>(null);
@@ -79,7 +82,8 @@ export default function FeedScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    // FIX: If active, padding is 0 (Banner handles it). If not, use inset.
+    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
@@ -134,15 +138,13 @@ export default function FeedScreen() {
         onClose={() => setViewWorkoutId(null)}
         authorId={viewWorkoutAuthorId}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   listContent: { paddingBottom: 100 },
-
-  // DUO HEADER
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -175,14 +177,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 4, // 3D Effect
+    borderBottomWidth: 4,
   },
-
   postWrapper: {
     marginBottom: 16,
   },
-
-  // EMPTY STATE
   emptyCard: {
     alignItems: "center",
     justifyContent: "center",

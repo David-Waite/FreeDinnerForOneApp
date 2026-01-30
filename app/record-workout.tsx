@@ -9,7 +9,7 @@ import {
   Platform,
   UIManager,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // IMPORT
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
@@ -30,6 +30,7 @@ if (
 export default function RecordWorkoutScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets(); // HOOK
   const { templateId } = useLocalSearchParams<{ templateId: string }>();
 
   const {
@@ -69,7 +70,6 @@ export default function RecordWorkoutScreen() {
     setId: string;
   } | null>(null);
 
-  // Calculate Progress for the Duo-style progress bar
   const progress = useMemo(() => {
     const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
     const completedSets = exercises.reduce(
@@ -146,8 +146,8 @@ export default function RecordWorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      {/* DUO MISSION HEADER */}
-      <SafeAreaView style={styles.topSafeArea} edges={["top"]}>
+      {/* Manual SafeArea using padding to avoid clipping */}
+      <View style={[styles.topSafeArea, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Text style={styles.headerSubtitle}>CURRENT MISSION</Text>
           <Text style={styles.headerTitle}>{sessionName?.toUpperCase()}</Text>
@@ -161,7 +161,7 @@ export default function RecordWorkoutScreen() {
             </View>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -210,7 +210,6 @@ export default function RecordWorkoutScreen() {
             }}
             onSetDone={(setId) => {
               markSetComplete(exercise.id, setId);
-              // Auto-advance logic
               const idx = exercise.sets.findIndex((s) => s.id === setId);
               if (idx < exercise.sets.length - 1) {
                 setExpandedSetId(exercise.sets[idx + 1].id);
@@ -221,7 +220,6 @@ export default function RecordWorkoutScreen() {
         <View style={{ height: 180 }} />
       </ScrollView>
 
-      {/* FLOATING ACTIVE CONTROLS */}
       <ActiveWorkoutControls
         elapsedSeconds={elapsedSeconds}
         isPaused={isPaused}
@@ -241,12 +239,10 @@ export default function RecordWorkoutScreen() {
         notes={notesList}
         onTogglePin={async (id) => {
           await WorkoutRepository.togglePinNote(currentNoteExercise, id);
-          // Refresh the list after toggling
           setNotesList(await WorkoutRepository.getNotes(currentNoteExercise));
         }}
         onDeleteNote={async (id) => {
           await WorkoutRepository.deleteNote(currentNoteExercise, id);
-          // Refresh the list after deleting
           setNotesList(await WorkoutRepository.getNotes(currentNoteExercise));
         }}
         onSaveNote={async (text) => {
@@ -281,6 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
+    // No edges or SafeAreaView here, manual padding handled in JSX
   },
   header: {
     padding: 16,
@@ -299,7 +296,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 12,
   },
-  // Duo-style Progress Bar
   progressBarBg: {
     height: 14,
     width: "90%",
@@ -309,7 +305,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: Colors.primary, // Duo Green
+    backgroundColor: Colors.primary,
     borderRadius: 7,
     justifyContent: "center",
   },

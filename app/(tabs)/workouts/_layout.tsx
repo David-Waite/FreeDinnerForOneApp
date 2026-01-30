@@ -11,14 +11,15 @@ export default function WorkoutsLayout() {
         headerShadowVisible: false,
       }}
     >
-      {/* Disable native header for History to use custom Duo header */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
 
-      <Stack.Screen name="new" options={{ title: "START WORKOUT" }} />
+      {/* Hidden header so we can use our custom 'CHOOSE YOUR PATH' header */}
+      <Stack.Screen name="new" options={{ headerShown: false }} />
 
+      {/* Hidden header so we can use the custom editor header */}
       <Stack.Screen
         name="template-editor"
-        options={{ title: "EDIT TEMPLATE", presentation: "modal" }}
+        options={{ presentation: "modal", headerShown: false }}
       />
     </Stack>
   );

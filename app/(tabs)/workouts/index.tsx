@@ -6,19 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
-  ScrollView,
-  Animated,
-  Dimensions,
-  Alert,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
+  Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Calendar, DateData } from "react-native-calendars";
 import { Swipeable } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // Import
 
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import {
@@ -28,13 +23,12 @@ import {
 } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
 import HistoryWorkoutCard from "../../../components/workout/HistoryWorkoutCard";
-import { useWorkoutContext } from "../../../context/WorkoutContext";
-
-const SCREEN_WIDTH = Dimensions.get("window").width;
+import { useWorkoutContext } from "../../../context/WorkoutContext"; // Import
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
-  const { isActive } = useWorkoutContext();
+  const insets = useSafeAreaInsets();
+  const { isActive } = useWorkoutContext(); // Get Active State
 
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [allNotes, setAllNotes] = useState<NotesStorage>({});
@@ -162,7 +156,8 @@ export default function WorkoutHistoryScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    // FIX: Conditional Padding
+    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <FlatList
         data={dayWorkouts}
         keyExtractor={(item) => item.id}
@@ -254,7 +249,7 @@ export default function WorkoutHistoryScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

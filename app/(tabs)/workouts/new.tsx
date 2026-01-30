@@ -8,14 +8,17 @@ import {
   Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import { WorkoutTemplate } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useWorkoutContext } from "../../../context/WorkoutContext"; // Import
 
 export default function WorkoutDashboard() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { isActive } = useWorkoutContext(); // Get Active State
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
 
   useFocusEffect(
@@ -110,43 +113,42 @@ export default function WorkoutDashboard() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.container}>
-        <FlatList
-          data={templates}
-          keyExtractor={(item) => item.id}
-          renderItem={renderTemplateItem}
-          contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }}
-          ListHeaderComponent={
-            <View style={styles.headerContainer}>
-              <Text style={styles.headerSubtitle}>CHOOSE YOUR PATH</Text>
-              <Text style={styles.headerTitle}>My Routines</Text>
-            </View>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyCard}>
-              <MaterialCommunityIcons
-                name="dumbbell"
-                size={60}
-                color={Colors.border}
-              />
-              <Text style={styles.emptyText}>NO ROUTINES YET</Text>
-              <Text style={styles.emptySubText}>
-                Create a template to unlock faster tracking!
-              </Text>
-            </View>
-          }
-        />
+    // FIX: Conditional Padding
+    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
+      <FlatList
+        data={templates}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTemplateItem}
+        contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }}
+        ListHeaderComponent={
+          <View style={styles.headerContainer}>
+            <Text style={styles.headerSubtitle}>CHOOSE YOUR PATH</Text>
+            <Text style={styles.headerTitle}>My Routines</Text>
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyCard}>
+            <MaterialCommunityIcons
+              name="dumbbell"
+              size={60}
+              color={Colors.border}
+            />
+            <Text style={styles.emptyText}>NO ROUTINES YET</Text>
+            <Text style={styles.emptySubText}>
+              Create a template to unlock faster tracking!
+            </Text>
+          </View>
+        }
+      />
 
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push("/workouts/template-editor")}
-        >
-          <Ionicons name="add" size={30} color={Colors.white} />
-          <Text style={styles.fabText}>NEW TEMPLATE</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push("/workouts/template-editor")}
+      >
+        <Ionicons name="add" size={30} color={Colors.white} />
+        <Text style={styles.fabText}>NEW TEMPLATE</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -164,7 +166,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   headerTitle: { fontSize: 32, fontWeight: "900", color: Colors.text },
-
   card: {
     backgroundColor: Colors.surface,
     padding: 16,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 6, // Signature Duo 3D Effect
+    borderBottomWidth: 6,
   },
   cardHeader: {
     flexDirection: "row",
@@ -203,7 +204,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardActions: { flexDirection: "row", alignItems: "center" },
-
   exercisePreview: {
     marginBottom: 20,
     backgroundColor: Colors.background,
@@ -221,14 +221,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   previewText: { color: Colors.text, fontSize: 14, fontWeight: "600" },
-
   startBtn: {
     backgroundColor: Colors.primary,
     padding: 14,
     borderRadius: 16,
     alignItems: "center",
     borderBottomWidth: 4,
-    borderBottomColor: "#46a302", // Darker primary green
+    borderBottomColor: "#46a302",
   },
   startBtnText: {
     color: Colors.white,
@@ -236,14 +235,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 1,
   },
-
   fab: {
     position: "absolute",
     bottom: 30,
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.info, // Duo Blue
+    backgroundColor: Colors.info,
     paddingVertical: 16,
     paddingHorizontal: 28,
     borderRadius: 20,
@@ -261,7 +259,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.5,
   },
-
   emptyCard: {
     alignItems: "center",
     marginTop: 40,
