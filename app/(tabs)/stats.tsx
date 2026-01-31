@@ -148,7 +148,7 @@ export default function StatsScreen() {
                   <AnalyticsMiniCard
                     title="Volume"
                     data={volumeData}
-                    type="bar"
+                    type="line"
                     color={Colors.info}
                     unit="kg"
                     onPress={() => navigateToDetail("volume")}
@@ -172,7 +172,7 @@ export default function StatsScreen() {
                   <AnalyticsMiniCard
                     title="Consistency"
                     data={consistencyData}
-                    type="bar"
+                    type="grid"
                     color={Colors.purple}
                     unit="days"
                     onPress={() => navigateToDetail("consistency")}

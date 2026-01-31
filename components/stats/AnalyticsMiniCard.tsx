@@ -1,11 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { CartesianChart, Line, Bar } from "victory-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
@@ -14,7 +8,7 @@ import { ChartDataPoint } from "../../hooks/useExerciseStats";
 type Props = {
   title: string;
   data: ChartDataPoint[];
-  type: "line" | "bar";
+  type: "line" | "bar" | "grid"; // Added "grid" here
   color: string;
   unit: string;
   onPress: () => void;
@@ -28,12 +22,27 @@ export default function AnalyticsMiniCard({
   unit,
   onPress,
 }: Props) {
+  // 1. Logic for Line/Bar charts
   const numericData = useMemo(() => {
-    // Show last 10 points for the sparkline feel
     return data.slice(-10).map((d) => ({
       x: new Date(d.x).getTime(),
       y: d.y,
     }));
+  }, [data]);
+
+  // 2. Logic for the GitHub-style Grid (Last 7 Days)
+  const gridData = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      const dateStr = date.toISOString().split("T")[0];
+
+      // Check if there is data for this specific day
+      const dayEntry = data.find((d) => d.x.startsWith(dateStr));
+      return {
+        active: dayEntry && dayEntry.y > 0,
+      };
+    });
   }, [data]);
 
   const latestValue = data.length > 0 ? data[data.length - 1].y : 0;
@@ -46,8 +55,28 @@ export default function AnalyticsMiniCard({
       </View>
 
       <View style={styles.chartContainer}>
-        {data.length > 1 ? (
-          <CartesianChart data={numericData} xKey="x" yKeys={["y"]} padding={2}>
+        {type === "grid" ? (
+          /* NEW GITHUB STYLE GRID */
+          <View style={styles.gridWrapper}>
+            {gridData.map((day, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.gridSquare,
+                  { backgroundColor: day.active ? color : Colors.border },
+                ]}
+              />
+            ))}
+          </View>
+        ) : data.length > 1 ? (
+          /* EXISTING CHARTS */
+          <CartesianChart
+            data={numericData}
+            xKey="x"
+            yKeys={["y"]}
+            padding={5}
+            domainPadding={{ top: 10, bottom: 5, left: 5, right: 5 }}
+          >
             {({ points, chartBounds }) => (
               <>
                 {type === "line" ? (
@@ -87,7 +116,7 @@ export default function AnalyticsMiniCard({
 
 const styles = StyleSheet.create({
   card: {
-    width: "48%", // Half screen minus gap
+    width: "48%",
     backgroundColor: Colors.surface,
     borderRadius: 20,
     padding: 14,
@@ -109,6 +138,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   chartContainer: { height: 50, width: "100%", marginBottom: 8 },
+
+  /* GRID STYLES */
+  gridWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flex: 1,
+  },
+  gridSquare: {
+    width: "12%", // Fits 7 squares nicely with spacing
+    aspectRatio: 1,
+    borderRadius: 4,
+  },
+
   footer: { flexDirection: "row", alignItems: "baseline", gap: 4 },
   value: { fontSize: 20, fontWeight: "900", color: Colors.text },
   unit: { fontSize: 10, fontWeight: "800", color: Colors.textMuted },
