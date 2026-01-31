@@ -15,6 +15,7 @@ import { auth } from "../config/firebase";
 import { useRouter, Link } from "expo-router";
 import Colors from "../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import DuoTouch from "../components/ui/DuoTouch";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -78,18 +79,18 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity
+          <DuoTouch
             style={styles.button}
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.8}
+            hapticStyle="medium"
           >
             {loading ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.buttonText}>LOG IN</Text>
             )}
-          </TouchableOpacity>
+          </DuoTouch>
         </View>
 
         <View style={styles.footer}>

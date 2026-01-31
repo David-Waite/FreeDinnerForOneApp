@@ -24,6 +24,7 @@ import {
 import Colors from "../../../constants/Colors";
 import HistoryWorkoutCard from "../../../components/workout/HistoryWorkoutCard";
 import { useWorkoutContext } from "../../../context/WorkoutContext"; // Import
+import DuoTouch from "../../../components/ui/DuoTouch";
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
@@ -191,7 +192,7 @@ export default function WorkoutHistoryScreen() {
         }
       />
 
-      <TouchableOpacity
+      <DuoTouch
         style={[
           styles.fab,
           isActive && {
@@ -199,6 +200,7 @@ export default function WorkoutHistoryScreen() {
             borderBottomColor: "#46a302",
           },
         ]}
+        hapticStyle={isActive ? "heavy" : "medium"} // "Heavy" slam for resuming, "Medium" for new
         onPress={() =>
           isActive
             ? router.push("/record-workout")
@@ -213,7 +215,7 @@ export default function WorkoutHistoryScreen() {
         <Text style={styles.fabText}>
           {isActive ? "CONTINUE" : "NEW SESSION"}
         </Text>
-      </TouchableOpacity>
+      </DuoTouch>
 
       {/* Weight Modal */}
       <Modal animationType="fade" transparent visible={weightModalVisible}>

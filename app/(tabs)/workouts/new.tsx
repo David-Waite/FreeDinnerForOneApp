@@ -18,6 +18,7 @@ import Colors from "../../../constants/Colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWorkoutContext } from "../../../context/WorkoutContext";
 import { auth } from "../../../config/firebase";
+import DuoTouch from "../../../components/ui/DuoTouch";
 
 export default function WorkoutDashboard() {
   const router = useRouter();
@@ -112,9 +113,9 @@ export default function WorkoutDashboard() {
             const isSelected = selectedUserId === item.uid;
             const isMe = item.uid === currentUser?.uid;
             return (
-              <TouchableOpacity
-                activeOpacity={0.8}
+              <DuoTouch
                 style={[styles.userPill, isSelected && styles.userPillSelected]}
+                hapticStyle="light"
                 onPress={() => {
                   if (selectedUserId === item.uid) return;
                   setLoading(true);
@@ -144,7 +145,7 @@ export default function WorkoutDashboard() {
                 >
                   {isMe ? "My Library" : item.displayName.split(" ")[0]}
                 </Text>
-              </TouchableOpacity>
+              </DuoTouch>
             );
           }}
           showsHorizontalScrollIndicator={false}
@@ -179,35 +180,41 @@ export default function WorkoutDashboard() {
           <View style={styles.cardActions}>
             {isMine ? (
               <View style={styles.actionRow}>
-                <TouchableOpacity
+                <DuoTouch
                   onPress={() =>
                     router.push({
                       pathname: "/workouts/template-editor",
                       params: { id: item.id },
                     })
                   }
+                  hapticStyle="light"
                 >
                   <Ionicons name="pencil" size={20} color={Colors.textMuted} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteTemplate(item.id)}>
+                </DuoTouch>
+
+                <DuoTouch
+                  onPress={() => deleteTemplate(item.id)}
+                  hapticStyle="medium" // Or use "error" for a distinct double-pulse
+                >
                   <Ionicons
                     name="trash-outline"
                     size={20}
                     color={Colors.error}
                   />
-                </TouchableOpacity>
+                </DuoTouch>
               </View>
             ) : (
-              <TouchableOpacity
+              <DuoTouch
                 style={styles.stealAction}
                 onPress={() => stealRoutine(item)}
+                hapticStyle="medium"
               >
                 <Ionicons
                   name="cloud-download"
                   size={22}
                   color={Colors.primary}
                 />
-              </TouchableOpacity>
+              </DuoTouch>
             )}
           </View>
         </View>
@@ -229,8 +236,9 @@ export default function WorkoutDashboard() {
         </View>
 
         {isMine ? (
-          <TouchableOpacity
+          <DuoTouch
             style={styles.startBtn}
+            hapticStyle="heavy" // Heavy slam for starting the mission
             onPress={() =>
               router.push({
                 pathname: "/record-workout",
@@ -239,15 +247,16 @@ export default function WorkoutDashboard() {
             }
           >
             <Text style={styles.startBtnText}>START WORKOUT</Text>
-          </TouchableOpacity>
+          </DuoTouch>
         ) : (
-          <TouchableOpacity
+          <DuoTouch
             style={styles.downloadBtn}
+            hapticStyle="medium" // Medium click for adding to library
             onPress={() => stealRoutine(item)}
           >
             <Ionicons name="add" size={20} color={Colors.primary} />
             <Text style={styles.downloadBtnText}>ADD TO MY LIBRARY</Text>
-          </TouchableOpacity>
+          </DuoTouch>
         )}
       </View>
     );
@@ -307,13 +316,14 @@ export default function WorkoutDashboard() {
       )}
 
       {selectedUserId === currentUser?.uid && (
-        <TouchableOpacity
+        <DuoTouch
           style={styles.fab}
           onPress={() => router.push("/workouts/template-editor")}
+          hapticStyle="heavy"
         >
           <Ionicons name="add" size={30} color={Colors.white} />
           <Text style={styles.fabText}>NEW TEMPLATE</Text>
-        </TouchableOpacity>
+        </DuoTouch>
       )}
     </View>
   );

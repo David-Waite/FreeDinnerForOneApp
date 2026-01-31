@@ -17,6 +17,7 @@ import { TemplateExercise, WorkoutTemplate } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import ExerciseAutocomplete from "../../../components/workout/ExerciseAutocomplete";
+import DuoTouch from "../../../components/ui/DuoTouch";
 
 export default function TemplateEditor() {
   const router = useRouter();
@@ -256,10 +257,14 @@ export default function TemplateEditor() {
             </View>
           ))}
 
-          <TouchableOpacity style={styles.addBtn} onPress={addExercise}>
+          <DuoTouch
+            style={styles.addBtn}
+            onPress={addExercise}
+            hapticStyle="medium"
+          >
             <Ionicons name="add-circle" size={24} color={Colors.primary} />
             <Text style={styles.addBtnText}>ADD EXERCISE</Text>
-          </TouchableOpacity>
+          </DuoTouch>
 
           {/* Pad the bottom so the last item can scroll to the top */}
           <View style={{ height: 100 }} />
