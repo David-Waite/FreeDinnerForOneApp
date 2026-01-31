@@ -193,11 +193,13 @@ export default function LeaderboardScreen() {
           const secondLast = rankedUsers[playerCount - 2];
           const gap = (secondLast?.score || 0) - lastPlace.score;
           const isMotivational = gap >= 20;
-          setSplitMode(isMotivational ? "motivational" : "friendly");
+
+          // Force motivational for testing or logic as per your snippet
           setSplitMode("motivational");
           winners.forEach((u) => (u.payment = 0));
 
-          if (isMotivational) {
+          if (isMotivational || true) {
+            // Logic preservation
             let totalDeficit = 0;
             losers.forEach((u) => {
               u.deficit = topScore - u.score;
@@ -349,21 +351,25 @@ export default function LeaderboardScreen() {
               : styles.modeFriendly,
           ]}
         >
-          <Ionicons
-            name={splitMode === "motivational" ? "flame" : "shield-checkmark"}
-            size={20}
-            color={Colors.white}
-          />
-          <Text style={styles.modeText}>
-            {splitMode === "motivational"
-              ? "MOTIVATIONAL SPLIT (Their fucked) "
-              : "FRIENDLY SPLIT 🤝"}
-          </Text>
+          <View style={styles.modePrimaryRow}>
+            <Ionicons
+              name={splitMode === "motivational" ? "flame" : "shield-checkmark"}
+              size={20}
+              color={Colors.white}
+            />
+            <Text style={styles.modeText}>
+              {splitMode === "motivational"
+                ? "MOTIVATIONAL SPLIT"
+                : "FRIENDLY SPLIT 🤝"}
+            </Text>
+          </View>
+          {splitMode === "motivational" && (
+            <Text style={styles.modeSubtext}>(THEIR FUCKED)</Text>
+          )}
         </View>
       )}
 
       <FlatList
-        // Casting data to any to avoid the TypeScript mismatch during loading state
         data={(loading ? [1, 2, 3, 4, 5] : leaderboardData) as any}
         keyExtractor={(item, index) => (loading ? index.toString() : item.uid)}
         renderItem={loading ? () => <SkeletonCard /> : renderItem}
@@ -492,12 +498,16 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 12,
     borderRadius: 15,
-    flexDirection: "row",
+    flexDirection: "column", // Stacked vertically
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
     borderBottomWidth: 4,
     minHeight: 45,
+  },
+  modePrimaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   modeFriendly: { backgroundColor: Colors.info, borderBottomColor: "#1899d6" },
   modeMotivational: {
@@ -509,6 +519,13 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 13,
     letterSpacing: 0.5,
+  },
+  modeSubtext: {
+    color: Colors.white,
+    fontWeight: "800",
+    fontSize: 10,
+    opacity: 0.9,
+    marginTop: 2,
   },
   listContent: { padding: 16 },
   card: {
