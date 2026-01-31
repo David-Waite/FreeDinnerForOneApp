@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FreeDinnerForOneApp",
-    "slug": "FreeDinnerForOneApp",
+    "name": "Thecomp",
+    "slug": "Thecomp",
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.david.freeDinnerForOneApp",
