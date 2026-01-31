@@ -18,6 +18,7 @@ type Props = {
   onChangeText: (text: string) => void;
   placeholder?: string;
   style?: StyleProp<ViewStyle>;
+  onFocus?: () => void;
 };
 
 export default function ExerciseAutocomplete({
@@ -25,6 +26,7 @@ export default function ExerciseAutocomplete({
   onChangeText,
   placeholder,
   style,
+  onFocus,
 }: Props) {
   const [allExercises, setAllExercises] = useState<MasterExercise[]>([]);
   const [suggestions, setSuggestions] = useState<MasterExercise[]>([]);
@@ -73,6 +75,7 @@ export default function ExerciseAutocomplete({
         placeholderTextColor={Colors.placeholder}
         value={value}
         onChangeText={handleTextChange}
+        onFocus={onFocus}
         onBlur={() => {
           // Small delay to allow click to register
           setTimeout(() => setShowSuggestions(false), 200);

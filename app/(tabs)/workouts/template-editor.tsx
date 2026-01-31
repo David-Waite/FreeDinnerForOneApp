@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Switch, // <--- Import Switch
+  Switch,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
@@ -23,10 +23,11 @@ export default function TemplateEditor() {
   const { id } = useLocalSearchParams();
   const [name, setName] = useState("");
   const [exercises, setExercises] = useState<TemplateExercise[]>([]);
-
-  // 1. NEW: Public State
   const [isPublic, setIsPublic] = useState(false);
 
+  // --- REFS FOR SCROLLING ---
+  const scrollViewRef = useRef<ScrollView>(null);
+  const cardPositions = useRef<{ [key: number]: number }>({});
   useEffect(() => {
     if (id) loadExistingTemplate(id as string);
   }, [id]);
@@ -36,8 +37,22 @@ export default function TemplateEditor() {
     if (template) {
       setName(template.name);
       setExercises(template.exercises);
-      // 2. LOAD: Set state from existing data
       setIsPublic(template.isPublic || false);
+    }
+  };
+
+  // --- SCROLL LOGIC ---
+  const handleInputFocus = (index: number) => {
+    const yPos = cardPositions.current[index];
+    if (yPos !== undefined) {
+      // We scroll to the exact Y position of the card, minus a small
+      // offset so the "EXERCISES" title or previous card isn't crammed
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: yPos,
+          animated: true,
+        });
+      }, 150); // Slight delay for keyboard pop-up stability
     }
   };
 
@@ -51,6 +66,11 @@ export default function TemplateEditor() {
       notes: "",
     };
     setExercises([...exercises, newEx]);
+
+    // Auto-scroll to the new exercise at the bottom
+    // setTimeout(() => {
+    //   scrollViewRef.current?.scrollToEnd({ animated: true });
+    // }, 100);
   };
 
   const updateExercise = (
@@ -77,7 +97,7 @@ export default function TemplateEditor() {
       id: (id as string) || Date.now().toString(),
       name,
       exercises,
-      isPublic, // 3. SAVE: Pass the boolean
+      isPublic,
     };
 
     await WorkoutRepository.saveTemplate(template);
@@ -89,8 +109,8 @@ export default function TemplateEditor() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={styles.cancelBtn}>CANCEL</Text>
@@ -104,9 +124,11 @@ export default function TemplateEditor() {
         </View>
 
         <ScrollView
+          ref={scrollViewRef} // ATTACH REF
           style={styles.content}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always" // Ensures autocomplete taps work
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 300 }} // Extra space to scroll the last item up
         >
           {/* ROUTINE NAME INPUT */}
           <View style={styles.inputGroup}>
@@ -122,7 +144,7 @@ export default function TemplateEditor() {
             </View>
           </View>
 
-          {/* 4. PUBLIC TOGGLE UI */}
+          {/* PUBLIC TOGGLE */}
           <View style={styles.toggleCard}>
             <View style={styles.toggleInfo}>
               <View
@@ -153,7 +175,6 @@ export default function TemplateEditor() {
               onValueChange={setIsPublic}
               trackColor={{ false: Colors.border, true: Colors.primary }}
               thumbColor={Colors.white}
-              // On iOS the background color for 'false' is set via this prop:
               ios_backgroundColor={Colors.border}
             />
           </View>
@@ -161,7 +182,13 @@ export default function TemplateEditor() {
           <Text style={styles.sectionTitle}>EXERCISES</Text>
 
           {exercises.map((ex, index) => (
-            <View key={ex.id} style={styles.exerciseCard}>
+            <View
+              key={ex.id}
+              style={styles.exerciseCard}
+              onLayout={(event) => {
+                cardPositions.current[index] = event.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.cardTopRow}>
                 <View style={styles.indexBadge}>
                   <Text style={styles.exerciseIndex}>{index + 1}</Text>
@@ -180,9 +207,11 @@ export default function TemplateEditor() {
                   placeholder="What's the exercise?"
                   value={ex.name}
                   onChangeText={(v) => updateExercise(ex.id, "name", v)}
+                  onFocus={() => handleInputFocus(index)} // TRIGGER SCROLL
                 />
               </View>
 
+              {/* SETS / REPS / REST ROW */}
               <View style={styles.row}>
                 <View style={styles.col}>
                   <Text style={styles.subLabel}>SETS</Text>
@@ -227,12 +256,12 @@ export default function TemplateEditor() {
             </View>
           ))}
 
-          {/* ADD EXERCISE BUTTON */}
           <TouchableOpacity style={styles.addBtn} onPress={addExercise}>
             <Ionicons name="add-circle" size={24} color={Colors.primary} />
             <Text style={styles.addBtnText}>ADD EXERCISE</Text>
           </TouchableOpacity>
 
+          {/* Pad the bottom so the last item can scroll to the top */}
           <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -241,7 +270,7 @@ export default function TemplateEditor() {
 }
 
 const styles = StyleSheet.create({
-  // ... (Existing Styles) ...
+  // ... (Your existing styles) ...
   modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
   container: {
     flex: 1,
@@ -304,7 +333,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
 
-  // 5. NEW STYLES FOR TOGGLE
   toggleCard: {
     backgroundColor: Colors.surface,
     borderRadius: 16,
