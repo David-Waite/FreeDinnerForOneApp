@@ -1,12 +1,9 @@
 import { Tabs, useRouter } from "expo-router";
 import React from "react";
-import {
-  FontAwesome,
-  MaterialCommunityIcons,
-  Ionicons,
-} from "@expo/vector-icons";
+import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
-import { StyleSheet, View, Platform } from "react-native";
+import { StyleSheet, View, Platform, Text } from "react-native";
+import DuoTouch from "../../components/ui/DuoTouch";
 
 export default function TabLayout() {
   const router = useRouter();
@@ -19,13 +16,19 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: styles.tabBar,
+        // Apply light haptic and squish to every tab
+        tabBarButton: (props) => (
+          <DuoTouch
+            {...props}
+            hapticStyle="light"
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          />
+        ),
       }}
     >
-      {/* 1. Feed */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Feed",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "home" : "home-outline"}
@@ -36,11 +39,9 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2. Leaderboard */}
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: "Leaderboard",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "trophy" : "trophy-outline"}
@@ -51,32 +52,30 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 3. Create (The 3D Middle Button) */}
+      {/* THE HEAVY 3D PLUS BUTTON */}
       <Tabs.Screen
         name="create"
         options={{
-          title: "Post",
-          tabBarIcon: () => (
-            <View style={styles.plusButton}>
-              <View style={styles.plusButtonInner}>
-                <Ionicons name="add" size={32} color={Colors.white} />
+          tabBarButton: (props) => (
+            <DuoTouch
+              {...props}
+              hapticStyle="heavy" // heavier haptic for the big button
+              style={styles.plusButtonContainer}
+              onPress={() => router.push("/post-modal")}
+            >
+              <View style={styles.plusButtonBase}>
+                <View style={styles.plusButtonTop}>
+                  <Ionicons name="add" size={32} color={Colors.white} />
+                </View>
               </View>
-            </View>
+            </DuoTouch>
           ),
         }}
-        listeners={() => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push("/post-modal");
-          },
-        })}
       />
 
-      {/* 4. Stats */}
       <Tabs.Screen
         name="stats"
         options={{
-          title: "Stats",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "stats-chart" : "stats-chart-outline"}
@@ -87,11 +86,9 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 5. Workouts */}
       <Tabs.Screen
         name="workouts"
         options={{
-          title: "Workouts",
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
               name={focused ? "dumbbell" : "dumbbell"}
@@ -110,27 +107,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopWidth: 3,
     borderTopColor: Colors.border,
-    height: Platform.OS === "ios" ? 88 : 64,
+    height: Platform.OS === "ios" ? 95 : 70, // Slightly taller for chunky buttons
     paddingTop: 8,
-    // Add subtle depth
     elevation: 0,
     shadowOpacity: 0,
   },
-  plusButton: {
-    width: 54,
-    height: 50,
-    backgroundColor: "#46a302", // Darker green for the "3D base"
-    borderRadius: 14,
-    justifyContent: "flex-start",
-    marginTop: -4,
-  },
-  plusButtonInner: {
-    width: 54,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: Colors.primary, // Signature Duo Green
+  plusButtonContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    // This creates the "pop" effect from the base
+    marginTop: -15, // Lift the button out of the bar
+  },
+  plusButtonBase: {
+    width: 60,
+    height: 58,
+    backgroundColor: "#46a302", // Dark base
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  plusButtonTop: {
+    width: "100%",
+    height: 50, // shorter than base to show the 3D depth
+    borderRadius: 15,
+    backgroundColor: Colors.primary, // Bright Duo Green
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

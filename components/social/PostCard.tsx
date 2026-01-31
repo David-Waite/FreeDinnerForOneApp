@@ -13,6 +13,7 @@ import { WorkoutRepository } from "../../services/WorkoutRepository";
 import ReactionPicker from "./ReactionPicker";
 import Colors from "../../constants/Colors";
 import { auth } from "../../config/firebase";
+import DuoTouch from "../ui/DuoTouch";
 
 type Props = {
   post: WorkoutPost;
@@ -153,15 +154,16 @@ export default function PostCard({
 
       {/* ACTION BAR */}
       <View style={styles.actionBar}>
-        <TouchableOpacity
-          ref={heartButtonRef}
+        {/* LIKE / REACTION BUTTON */}
+        <DuoTouch
+          ref={heartButtonRef} // Note: DuoTouch needs to forwardRef if you use measureInWindow
           style={[
             styles.actionButton,
             myReactionEmoji && styles.activeActionButton,
           ]}
           onPress={() => handleReaction("❤️")}
           onLongPress={handleLongPress}
-          delayLongPress={250}
+          hapticStyle={myReactionEmoji ? "light" : "medium"} // Heavier haptic when first liking
         >
           <Ionicons
             name={myReactionEmoji ? "heart" : "heart-outline"}
@@ -176,11 +178,13 @@ export default function PostCard({
           >
             LIKE
           </Text>
-        </TouchableOpacity>
+        </DuoTouch>
 
-        <TouchableOpacity
+        {/* REPLY BUTTON */}
+        <DuoTouch
           style={styles.actionButton}
           onPress={() => onCommentPress(post)}
+          hapticStyle="light"
         >
           <Ionicons
             name="chatbubble-outline"
@@ -188,7 +192,7 @@ export default function PostCard({
             color={Colors.textMuted}
           />
           <Text style={styles.actionText}>REPLY</Text>
-        </TouchableOpacity>
+        </DuoTouch>
       </View>
 
       <ReactionPicker
