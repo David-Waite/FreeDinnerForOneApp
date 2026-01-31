@@ -11,9 +11,8 @@ import Colors from "../constants/Colors";
 
 // --- INNER COMPONENT TO HANDLE HYDRATION UI ---
 function AppContent() {
-  const { isHydrating } = useWorkoutContext(); // Access context state
+  const { isHydrating } = useWorkoutContext();
 
-  // If syncing data (Hydrating), show loading screen
   if (isHydrating) {
     return (
       <View style={styles.loadingContainer}>
@@ -23,10 +22,15 @@ function AppContent() {
     );
   }
 
-  // Once hydrated, show the app
   return (
     <View style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          // This makes the general transition feel faster across the whole app
+          animation: "slide_from_right",
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
         <Stack.Screen
@@ -38,10 +42,11 @@ function AppContent() {
           name="record-workout"
           options={{
             headerShown: false,
-
             gestureEnabled: false,
-
             presentation: "fullScreenModal",
+            // DUO POLISH: Fast slide from bottom
+            animation: "slide_from_bottom",
+            animationDuration: 250, // Standard Duo "snappy" speed
           }}
         />
 
@@ -51,7 +56,6 @@ function AppContent() {
         />
 
         <Stack.Screen name="login" options={{ headerShown: false }} />
-
         <Stack.Screen name="signup" options={{ headerShown: false }} />
       </Stack>
     </View>

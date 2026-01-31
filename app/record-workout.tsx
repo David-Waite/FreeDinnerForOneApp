@@ -188,7 +188,11 @@ export default function RecordWorkoutScreen() {
   const performSave = async () => {
     setIsExiting(true);
     await saveSession();
-    router.replace("/");
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
   };
 
   const handleCancel = () => {
@@ -203,7 +207,11 @@ export default function RecordWorkoutScreen() {
           onPress: async () => {
             setIsExiting(true);
             await cancelSession();
-            router.replace("/");
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(tabs)"); // Fallback if no history exists
+            }
           },
         },
       ],
@@ -287,7 +295,11 @@ export default function RecordWorkoutScreen() {
         onCancel={handleCancel}
         onMinimize={() => {
           setIsExiting(true);
-          router.replace("/");
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/(tabs)"); // Fallback if no history exists
+          }
         }}
       />
 
