@@ -19,13 +19,35 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { WorkoutPost, WorkoutSession } from "../constants/types";
+import { useWorkoutContext } from "../context/WorkoutContext"; // <--- Import Context
 
 export default function PostModal() {
   const router = useRouter();
+
+  // 1. Get Game Status from Context
+  const { gameStatus, refreshGameStatus } = useWorkoutContext();
+
+  // 2. Derive Logic (Cannot get out of sync)
+  const canPost = gameStatus.canPostToday && gameStatus.remaining > 0;
+
+  // 3. Derive Status Message
+  let statusMsg = "";
+  if (!gameStatus.canPostToday) {
+    statusMsg = "You have already posted today! Come back tomorrow.";
+  } else if (gameStatus.remaining <= 0) {
+    if (gameStatus.score >= gameStatus.cap) {
+      statusMsg = `Weekly cap (${gameStatus.cap}) reached! Great work.`;
+    } else {
+      statusMsg = "Not enough days left in the week to add more points.";
+    }
+  } else {
+    statusMsg = `${gameStatus.remaining} workouts possible this week.`;
+  }
+
+  // Form State
   const [message, setMessage] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(
     null,
   );
@@ -34,6 +56,7 @@ export default function PostModal() {
 
   useEffect(() => {
     loadTodaysWorkouts();
+    refreshGameStatus();
   }, []);
 
   const loadTodaysWorkouts = async () => {
@@ -65,6 +88,12 @@ export default function PostModal() {
   };
 
   const handlePost = async () => {
+    // Check Limits
+    if (!canPost) {
+      Alert.alert("Limit Reached", statusMsg);
+      return;
+    }
+
     if (!image) {
       Alert.alert(
         "MISSING PHOTO",
@@ -72,12 +101,13 @@ export default function PostModal() {
       );
       return;
     }
+
     setUploading(true);
     try {
       const newPost: WorkoutPost = {
         id: Date.now().toString(),
-        authorId: "temp",
-        authorName: "temp",
+        authorId: "temp", // Replaced by Repo
+        authorName: "temp", // Replaced by Repo
         message: message,
         imageUri: image,
         createdAt: new Date().toISOString(),
@@ -93,7 +123,12 @@ export default function PostModal() {
             }
           : undefined,
       };
+
       await WorkoutRepository.createPost(newPost);
+
+      // Update Context for next time
+      await refreshGameStatus();
+
       router.back();
     } catch (error: any) {
       Alert.alert("POST FAILED", error.message);
@@ -108,6 +143,7 @@ export default function PostModal() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
+        {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={styles.cancelBtn}>CANCEL</Text>
@@ -115,8 +151,15 @@ export default function PostModal() {
           <Text style={styles.headerTitle}>NEW POST</Text>
           <TouchableOpacity
             onPress={handlePost}
-            disabled={uploading}
-            style={[styles.postBtnContainer, uploading && { opacity: 0.5 }]}
+            disabled={uploading || !canPost}
+            style={[
+              styles.postBtnContainer,
+              (uploading || !canPost) && {
+                opacity: 0.5,
+                backgroundColor: "#ccc",
+                borderBottomColor: "#999",
+              },
+            ]}
           >
             <Text style={styles.postBtnText}>{uploading ? "..." : "POST"}</Text>
           </TouchableOpacity>
@@ -126,6 +169,28 @@ export default function PostModal() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+          {/* GAME STATUS BANNER */}
+          <View
+            style={[
+              styles.statusBanner,
+              canPost ? styles.statusGreen : styles.statusRed,
+            ]}
+          >
+            <Ionicons
+              name={canPost ? "checkmark-circle" : "alert-circle"}
+              size={20}
+              color={canPost ? "#155724" : "#721c24"}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                canPost ? styles.textGreen : styles.textRed,
+              ]}
+            >
+              {statusMsg}
+            </Text>
+          </View>
+
           <View style={styles.inputCard}>
             <TextInput
               style={styles.input}
@@ -301,7 +366,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    // REMOVED overflow: 'hidden'
   },
   header: {
     flexDirection: "row",
@@ -311,7 +375,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
-    // ADDED Radii to Header
     borderTopLeftRadius: 21,
     borderTopRightRadius: 21,
   },
@@ -455,7 +518,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    // REMOVED overflow: 'hidden'
   },
   pickerHeader: {
     flexDirection: "row",
@@ -464,10 +526,9 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 2,
     borderBottomColor: Colors.border,
-    // ADDED Radii to Header
     borderTopLeftRadius: 21,
     borderTopRightRadius: 21,
-    backgroundColor: Colors.surface, // Ensure it has a background
+    backgroundColor: Colors.surface,
   },
   pickerTitle: {
     fontSize: 16,
@@ -505,4 +566,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+
+  // STATUS BANNER STYLES
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    gap: 10,
+  },
+  statusGreen: {
+    backgroundColor: "#d4edda",
+    borderColor: "#c3e6cb",
+  },
+  statusRed: {
+    backgroundColor: "#f8d7da",
+    borderColor: "#f5c6cb",
+  },
+  statusText: {
+    fontWeight: "700",
+    fontSize: 14,
+    flex: 1,
+  },
+  textGreen: { color: "#155724" },
+  textRed: { color: "#721c24" },
 });

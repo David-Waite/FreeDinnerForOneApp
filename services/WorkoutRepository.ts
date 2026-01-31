@@ -36,7 +36,183 @@ const WEIGHT_KEY = "body_weight_logs";
 const APP_SECRET =
   process.env.EXPO_PUBLIC_ENCRYPTION_KEY || "default-secret-key-change-me";
 
+const getMelbourneDateString = (dateObj: Date = new Date()) => {
+  return dateObj.toLocaleDateString("en-CA", {
+    // en-CA gives YYYY-MM-DD standard
+    timeZone: "Australia/Melbourne",
+  });
+};
+
+const getMelbourneDateComponents = () => {
+  const now = new Date();
+  // Use en-CA because it reliably outputs YYYY-MM-DD
+  const isoDate = now.toLocaleDateString("en-CA", {
+    timeZone: "Australia/Melbourne",
+  });
+
+  // Parse "2026-01-31" -> [2026, 1, 31]
+  const [year, month, day] = isoDate.split("-").map(Number);
+
+  return { year, month, day, isoDate };
+};
+
+const getMelbourneDateParts = () => {
+  const now = new Date();
+  const str = now.toLocaleDateString("en-US", {
+    timeZone: "Australia/Melbourne",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [month, day, year] = str.split("/").map(Number);
+  return { year, month, day }; // Note: month is 1-12 here
+};
+
+const getMelbourneTodayId = () => {
+  const { year, month, day } = getMelbourneDateParts();
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
+
+const getMelbourneWeekId = () => {
+  // Current Melb Date
+  const now = new Date();
+  const melbDateStr = getMelbourneDateString(now); // "2024-02-05"
+  const [y, m, d] = melbDateStr.split("-").map(Number);
+
+  // Create Date object for math (Months are 0-indexed in JS Date)
+  const currentDate = new Date(y, m - 1, d);
+
+  // Find Monday
+  const day = currentDate.getDay(); // 0-6
+  const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(currentDate.setDate(diff));
+
+  // Return formatted Monday
+  const year = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, "0");
+  const dayStr = String(monday.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${dayStr}`;
+};
+
 export const WorkoutRepository = {
+  async ensureWeeklyCap(): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      // 1. Check Current Config
+      const configRef = doc(db, "game_state", "weekly_config");
+      const configSnap = await getDoc(configRef);
+      const currentWeekId = getMelbourneWeekId(); // e.g. "2026-01-26" (Monday)
+
+      // If config exists and matches this week, we are done.
+      if (configSnap.exists() && configSnap.data().weekId === currentWeekId) {
+        return;
+      }
+
+      console.log(`New week detected (${currentWeekId})! Calculating cap...`);
+
+      // 2. Calculate New Cap (Max Score + 4)
+      const posts = await this.getPosts();
+
+      const scores: Record<string, number> = {};
+      let maxScore = 0;
+
+      posts.forEach((p) => {
+        scores[p.authorId] = (scores[p.authorId] || 0) + 1;
+        if (scores[p.authorId] > maxScore) {
+          maxScore = scores[p.authorId];
+        }
+      });
+
+      // Default to 4 if new game/no posts
+      const newCap = (maxScore > 0 ? maxScore : 0) + 4;
+
+      // 3. Save to Firestore
+      await setDoc(configRef, {
+        weekId: currentWeekId,
+        cap: newCap,
+        calculatedAt: new Date().toISOString(),
+        updatedBy: user.uid,
+      });
+
+      console.log(
+        `Weekly cap set to ${newCap} (Melbourne Week: ${currentWeekId})`,
+      );
+    } catch (e) {
+      console.error("Failed to ensure weekly cap", e);
+    }
+  },
+
+  async getGameStatus(userId: string): Promise<{
+    score: number;
+    cap: number;
+    remaining: number;
+    canPostToday: boolean;
+  }> {
+    try {
+      // 1. Fetch Global Cap
+      const configRef = doc(db, "game_state", "weekly_config");
+      const configSnap = await getDoc(configRef);
+
+      let cap = 4; // Default fallback
+      if (configSnap.exists()) {
+        cap = configSnap.data().cap;
+      }
+
+      // 2. Fetch User Score
+      const posts = await this.getPosts();
+      const myPosts = posts.filter((p) => p.authorId === userId);
+      const score = myPosts.length;
+
+      // 3. Check "Posted Today"
+      // Use getMelbourneDateComponents to get today's "YYYY-MM-DD" reliably
+      const { isoDate: todayString } = getMelbourneDateComponents();
+
+      const postedToday = myPosts.some((p) => {
+        // Convert post UTC time to Melbourne YYYY-MM-DD
+        const postDate = new Date(p.createdAt);
+        const postDateString = getMelbourneDateString(postDate);
+        return postDateString === todayString;
+      });
+
+      // 4. Calculate Days Left in Week (Robust Math)
+      // We reconstruct the Date object explicitly to avoid parsing errors
+      const { year, month, day } = getMelbourneDateComponents();
+      const melbDateObj = new Date(year, month - 1, day); // Month is 0-indexed
+      const currentDayOfWeek = melbDateObj.getDay(); // 0 (Sun) ... 6 (Sat)
+
+      // Logic: If today is Mon (1), 7 days left. If Sun (0), 1 day left.
+      // 8 - 1 = 7. 8 - 6 = 2. If 0, manually set to 1.
+      const daysLeftInWeek = currentDayOfWeek === 0 ? 1 : 8 - currentDayOfWeek;
+
+      // 5. Final Calculation
+      const remainingByCap = Math.max(0, cap - score);
+
+      // If I have already posted today, I have one less "slot" available in the week days
+      const remainingByTime = postedToday ? daysLeftInWeek - 1 : daysLeftInWeek;
+
+      const trueRemaining = Math.min(remainingByCap, remainingByTime);
+
+      // Safety Guard for NaN (should not happen with explicit Date construction above)
+      const finalRemaining = isNaN(trueRemaining)
+        ? 0
+        : Math.max(0, trueRemaining);
+
+      return {
+        score,
+        cap,
+        remaining: finalRemaining,
+        canPostToday: !postedToday,
+      };
+    } catch (e) {
+      console.error("Failed to get game status", e);
+      // Safe Fallback
+      return { score: 0, cap: 4, remaining: 0, canPostToday: false };
+    }
+  },
+
   // --- SESSIONS (History) ---
 
   async getWorkouts(): Promise<WorkoutSession[]> {
@@ -46,52 +222,6 @@ export const WorkoutRepository = {
     } catch (e) {
       console.error("Failed to load sessions", e);
       return [];
-    }
-  },
-
-  async getWorkoutById(
-    id: string,
-    authorId?: string,
-  ): Promise<WorkoutSession | undefined> {
-    const currentUser = auth.currentUser;
-    const isLocal = !authorId || authorId === currentUser?.uid;
-
-    if (isLocal) {
-      // 1. LOCAL STRATEGY
-      const workouts = await this.getWorkouts();
-      return workouts.find((w) => w.id === id);
-    } else {
-      // 2. REMOTE STRATEGY (Firebase)
-      try {
-        const docRef = doc(db, "users", authorId, "sessions", id);
-        const snap = await getDoc(docRef);
-
-        if (snap.exists()) {
-          const data = snap.data();
-
-          // Handle Encryption (Black Box)
-          // If the friend's workout is encrypted, we currently CANNOT read the exercises.
-          // We return the summary info, but the exercises list might be empty or hidden.
-          if (data.isEncrypted) {
-            console.log("This workout is encrypted by the user.");
-            // Return structure with empty exercises or special flag
-            return {
-              id: data.id,
-              name: data.name,
-              date: data.date,
-              duration: data.duration,
-              exercises: [], // Hidden
-              // You might add a custom field like 'isLocked': true here if you extend the type
-            } as WorkoutSession;
-          }
-
-          return data as WorkoutSession;
-        }
-        return undefined;
-      } catch (e) {
-        console.error("Failed to fetch remote workout", e);
-        return undefined;
-      }
     }
   },
 
@@ -867,6 +997,7 @@ export const WorkoutRepository = {
 
   // 2. Get Remote Workouts (Friend's Stats)
   async getRemoteWorkouts(userId: string): Promise<WorkoutSession[]> {
+    if (!auth.currentUser) return [];
     try {
       // Must filter by isEncrypted == false to satisfy Rules
       const q = query(
@@ -892,6 +1023,7 @@ export const WorkoutRepository = {
 
   // 3. Get Remote Body Weight (Friend's Stats)
   async getRemoteBodyWeight(userId: string): Promise<BodyWeightLog[]> {
+    if (!auth.currentUser) return [];
     try {
       const q = query(
         collection(db, "users", userId, "weight_logs"),
@@ -910,6 +1042,62 @@ export const WorkoutRepository = {
     } catch (e) {
       console.error("Failed to fetch remote weight logs", e);
       return [];
+    }
+  },
+
+  async getLocalWorkoutById(id: string): Promise<WorkoutSession | undefined> {
+    const workouts = await this.getWorkouts();
+    return workouts.find((w) => w.id === id);
+  },
+
+  async getRemoteWorkoutById(
+    id: string,
+    authorId: string,
+  ): Promise<WorkoutSession | undefined> {
+    // Auth Guard: Prevent permission errors if logged out
+    if (!auth.currentUser) return undefined;
+
+    try {
+      const docRef = doc(db, "users", authorId, "sessions", id);
+      const snap = await getDoc(docRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+
+        // Handle Encryption
+        if (data.isEncrypted) {
+          console.log("This workout is encrypted by the user.");
+          return {
+            id: data.id,
+            name: data.name,
+            date: data.date,
+            duration: data.duration,
+            exercises: [],
+          } as WorkoutSession;
+        }
+
+        return data as WorkoutSession;
+      }
+      return undefined;
+    } catch (e) {
+      console.error("Failed to fetch remote workout", e);
+      return undefined;
+    }
+  },
+
+  // 3. Updated Main Method
+  async getWorkoutById(
+    id: string,
+    authorId?: string,
+  ): Promise<WorkoutSession | undefined> {
+    const currentUser = auth.currentUser;
+    const isLocal = !authorId || authorId === currentUser?.uid;
+
+    if (isLocal) {
+      return this.getLocalWorkoutById(id);
+    } else {
+      // TypeScript safety: Ensure authorId exists before calling remote helper
+      return authorId ? this.getRemoteWorkoutById(id, authorId) : undefined;
     }
   },
 };

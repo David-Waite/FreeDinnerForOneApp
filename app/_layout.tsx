@@ -28,6 +28,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (user) {
       WorkoutRepository.syncGlobalExercises();
+      WorkoutRepository.ensureWeeklyCap();
     }
   }, [user]);
 

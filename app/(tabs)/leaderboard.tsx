@@ -6,28 +6,41 @@ import {
   FlatList,
   Image,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // Changed import
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { UserProfile } from "../../constants/types";
 import Colors from "../../constants/Colors";
-import { auth } from "../../config/firebase";
-import { useWorkoutContext } from "../../context/WorkoutContext"; // Import Context
+import { auth, db } from "../../config/firebase"; // Import db directly for cap fetch
+import { doc, getDoc } from "firebase/firestore";
+import { useWorkoutContext } from "../../context/WorkoutContext";
 
 type LeaderboardUser = UserProfile & {
   score: number;
   rank: number;
   payment: number;
   deficit: number;
+  potential: number; // <--- NEW FIELD
 };
 
 const DINNER_PRICE = 320;
 
+// --- HELPERS FOR POTENTIAL CALC ---
+const getMelbourneDateComponents = () => {
+  const now = new Date();
+  const isoDate = now.toLocaleDateString("en-CA", {
+    timeZone: "Australia/Melbourne",
+  });
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return { year, month, day, isoDate };
+};
+
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const { isActive } = useWorkoutContext(); // Get Active State
+  const { isActive } = useWorkoutContext();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,25 +52,81 @@ export default function LeaderboardScreen() {
 
   const calculateLeaderboard = async () => {
     try {
-      const [users, posts] = await Promise.all([
+      // 1. Fetch Users, Posts AND Weekly Cap
+      const [users, posts, configSnap] = await Promise.all([
         WorkoutRepository.getAllUsers(),
         WorkoutRepository.getPosts(),
+        getDoc(doc(db, "game_state", "weekly_config")),
       ]);
 
+      // 2. Determine Cap
+      let weeklyCap = 4;
+      if (configSnap.exists()) {
+        weeklyCap = configSnap.data().cap || 4;
+      }
+
+      // 3. Prepare Date Logic for Potential Calc
+      const {
+        year,
+        month,
+        day,
+        isoDate: todayString,
+      } = getMelbourneDateComponents();
+      const melbDateObj = new Date(year, month - 1, day);
+      const currentDayOfWeek = melbDateObj.getDay(); // 0=Sun ... 6=Sat
+      // Days left physically in the week (including today)
+      const daysLeftInWeek = currentDayOfWeek === 0 ? 1 : 8 - currentDayOfWeek;
+
+      // 4. Score & Potential Calculation
       const scores: Record<string, number> = {};
-      users.forEach((u) => (scores[u.uid] = 0));
-      posts.forEach((post) => {
-        if (scores[post.authorId] !== undefined) scores[post.authorId]++;
+      const postedTodayMap: Record<string, boolean> = {};
+
+      users.forEach((u) => {
+        scores[u.uid] = 0;
+        postedTodayMap[u.uid] = false;
       });
 
-      let rankedUsers: LeaderboardUser[] = users.map((u) => ({
-        ...u,
-        score: scores[u.uid] || 0,
-        rank: 0,
-        payment: 0,
-        deficit: 0,
-      }));
+      posts.forEach((post) => {
+        if (scores[post.authorId] !== undefined) {
+          scores[post.authorId]++;
 
+          // Check if this post was made Today (Melbourne time)
+          const pDate = new Date(post.createdAt);
+          const pIso = pDate.toLocaleDateString("en-CA", {
+            timeZone: "Australia/Melbourne",
+          });
+          if (pIso === todayString) {
+            postedTodayMap[post.authorId] = true;
+          }
+        }
+      });
+
+      // 5. Build User Objects
+      let rankedUsers: LeaderboardUser[] = users.map((u) => {
+        const currentScore = scores[u.uid] || 0;
+        const hasPostedToday = postedTodayMap[u.uid];
+
+        // Potential Logic:
+        // If I haven't posted today, I have 'daysLeftInWeek' slots.
+        // If I HAVE posted today, I have 'daysLeftInWeek - 1' slots.
+        const remainingSlots = hasPostedToday
+          ? daysLeftInWeek - 1
+          : daysLeftInWeek;
+
+        // My potential is my current score + slots, BUT capped by the Weekly Cap.
+        const potential = Math.min(weeklyCap, currentScore + remainingSlots);
+
+        return {
+          ...u,
+          score: currentScore,
+          potential: potential, // <--- Assign
+          rank: 0,
+          payment: 0,
+          deficit: 0,
+        };
+      });
+
+      // 6. Sort & Rank
       rankedUsers.sort((a, b) => b.score - a.score);
 
       let currentRank = 1;
@@ -67,6 +136,7 @@ export default function LeaderboardScreen() {
         rankedUsers[i].rank = currentRank;
       }
 
+      // 7. Payment Logic
       const playerCount = rankedUsers.length;
       const totalCost = DINNER_PRICE * playerCount;
       setTotalPool(totalCost);
@@ -83,19 +153,25 @@ export default function LeaderboardScreen() {
         } else {
           const lastPlace = rankedUsers[playerCount - 1];
           const secondLast = rankedUsers[playerCount - 2];
-          const isMotivational = secondLast.score - lastPlace.score >= 20;
+          // Use Math.max to prevent issues if array is small, though >0 check handles it
+          const gap = (secondLast?.score || 0) - lastPlace.score;
+
+          const isMotivational = gap >= 20;
           setSplitMode(isMotivational ? "motivational" : "friendly");
 
           winners.forEach((u) => (u.payment = 0));
+
           if (isMotivational) {
             let totalDeficit = 0;
             losers.forEach((u) => {
               u.deficit = topScore - u.score;
               totalDeficit += u.deficit;
             });
-            losers.forEach(
-              (u) => (u.payment = (u.deficit / totalDeficit) * totalCost),
-            );
+            if (totalDeficit > 0) {
+              losers.forEach(
+                (u) => (u.payment = (u.deficit / totalDeficit) * totalCost),
+              );
+            }
           } else {
             let sumInverse = 0;
             losers.forEach((u) => (sumInverse += 1 / Math.max(u.score, 0.1)));
@@ -150,7 +226,13 @@ export default function LeaderboardScreen() {
 
         <View style={styles.infoContainer}>
           <Text style={styles.nameText}>{item.displayName}</Text>
-          <Text style={styles.scoreText}>{item.score} POINTS</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={styles.scoreText}>{item.score} POINTS</Text>
+            {/* POTENTIAL BADGE */}
+            <View style={styles.potentialBadge}>
+              <Text style={styles.potentialText}>MAX {item.potential}</Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.paymentContainer}>
@@ -168,8 +250,15 @@ export default function LeaderboardScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
-    // FIX: Conditional Padding
     <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <View style={styles.header}>
         <View>
@@ -325,11 +414,23 @@ const styles = StyleSheet.create({
   paymentContainer: { alignItems: "flex-end" },
   paymentLabel: { fontSize: 10, fontWeight: "800", color: Colors.placeholder },
   paymentAmount: { fontSize: 20, fontWeight: "900", color: Colors.text },
-  footerContainer: { marginTop: "auto", padding: 20, alignItems: "center" },
   footerText: {
     textAlign: "center",
     color: Colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
+  },
+
+  // NEW STYLES
+  potentialBadge: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  potentialText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: Colors.textMuted,
   },
 });
