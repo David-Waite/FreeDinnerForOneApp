@@ -2,15 +2,37 @@
   "expo": {
     "name": "Thecomp",
     "slug": "Thecomp",
+    "scheme": "thecomp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+
     "ios": {
       "bundleIdentifier": "com.david.freeDinnerForOneApp",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CADisableMinimumFrameDurationOnPhone": true
       }
     },
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.david.freeDinnerForOneApp"
+    },
+
     "plugins": [
       [
         "expo-build-properties",
@@ -22,14 +44,24 @@
           }
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff"
+        }
+      ],
       "./plugins/withIosRelaxedIncludes.js",
       "expo-router",
       "expo-secure-store",
       "expo-image-picker",
       "@react-native-firebase/app"
     ],
+
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false
+      },
       "eas": {
         "projectId": "5897876e-20d1-4316-9370-36da02fe86aa"
       }
