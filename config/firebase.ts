@@ -1,11 +1,9 @@
-// FreeDinnerForOneApp/config/firebase.ts
-
 import { initializeApp, getApp, getApps } from "firebase/app";
-import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage"; // <--- Add this
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getStorage } from "firebase/storage";
 
+// Your Config Keys
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -16,13 +14,20 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// 1. Initialize App
+let app;
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+// 2. Initialize Auth (SIMPLE VERSION - NO PERSISTENCE)
+// If this works, the app will open, but you'll be logged out on restart.
+const auth = getAuth(app);
 
+// 3. Initialize Services
 const db = getFirestore(app);
-const storage = getStorage(app); // <--- Initialize Storage
+const storage = getStorage(app);
 
-export { auth, db, storage }; // <--- Export Storage
+export { auth, db, storage };

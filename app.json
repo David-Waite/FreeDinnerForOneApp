@@ -28,6 +28,11 @@
       "expo-image-picker",
       "@react-native-firebase/app"
     ],
-    "extra": {}
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5897876e-20d1-4316-9370-36da02fe86aa"
+      }
+    }
   }
 }

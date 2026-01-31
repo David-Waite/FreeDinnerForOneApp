@@ -20,6 +20,7 @@ import Colors from "../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import * as ImagePicker from "expo-image-picker";
+import DuoTouch from "../components/ui/DuoTouch";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -76,6 +77,17 @@ export default function SettingsScreen() {
         quality: 0.5,
       });
     } else {
+      // --- ADD THIS PERMISSION CHECK ---
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "PERMISSION DENIED",
+          "We need access to your gallery to choose a photo!",
+        );
+        return;
+      }
+
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -177,12 +189,13 @@ export default function SettingsScreen() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity
+              <DuoTouch
                 style={styles.editBadge}
                 onPress={() => setPickerModalVisible(true)}
+                hapticStyle="light"
               >
                 <Ionicons name="camera" size={18} color={Colors.white} />
-              </TouchableOpacity>
+              </DuoTouch>
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>
@@ -236,29 +249,31 @@ export default function SettingsScreen() {
         >
           <View style={styles.pickerModal}>
             <Text style={styles.modalTitle}>UPDATE PHOTO</Text>
-
-            <TouchableOpacity
+            <DuoTouch
               style={styles.modalBtn}
               onPress={() => handleImagePick(true)}
+              hapticStyle="medium"
             >
               <Ionicons name="camera" size={24} color={Colors.primary} />
               <Text style={styles.modalBtnText}>TAKE A PHOTO</Text>
-            </TouchableOpacity>
+            </DuoTouch>
 
-            <TouchableOpacity
+            <DuoTouch
               style={styles.modalBtn}
               onPress={() => handleImagePick(false)}
+              hapticStyle="medium"
             >
               <Ionicons name="images" size={24} color={Colors.primary} />
               <Text style={styles.modalBtnText}>CHOOSE FROM LIBRARY</Text>
-            </TouchableOpacity>
+            </DuoTouch>
 
-            <TouchableOpacity
+            <DuoTouch
               style={styles.cancelBtn}
               onPress={() => setPickerModalVisible(false)}
+              hapticStyle="light"
             >
               <Text style={styles.cancelBtnText}>CANCEL</Text>
-            </TouchableOpacity>
+            </DuoTouch>
           </View>
         </TouchableOpacity>
       </Modal>

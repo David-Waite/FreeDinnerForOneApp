@@ -21,6 +21,7 @@ import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { WorkoutPost, WorkoutSession } from "../constants/types";
 import { useWorkoutContext } from "../context/WorkoutContext";
+import DuoTouch from "../components/ui/DuoTouch";
 
 export default function PostModal() {
   const router = useRouter();
@@ -256,18 +257,23 @@ export default function PostModal() {
           {/* MEDIA BUTTONS */}
           {!image && (
             <View style={styles.mediaButtonsContainer}>
-              <TouchableOpacity style={styles.mediaBtn} onPress={takePhoto}>
+              <DuoTouch
+                style={styles.mediaBtn}
+                onPress={takePhoto}
+                hapticStyle="medium"
+              >
                 <View
                   style={[styles.iconCircle, { backgroundColor: "#233640" }]}
                 >
                   <Ionicons name="camera" size={32} color={Colors.primary} />
                 </View>
                 <Text style={styles.mediaBtnText}>CAMERA</Text>
-              </TouchableOpacity>
+              </DuoTouch>
 
-              <TouchableOpacity
+              <DuoTouch
                 style={[styles.mediaBtn, { borderBottomColor: "#1899d6" }]}
                 onPress={pickFromLibrary}
+                hapticStyle="medium"
               >
                 <View
                   style={[styles.iconCircle, { backgroundColor: "#233640" }]}
@@ -275,7 +281,7 @@ export default function PostModal() {
                   <Ionicons name="images" size={32} color={Colors.info} />
                 </View>
                 <Text style={styles.mediaBtnText}>LIBRARY</Text>
-              </TouchableOpacity>
+              </DuoTouch>
             </View>
           )}
 

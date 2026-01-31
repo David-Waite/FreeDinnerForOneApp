@@ -19,6 +19,7 @@ import Colors from "../../constants/Colors";
 import PostCard from "../../components/social/PostCard";
 import CommentsModal from "../../components/social/CommentsModal";
 import WorkoutDetailsModal from "../../components/social/WorkoutDetailsModal";
+import DuoTouch from "../../components/ui/DuoTouch";
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -72,12 +73,13 @@ export default function FeedScreen() {
         <Text style={styles.headerTitle}>Feed</Text>
       </View>
 
-      <TouchableOpacity
+      <DuoTouch
         style={styles.settingsButton}
         onPress={() => router.push("/settings")}
+        hapticStyle="light"
       >
         <Ionicons name="settings-sharp" size={22} color={Colors.primary} />
-      </TouchableOpacity>
+      </DuoTouch>
     </View>
   );
 
