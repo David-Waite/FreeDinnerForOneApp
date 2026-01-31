@@ -68,11 +68,6 @@ const getMelbourneDateParts = () => {
   return { year, month, day }; // Note: month is 1-12 here
 };
 
-const getMelbourneTodayId = () => {
-  const { year, month, day } = getMelbourneDateParts();
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-};
-
 const getMelbourneWeekId = () => {
   // Current Melb Date
   const now = new Date();
@@ -96,6 +91,17 @@ const getMelbourneWeekId = () => {
 };
 
 export const WorkoutRepository = {
+  async overrideLocalSessions(sessions: WorkoutSession[]): Promise<void> {
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
+  },
+
+  async overrideLocalTemplates(templates: WorkoutTemplate[]): Promise<void> {
+    await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates));
+  },
+
+  async overrideLocalWeightLogs(logs: BodyWeightLog[]): Promise<void> {
+    await AsyncStorage.setItem(WEIGHT_KEY, JSON.stringify(logs));
+  },
   async ensureWeeklyCap(): Promise<void> {
     const user = auth.currentUser;
     if (!user) return;

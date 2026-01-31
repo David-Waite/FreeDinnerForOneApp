@@ -9,6 +9,7 @@ import { useWorkoutSession } from "../hooks/useWorkoutSession";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { auth } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth"; // <--- Import this
+import { SyncService } from "../services/SyncService";
 
 type GameStatus = {
   score: number;
@@ -28,6 +29,7 @@ type WorkoutContextType = ReturnType<typeof useWorkoutSession> & {
   gameStatus: GameStatus;
   isLoadingGameStatus: boolean;
   refreshGameStatus: () => Promise<void>;
+  isHydrating: boolean;
 };
 
 const WorkoutContext = createContext<WorkoutContextType | null>(null);
@@ -37,6 +39,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
 
   const [gameStatus, setGameStatus] = useState<GameStatus>(defaultGameStatus);
   const [isLoadingGameStatus, setIsLoadingGameStatus] = useState(true);
+  const [isHydrating, setIsHydrating] = useState(true);
 
   const refreshGameStatus = async () => {
     const user = auth.currentUser;
@@ -59,15 +62,28 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
 
   // --- CHANGED: Listen to Auth Changes ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User logged in (or switched) -> Fetch fresh data
-        setIsLoadingGameStatus(true);
-        refreshGameStatus();
+        console.log("User logged in:", user.uid);
+        setIsHydrating(true);
+
+        // 1. Hydrate Data (Download Cloud -> Local)
+        await SyncService.hydrateData(user.uid);
+
+        // 2. Refresh Game Status
+        await refreshGameStatus();
+
+        setIsHydrating(false);
       } else {
-        // User logged out -> Reset data
+        console.log("User logged out. Wiping data.");
+
+        // 1. Wipe Data
+        await SyncService.wipeLocalData();
+
+        // 2. Reset State
         setGameStatus(defaultGameStatus);
         setIsLoadingGameStatus(false);
+        setIsHydrating(false);
       }
     });
     return unsubscribe;
@@ -78,6 +94,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     gameStatus,
     isLoadingGameStatus,
     refreshGameStatus,
+    isHydrating,
   };
 
   return (

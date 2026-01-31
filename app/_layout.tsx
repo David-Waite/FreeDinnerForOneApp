@@ -2,12 +2,61 @@ import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../config/firebase";
-import { WorkoutProvider } from "../context/WorkoutContext";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { WorkoutProvider, useWorkoutContext } from "../context/WorkoutContext"; // Import Context Hook
+import { View, ActivityIndicator, StyleSheet, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import GlobalWorkoutBanner from "../components/GlobalWorkoutBanner";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import Colors from "../constants/Colors";
+
+// --- INNER COMPONENT TO HANDLE HYDRATION UI ---
+function AppContent() {
+  const { isHydrating } = useWorkoutContext(); // Access context state
+
+  // If syncing data (Hydrating), show loading screen
+  if (isHydrating) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Syncing your data...</Text>
+      </View>
+    );
+  }
+
+  // Once hydrated, show the app
+  return (
+    <View style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+        <Stack.Screen
+          name="post-modal"
+          options={{ presentation: "modal", headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="record-workout"
+          options={{
+            headerShown: false,
+
+            gestureEnabled: false,
+
+            presentation: "fullScreenModal",
+          }}
+        />
+
+        <Stack.Screen
+          name="settings"
+          options={{ presentation: "modal", headerShown: false }}
+        />
+
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
+      </Stack>
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
@@ -32,7 +81,7 @@ export default function RootLayout() {
     }
   }, [user]);
 
-  // 3. Handle Redirects (FIXED)
+  // 3. Handle Redirects
   useEffect(() => {
     if (initializing) return;
 
@@ -40,25 +89,15 @@ export default function RootLayout() {
     const inPublicGroup = segments[0] === "login" || segments[0] === "signup";
 
     if (user && inPublicGroup) {
-      // If logged in and trying to go to login/signup, redirect to app
       router.replace("/(tabs)");
     } else if (!user && !inPublicGroup) {
-      // If NOT logged in and trying to access protected routes, redirect to login
       router.replace("/login");
     }
-    // If logged in and in a modal (e.g. post-modal), DO NOTHING.
   }, [user, initializing, segments]);
 
   if (initializing) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: Colors.background,
-        }}
-      >
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
@@ -67,36 +106,9 @@ export default function RootLayout() {
   return (
     <WorkoutProvider>
       <GestureHandlerRootView style={styles.container}>
-        {/* If this returns null, the View below will snap to the top */}
         <GlobalWorkoutBanner />
-
-        <View style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-            <Stack.Screen
-              name="post-modal"
-              options={{ presentation: "modal", headerShown: false }}
-            />
-
-            <Stack.Screen
-              name="record-workout"
-              options={{
-                headerShown: false,
-                gestureEnabled: false,
-                presentation: "fullScreenModal",
-              }}
-            />
-
-            <Stack.Screen
-              name="settings"
-              options={{ presentation: "modal", headerShown: false }}
-            />
-
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-            <Stack.Screen name="signup" options={{ headerShown: false }} />
-          </Stack>
-        </View>
+        {/* We moved the Stack inside AppContent to access the Context */}
+        <AppContent />
       </GestureHandlerRootView>
     </WorkoutProvider>
   );
@@ -104,4 +116,16 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+  },
+  loadingText: {
+    marginTop: 20,
+    color: Colors.text, // Ensure text is visible
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });
