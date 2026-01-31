@@ -443,42 +443,73 @@ export const WorkoutRepository = {
     return templates.find((t) => t.id === id);
   },
 
-  async saveTemplate(template: WorkoutTemplate): Promise<void> {
+  async getPublicTemplates(userId: string): Promise<WorkoutTemplate[]> {
     try {
-      const names = template.exercises.map((e) => e.name);
-      await this.ensureExercisesExist(names);
+      // Fetch from Firestore: users/{userId}/routines where isPublic == true
+      const q = query(
+        collection(db, "users", userId, "routines"),
+        where("isPublic", "==", true),
+      );
 
-      // 1. Save Locally
-      const existing = await this.getTemplates();
-      const index = existing.findIndex((t) => t.id === template.id);
-      let updated;
-      if (index >= 0) {
-        updated = [...existing];
-        updated[index] = template;
-      } else {
-        updated = [template, ...existing];
-      }
-      await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
+      const snap = await getDocs(q);
+      const templates: WorkoutTemplate[] = [];
 
-      // 2. Upload to Firestore (as a Routine)
-      await this.uploadRoutine(template);
+      snap.forEach((doc) => {
+        // We assume public routines are NOT encrypted (or they wouldn't be readable)
+        templates.push(doc.data() as WorkoutTemplate);
+      });
+
+      return templates;
     } catch (e) {
-      console.error("Failed to save template", e);
+      console.error("Failed to get public templates", e);
+      return [];
+    }
+  },
+
+  // Also, ensure saveTemplate uploads to Firestore if you haven't already:
+  async saveTemplate(template: WorkoutTemplate): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // 1. Local Save (Always)
+    const existing = await this.getTemplates();
+    const index = existing.findIndex((t) => t.id === template.id);
+    let updated;
+    if (index >= 0) {
+      updated = [...existing];
+      updated[index] = template;
+    } else {
+      updated = [template, ...existing];
+    }
+    await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(updated));
+
+    // 2. Cloud Sync (Mirror to Firestore)
+    try {
+      await setDoc(
+        doc(db, "users", user.uid, "routines", template.id),
+        template,
+      );
+    } catch (e) {
+      console.error("Cloud sync failed", e);
     }
   },
 
   async deleteTemplate(id: string): Promise<void> {
-    try {
-      // 1. Delete Local
-      const existing = await this.getTemplates();
-      const filtered = existing.filter((t) => t.id !== id);
-      await AsyncStorage.setItem(TEMPLATE_KEY, JSON.stringify(filtered));
+    const user = auth.currentUser;
+    if (!user) return;
 
-      // 2. Delete Remote
-      const user = auth.currentUser;
-      if (user) {
-        await deleteDoc(doc(db, "users", user.uid, "routines", id));
-      }
+    try {
+      const existingTemplates = await this.getTemplates();
+      const filteredTemplates = existingTemplates.filter((t) => t.id !== id);
+      await AsyncStorage.setItem(
+        TEMPLATE_KEY,
+        JSON.stringify(filteredTemplates),
+      );
+
+      const docRef = doc(db, "users", user.uid, "routines", id);
+      await deleteDoc(docRef);
+
+      console.log(`Routine ${id} deleted locally and remotely.`);
     } catch (e) {
       console.error("Failed to delete template", e);
     }

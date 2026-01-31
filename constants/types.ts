@@ -46,6 +46,7 @@ export type WorkoutTemplate = {
   name: string;
   lastPerformed?: string;
   exercises: TemplateExercise[];
+  isPublic: boolean;
 };
 
 export type MasterExercise = {

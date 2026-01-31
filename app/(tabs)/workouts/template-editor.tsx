@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Switch, // <--- Import Switch
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
@@ -23,6 +24,9 @@ export default function TemplateEditor() {
   const [name, setName] = useState("");
   const [exercises, setExercises] = useState<TemplateExercise[]>([]);
 
+  // 1. NEW: Public State
+  const [isPublic, setIsPublic] = useState(false);
+
   useEffect(() => {
     if (id) loadExistingTemplate(id as string);
   }, [id]);
@@ -32,6 +36,8 @@ export default function TemplateEditor() {
     if (template) {
       setName(template.name);
       setExercises(template.exercises);
+      // 2. LOAD: Set state from existing data
+      setIsPublic(template.isPublic || false);
     }
   };
 
@@ -71,6 +77,7 @@ export default function TemplateEditor() {
       id: (id as string) || Date.now().toString(),
       name,
       exercises,
+      isPublic, // 3. SAVE: Pass the boolean
     };
 
     await WorkoutRepository.saveTemplate(template);
@@ -113,6 +120,42 @@ export default function TemplateEditor() {
                 onChangeText={setName}
               />
             </View>
+          </View>
+
+          {/* 4. PUBLIC TOGGLE UI */}
+          <View style={styles.toggleCard}>
+            <View style={styles.toggleInfo}>
+              <View
+                style={[
+                  styles.iconBox,
+                  isPublic ? styles.iconPublic : styles.iconPrivate,
+                ]}
+              >
+                <Ionicons
+                  name={isPublic ? "earth" : "lock-closed"}
+                  size={20}
+                  color={isPublic ? Colors.white : Colors.textMuted}
+                />
+              </View>
+              <View>
+                <Text style={styles.toggleTitle}>
+                  {isPublic ? "Public Routine" : "Private Routine"}
+                </Text>
+                <Text style={styles.toggleSub}>
+                  {isPublic
+                    ? "Anyone can see and copy this."
+                    : "Only visible to you."}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isPublic}
+              onValueChange={setIsPublic}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
+              thumbColor={Colors.white}
+              // On iOS the background color for 'false' is set via this prop:
+              ios_backgroundColor={Colors.border}
+            />
           </View>
 
           <Text style={styles.sectionTitle}>EXERCISES</Text>
@@ -198,6 +241,7 @@ export default function TemplateEditor() {
 }
 
 const styles = StyleSheet.create({
+  // ... (Existing Styles) ...
   modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
   container: {
     flex: 1,
@@ -259,6 +303,38 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
   },
+
+  // 5. NEW STYLES FOR TOGGLE
+  toggleCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  toggleInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  iconPublic: { backgroundColor: Colors.primary, borderColor: "#46a302" },
+  iconPrivate: { backgroundColor: Colors.background },
+  toggleTitle: { fontSize: 15, fontWeight: "900", color: Colors.text },
+  toggleSub: { fontSize: 12, color: Colors.textMuted, fontWeight: "600" },
 
   sectionTitle: {
     fontSize: 14,
