@@ -58,11 +58,12 @@ export default function PostCard({
 
   const handleLongPress = () => {
     heartButtonRef.current?.measureInWindow((x, y, width, height) => {
-      setPickerPos({ x: x + width / 2, y: y });
+      // Adjusted: subtract more from Y (upwards) to account for the thicker bar
+      // subtract width/2 from X to center it
+      setPickerPos({ x: x + width / 2, y: y - 15 });
       setPickerVisible(true);
     });
   };
-
   return (
     <View style={styles.card}>
       {/* HEADER */}

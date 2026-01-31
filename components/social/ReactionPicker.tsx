@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   TouchableWithoutFeedback,
   TextInput,
   Animated,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
@@ -45,14 +44,11 @@ export default function ReactionPicker({
   }, [visible]);
 
   const handlePlusPress = () => {
-    // Focus the hidden input to bring up the keyboard
     hiddenInputRef.current?.focus();
   };
 
   const handleCustomEmojiInput = (text: string) => {
-    // We only want the first character/emoji
     if (text.length > 0) {
-      // Use Array.from to correctly handle surrogate pairs (emojis)
       const emoji = Array.from(text)[0];
       onSelect(emoji);
       onClose();
@@ -61,13 +57,12 @@ export default function ReactionPicker({
 
   if (!visible || !position) return null;
 
-  // Calculate position to center the bar above the touch point
-  // Bar width approx 300px, Height 50px
+  // Position logic
   const barWidth = 280;
-  const top = position.y - 70; // 70px above the touch
+  const top = position.y - 80; // Adjusted for chunky height
   const left = Math.min(
-    Math.max(position.x - barWidth / 2, 10), // Keep within left screen bound
-    300, // Keep within right screen bound (approx)
+    Math.max(position.x - barWidth / 2, 20),
+    100, // Prevent going too far right
   );
 
   return (
@@ -84,6 +79,7 @@ export default function ReactionPicker({
               <TouchableOpacity
                 key={emoji}
                 style={styles.emojiBtn}
+                activeOpacity={0.7}
                 onPress={() => {
                   onSelect(emoji);
                   onClose();
@@ -95,21 +91,23 @@ export default function ReactionPicker({
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.plusBtn} onPress={handlePlusPress}>
-              <Ionicons name="add" size={20} color={Colors.textMuted} />
+            <TouchableOpacity
+              style={styles.plusBtn}
+              onPress={handlePlusPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add" size={20} color={Colors.primary} />
             </TouchableOpacity>
           </Animated.View>
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Hidden Input for Native Keyboard */}
       <View style={styles.hiddenInputContainer}>
         <TextInput
           ref={hiddenInputRef}
           style={styles.hiddenInput}
           onChangeText={handleCustomEmojiInput}
           value=""
-          // Attempt to force emoji keyboard on supported devices
           keyboardType="default"
         />
       </View>
@@ -118,49 +116,53 @@ export default function ReactionPicker({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.2)" },
   barContainer: {
     position: "absolute",
     flexDirection: "row",
-    backgroundColor: Colors.white,
-    borderRadius: 30,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     alignItems: "center",
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 6, // Thick Duo base
     gap: 8,
   },
   emojiBtn: {
-    width: 36,
-    height: 36,
+    width: 42,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 18,
+    borderRadius: 12,
     backgroundColor: Colors.background,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4, // Mini 3D button effect
   },
-  emojiText: { fontSize: 22 },
+  emojiText: { fontSize: 20 },
   divider: {
-    width: 1,
-    height: 24,
+    width: 2,
+    height: 30,
     backgroundColor: Colors.border,
-    marginHorizontal: 4,
+    marginHorizontal: 2,
+    borderRadius: 1,
   },
   plusBtn: {
-    width: 36,
-    height: 36,
+    width: 42,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 18,
-    backgroundColor: Colors.border,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
   },
   hiddenInputContainer: {
     position: "absolute",
     top: -100,
-    left: 0,
     opacity: 0,
   },
   hiddenInput: {
