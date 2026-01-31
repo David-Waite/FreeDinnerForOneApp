@@ -69,7 +69,7 @@ export default function FeedScreen() {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <View>
-        <Text style={styles.headerSubtitle}>GLOBAL LEAGUE</Text>
+        <Text style={styles.headerSubtitle}>RECENT POSTS</Text>
         <Text style={styles.headerTitle}>Feed</Text>
       </View>
 

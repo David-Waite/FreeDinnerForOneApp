@@ -9,9 +9,10 @@ import {
   Animated,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import Swipeable from "react-native-gesture-handler/Swipeable";
 import Colors from "../../constants/Colors";
 import { WorkoutSet } from "../../constants/types";
+import DuoTouch from "../ui/DuoTouch";
+import { Swipeable } from "react-native-gesture-handler";
 
 type Props = {
   set: WorkoutSet;
@@ -119,19 +120,29 @@ function SetRowComponent({
 
         {isExpanded && (
           <View style={styles.bottomRow}>
-            <TouchableOpacity style={styles.timerBtn} onPress={onStartTimer}>
+            {/* REST TIMER BUTTON */}
+            <DuoTouch
+              style={styles.timerBtn}
+              onPress={onStartTimer}
+              hapticStyle="light"
+            >
               <MaterialCommunityIcons
                 name="timer-outline"
                 size={20}
                 color={Colors.primary}
               />
               <Text style={styles.timerText}>REST</Text>
-            </TouchableOpacity>
+            </DuoTouch>
 
-            <TouchableOpacity style={styles.doneBtn} onPress={onDone}>
+            {/* DONE / CHECK BUTTON */}
+            <DuoTouch
+              style={styles.doneBtn}
+              onPress={onDone}
+              hapticStyle="medium"
+            >
               <Ionicons name="checkmark-sharp" size={20} color={Colors.white} />
               <Text style={styles.doneText}>DONE</Text>
-            </TouchableOpacity>
+            </DuoTouch>
           </View>
         )}
       </TouchableOpacity>

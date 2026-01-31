@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import { useWorkoutTimer } from "../../hooks/useWorkoutTimer";
+import DuoTouch from "../ui/DuoTouch";
 
 type Props = {
   elapsedSeconds: number;
@@ -122,36 +123,56 @@ export default function ActiveWorkoutControls({
         </View>
         <View style={styles.controlsRow}>
           <View style={styles.leftContainer}>
-            <TouchableOpacity style={styles.homeButton} onPress={onMinimize}>
+            {/* MINIMIZE / HOME */}
+            <DuoTouch
+              style={styles.homeButton}
+              onPress={onMinimize}
+              hapticStyle="light"
+            >
               <Ionicons name="home" size={24} color={Colors.textMuted} />
-            </TouchableOpacity>
+            </DuoTouch>
           </View>
+
           <View style={styles.centerContainer}>
-            <TouchableOpacity
+            {/* PLAY / PAUSE */}
+            <DuoTouch
               style={[
                 styles.mainActionButton,
                 isPaused ? styles.resumeBtn : styles.pauseBtn,
               ]}
               onPress={onPauseToggle}
+              hapticStyle="medium"
             >
               <Ionicons
                 name={isPaused ? "play" : "pause"}
                 size={38}
                 color={Colors.white}
               />
-            </TouchableOpacity>
+            </DuoTouch>
           </View>
           <View style={styles.rightContainer} />
         </View>
       </View>
+
       <View style={styles.body}>
         <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.finishButton} onPress={onFinish}>
+          {/* FINISH WORKOUT */}
+          <DuoTouch
+            style={styles.finishButton}
+            onPress={onFinish}
+            hapticStyle="success"
+          >
             <Text style={styles.finishText}>END WORKOUT</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+          </DuoTouch>
+
+          {/* CANCEL WORKOUT */}
+          <DuoTouch
+            style={styles.cancelButton}
+            onPress={onCancel}
+            hapticStyle="heavy"
+          >
             <Text style={styles.cancelText}>ABANDON SESSION</Text>
-          </TouchableOpacity>
+          </DuoTouch>
         </View>
       </View>
     </Animated.View>

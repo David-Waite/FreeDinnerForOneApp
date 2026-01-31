@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import GlobalWorkoutBanner from "../components/GlobalWorkoutBanner";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import Colors from "../constants/Colors";
+import { NotificationService } from "../services/NotificationService";
 
 // --- INNER COMPONENT TO HANDLE HYDRATION UI ---
 function AppContent() {
@@ -22,9 +23,8 @@ function AppContent() {
       </View>
     );
   }
-
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -85,6 +85,12 @@ export default function RootLayout() {
       WorkoutRepository.ensureWeeklyCap();
     }
   }, [user]);
+
+  useEffect(() => {
+    // This asks for permission immediately on app load
+    // You don't need a userId for local timers, so passing undefined is fine for now
+    NotificationService.registerForPushNotificationsAsync(undefined);
+  }, []);
 
   // 3. Handle Redirects
   useEffect(() => {

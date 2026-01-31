@@ -214,19 +214,19 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             {renderSwitchItem(
               "Encrypt Workouts",
-              "Keep your workout details private.",
+              "Keep your workout details private. They won't be visible to anyone, including us (me: David). I actually hate seeing other people's workouts, but generally everything becomes encrypted I spent a fare bit of time on this feature",
               "encryptWorkouts",
             )}
             <View style={styles.divider} />
             {renderSwitchItem(
               "Encrypt Body Weight",
-              "Hide your weight logs from others.",
+              "Hide your weight logs from others. They won't be visible to anyone, including us (me: David). Same thing above applies.",
               "encryptBodyWeight",
             )}
             <View style={styles.divider} />
             {renderSwitchItem(
               "Share Exercises",
-              "Allow your custom exercises to appear in the global library.",
+              "Allow your custom exercises to appear in the global library. This is simply for the dropdown selection when selecting an exercise.",
               "shareExercisesToGlobal",
             )}
           </View>

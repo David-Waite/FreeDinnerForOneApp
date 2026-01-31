@@ -52,7 +52,7 @@ export default function LoginScreen() {
             <Ionicons name="flash" size={40} color={Colors.gold} />
           </View>
           <Text style={styles.header}>TheComp</Text>
-          <Text style={styles.subHeader}>BECOME A LEGEND</Text>
+          <Text style={styles.subHeader}>BECOME NOT NIC</Text>
         </View>
 
         <View style={styles.form}>

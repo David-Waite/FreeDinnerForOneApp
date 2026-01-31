@@ -5,10 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  Platform,
+  AppState, // <--- 1. Import AppState
+  AppStateStatus,
 } from "react-native";
 import Colors from "../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import { NotificationService } from "../../services/NotificationService";
+import DuoTouch from "../ui/DuoTouch";
 
 type Props = {
   visible: boolean;
@@ -25,39 +28,121 @@ export default function RestTimerModal({
 }: Props) {
   const [timeLeft, setTimeLeft] = useState(seconds);
   const [isActive, setIsActive] = useState(true);
+
+  // We track the exact timestamp when the timer SHOULD end
+  const endTimeRef = useRef<number>(0);
+  const appState = useRef(AppState.currentState);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // --- 1. INITIAL SETUP ---
   useEffect(() => {
     if (visible) {
-      setTimeLeft(seconds);
-      setIsActive(true);
+      startTimer(seconds);
     } else {
-      setIsActive(false);
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopTimer();
     }
   }, [visible, seconds]);
 
+  // --- 2. HANDLE BACKGROUND/FOREGROUND ---
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        // APP JUST WOKE UP
+        if (isActive && endTimeRef.current > 0) {
+          const now = Date.now();
+          const remaining = Math.ceil((endTimeRef.current - now) / 1000);
+
+          if (remaining <= 0) {
+            setTimeLeft(0);
+            handleComplete();
+          } else {
+            setTimeLeft(remaining);
+          }
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isActive]);
+
+  // --- 3. THE TICKER (Visual Only) ---
   useEffect(() => {
     if (isActive && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            handleComplete();
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      handleComplete();
     }
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isActive, timeLeft]);
+  }, [isActive]);
 
-  const toggleTimer = () => setIsActive(!isActive);
-  const addTime = (amount: number) => setTimeLeft((prev) => prev + amount);
+  // --- HELPER FUNCTIONS ---
 
-  const handleComplete = () => {
+  const startTimer = (duration: number) => {
+    setTimeLeft(duration);
+    setIsActive(true);
+
+    // Calculate the target end time (e.g., Now + 60000ms)
+    endTimeRef.current = Date.now() + duration * 1000;
+
+    // Sync Notification
+    NotificationService.cancelAllNotifications();
+    NotificationService.scheduleRestTimer(duration);
+  };
+
+  const stopTimer = () => {
     setIsActive(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
+    NotificationService.cancelAllNotifications();
+  };
+
+  const toggleTimer = () => {
+    if (isActive) {
+      // PAUSE: Just stop everything
+      setIsActive(false);
+      NotificationService.cancelAllNotifications();
+    } else {
+      // RESUME: Recalculate end time based on CURRENT timeLeft
+      setIsActive(true);
+      endTimeRef.current = Date.now() + timeLeft * 1000;
+      NotificationService.scheduleRestTimer(timeLeft);
+    }
+  };
+
+  const addTime = (amount: number) => {
+    const newTime = timeLeft + amount;
+    setTimeLeft(newTime);
+
+    // If active, push the end time back
+    if (isActive) {
+      endTimeRef.current = Date.now() + newTime * 1000;
+      NotificationService.cancelAllNotifications();
+      NotificationService.scheduleRestTimer(newTime);
+    }
+  };
+
+  const handleComplete = () => {
+    stopTimer();
     onComplete();
+  };
+
+  const handleCancel = () => {
+    stopTimer();
+    onClose();
   };
 
   const formatTime = (s: number) => {
@@ -77,8 +162,10 @@ export default function RestTimerModal({
           </View>
 
           <View style={styles.controls}>
-            <TouchableOpacity
+            {/* PLAY / PAUSE TOGGLE */}
+            <DuoTouch
               onPress={toggleTimer}
+              hapticStyle="medium"
               style={[
                 styles.controlBtn,
                 { backgroundColor: isActive ? Colors.surface : Colors.primary },
@@ -89,29 +176,35 @@ export default function RestTimerModal({
                 size={28}
                 color={isActive ? Colors.primary : Colors.white}
               />
-            </TouchableOpacity>
+            </DuoTouch>
 
-            <TouchableOpacity
+            {/* ADD 30 SECONDS */}
+            <DuoTouch
               onPress={() => addTime(30)}
+              hapticStyle="light"
               style={styles.controlBtn}
             >
               <Text style={styles.addTimeText}>+30S</Text>
-            </TouchableOpacity>
+            </DuoTouch>
           </View>
 
-          <TouchableOpacity onPress={handleComplete} style={styles.skipBtn}>
+          {/* MAIN ACTION: MARK SET COMPLETE */}
+          <DuoTouch
+            onPress={handleComplete}
+            hapticStyle="success" // A victory pulse for finishing the set!
+            style={styles.skipBtn}
+          >
             <Text style={styles.skipText}>MARK SET COMPLETE</Text>
-          </TouchableOpacity>
+          </DuoTouch>
 
-          <TouchableOpacity
-            onPress={() => {
-              setIsActive(false);
-              onClose();
-            }}
+          {/* SECONDARY ACTION: CANCEL */}
+          <DuoTouch
+            onPress={handleCancel}
+            hapticStyle="light"
             style={styles.closeBtn}
           >
             <Text style={styles.closeText}>CANCEL</Text>
-          </TouchableOpacity>
+          </DuoTouch>
         </View>
       </View>
     </Modal>
@@ -121,7 +214,7 @@ export default function RestTimerModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(19, 31, 36, 0.9)", // Duo Navy semi-transparent
+    backgroundColor: "rgba(19, 31, 36, 0.9)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -133,7 +226,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 6, // Signature 3D shelf
+    borderBottomWidth: 6,
   },
   title: {
     fontSize: 12,
@@ -154,7 +247,7 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 64,
     fontWeight: "900",
-    color: Colors.gold, // Rest is gold/energy
+    color: Colors.gold,
     fontVariant: ["tabular-nums"],
   },
   controls: {
@@ -166,7 +259,7 @@ const styles = StyleSheet.create({
   controlBtn: {
     width: 64,
     height: 64,
-    borderRadius: 18, // Squircle-style
+    borderRadius: 18,
     backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",

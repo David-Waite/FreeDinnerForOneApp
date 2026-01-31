@@ -102,12 +102,6 @@ export default function WorkoutHistoryScreen() {
           <Text style={styles.headerSubtitle}>YOUR JOURNEY</Text>
           <Text style={styles.headerTitle}>History</Text>
         </View>
-        <TouchableOpacity
-          style={styles.statsIconCircle}
-          onPress={() => router.push("/stats")}
-        >
-          <Ionicons name="stats-chart" size={22} color={Colors.primary} />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.calendarCard}>

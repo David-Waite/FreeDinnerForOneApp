@@ -75,7 +75,7 @@ export default function SignupScreen() {
             <Ionicons name="trophy" size={40} color={Colors.gold} />
           </View>
           <Text style={styles.header}>Join TheComp</Text>
-          <Text style={styles.subHeader}>CREATE YOUR ATHLETE PROFILE</Text>
+          <Text style={styles.subHeader}>YOU CANT UNJOIN</Text>
         </View>
 
         <View style={styles.form}>

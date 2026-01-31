@@ -1,13 +1,13 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
+  Animated,
 } from "react-native";
-import { Image } from "expo-image"; // <--- Swapped to expo-image
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -35,6 +35,61 @@ const getMelbourneDateComponents = () => {
   });
   const [year, month, day] = isoDate.split("-").map(Number);
   return { year, month, day, isoDate };
+};
+
+// --- SKELETON COMPONENT ---
+const SkeletonCard = () => {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 0.7,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [opacity]);
+
+  return (
+    <Animated.View style={[styles.card, { opacity }]}>
+      <View style={styles.rankContainer}>
+        <View style={[styles.skeletonText, { width: 20, height: 20 }]} />
+      </View>
+      <View
+        style={[
+          styles.avatar,
+          { backgroundColor: Colors.border, borderWidth: 0 },
+        ]}
+      />
+      <View style={styles.infoContainer}>
+        <View
+          style={[
+            styles.skeletonText,
+            { width: "60%", height: 14, marginBottom: 8 },
+          ]}
+        />
+        <View
+          style={[
+            styles.scoreRow,
+            { backgroundColor: "rgba(0,0,0,0.05)", opacity: 0.5 },
+          ]}
+        >
+          <View style={{ width: 60, height: 10 }} />
+        </View>
+      </View>
+      <View style={styles.paymentContainer}>
+        <View style={[styles.skeletonText, { width: 40, height: 20 }]} />
+      </View>
+    </Animated.View>
+  );
 };
 
 export default function LeaderboardScreen() {
@@ -139,8 +194,7 @@ export default function LeaderboardScreen() {
           const gap = (secondLast?.score || 0) - lastPlace.score;
           const isMotivational = gap >= 20;
           setSplitMode(isMotivational ? "motivational" : "friendly");
-          // setSplitMode("motivational"); // For testing
-
+          setSplitMode("motivational");
           winners.forEach((u) => (u.payment = 0));
 
           if (isMotivational) {
@@ -245,14 +299,6 @@ export default function LeaderboardScreen() {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <View style={styles.header}>
@@ -261,36 +307,68 @@ export default function LeaderboardScreen() {
           <Text style={styles.title}>Leaderboard</Text>
         </View>
         <View style={styles.poolBadge}>
-          <Text style={styles.poolValue}>${totalPool}</Text>
-          <Text style={styles.poolLabel}>TOTAL POT</Text>
+          {loading ? (
+            <View
+              style={[
+                styles.skeletonText,
+                { width: 40, height: 22, backgroundColor: Colors.border },
+              ]}
+            />
+          ) : (
+            <>
+              <Text style={styles.poolValue}>${totalPool}</Text>
+              <Text style={styles.poolLabel}>TOTAL POT</Text>
+            </>
+          )}
         </View>
       </View>
 
-      <View
-        style={[
-          styles.modeBanner,
-          splitMode === "motivational"
-            ? styles.modeMotivational
-            : styles.modeFriendly,
-        ]}
-      >
-        <Ionicons
-          name={splitMode === "motivational" ? "flame" : "shield-checkmark"}
-          size={20}
-          color={Colors.white}
-        />
-        <Text style={styles.modeText}>
-          {splitMode === "motivational"
-            ? "MOTIVATIONAL SPLIT "
-            : "FRIENDLY SPLIT 🤝"}
-        </Text>
-      </View>
+      {loading ? (
+        <View
+          style={[
+            styles.modeBanner,
+            {
+              backgroundColor: Colors.surface,
+              borderBottomColor: Colors.border,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.skeletonText,
+              { width: 120, height: 14, opacity: 0.5 },
+            ]}
+          />
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.modeBanner,
+            splitMode === "motivational"
+              ? styles.modeMotivational
+              : styles.modeFriendly,
+          ]}
+        >
+          <Ionicons
+            name={splitMode === "motivational" ? "flame" : "shield-checkmark"}
+            size={20}
+            color={Colors.white}
+          />
+          <Text style={styles.modeText}>
+            {splitMode === "motivational"
+              ? "MOTIVATIONAL SPLIT (Their fucked) "
+              : "FRIENDLY SPLIT 🤝"}
+          </Text>
+        </View>
+      )}
 
       <FlatList
-        data={leaderboardData}
-        keyExtractor={(item) => item.uid}
-        renderItem={renderItem}
+        // Casting data to any to avoid the TypeScript mismatch during loading state
+        data={(loading ? [1, 2, 3, 4, 5] : leaderboardData) as any}
+        keyExtractor={(item, index) => (loading ? index.toString() : item.uid)}
+        renderItem={loading ? () => <SkeletonCard /> : renderItem}
         contentContainerStyle={styles.listContent}
+        scrollEnabled={!loading}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -302,12 +380,14 @@ export default function LeaderboardScreen() {
           />
         }
         ListFooterComponent={
-          <Text style={styles.footerText}>
-            Based on ${DINNER_PRICE} per person. Top player pays $0.
-            {splitMode === "motivational"
-              ? "\n(Loser is >20pts behind. Cost split by deficit.)"
-              : "\n(Friendly mode active. Cost split inversely by score.)"}
-          </Text>
+          !loading ? (
+            <Text style={styles.footerText}>
+              Based on ${DINNER_PRICE} per person. Top player pays $0.
+              {splitMode === "motivational"
+                ? "\n(Loser is >20pts behind. Cost split by deficit.)"
+                : "\n(Friendly mode active. Cost split inversely by score.)"}
+            </Text>
+          ) : null
         }
       />
     </View>
@@ -315,6 +395,10 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  skeletonText: {
+    backgroundColor: Colors.border,
+    borderRadius: 4,
+  },
   scoreRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -354,7 +438,7 @@ const styles = StyleSheet.create({
   potentialLabel: {
     fontSize: 8,
     fontWeight: "900",
-    color: Colors.gold, // Highlighting the 'potential' in gold
+    color: Colors.gold,
     letterSpacing: 0.5,
   },
   potentialValue: {
@@ -399,6 +483,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
     alignItems: "center",
+    minWidth: 80,
+    justifyContent: "center",
   },
   poolLabel: { fontSize: 8, fontWeight: "800", color: Colors.textMuted },
   poolValue: { fontSize: 18, fontWeight: "900", color: Colors.gold },
@@ -411,6 +497,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderBottomWidth: 4,
+    minHeight: 45,
   },
   modeFriendly: { backgroundColor: Colors.info, borderBottomColor: "#1899d6" },
   modeMotivational: {
@@ -458,31 +545,14 @@ const styles = StyleSheet.create({
   },
   avatarLetter: { fontSize: 22, fontWeight: "900", color: Colors.text },
   infoContainer: { flex: 1 },
-
-  scoreText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  paymentContainer: { alignItems: "flex-end" },
-
+  paymentContainer: { alignItems: "flex-end", minWidth: 60 },
   paymentAmount: { fontSize: 20, fontWeight: "900", color: Colors.text },
   footerText: {
     textAlign: "center",
     color: Colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
-  },
-  potentialBadge: {
-    backgroundColor: "#f0f0f0",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  potentialText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: Colors.textMuted,
+    paddingBottom: 40,
+    paddingTop: 10,
   },
 });

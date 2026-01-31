@@ -191,7 +191,7 @@ export default function PostCard({
             size={20}
             color={Colors.textMuted}
           />
-          <Text style={styles.actionText}>REPLY</Text>
+          <Text style={styles.actionText}>COMMENT</Text>
         </DuoTouch>
       </View>
 
