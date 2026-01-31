@@ -171,9 +171,9 @@ export default function PostModal() {
             ]}
           >
             <Ionicons
-              name={canPost ? "checkmark-circle" : "alert-circle"}
-              size={20}
-              color={canPost ? "#155724" : "#721c24"}
+              name={canPost ? "sparkles" : "lock-closed"} // Swapped to more "game-like" icons
+              size={22}
+              color={canPost ? Colors.primary : Colors.error} // Using theme colors
             />
             <Text
               style={[
@@ -181,7 +181,7 @@ export default function PostModal() {
                 canPost ? styles.textGreen : styles.textRed,
               ]}
             >
-              {statusMsg}
+              {statusMsg.toUpperCase()} {/* Uppercase for that Duo UI feel */}
             </Text>
           </View>
 
@@ -563,28 +563,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+
   statusBanner: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     marginBottom: 20,
     borderWidth: 2,
-    gap: 10,
+    borderBottomWidth: 5, // Signature 3D depth
+    gap: 12,
   },
   statusGreen: {
-    backgroundColor: "#d4edda",
-    borderColor: "#c3e6cb",
+    backgroundColor: "#233610", // Deep Dark Green (Duo Dark mode success)
+    borderColor: Colors.primary,
+    borderBottomColor: "#46a302",
   },
   statusRed: {
-    backgroundColor: "#f8d7da",
-    borderColor: "#f5c6cb",
+    backgroundColor: "#3b1717", // Deep Dark Red (Duo Dark mode error)
+    borderColor: Colors.error,
+    borderBottomColor: "#a62626",
   },
   statusText: {
-    fontWeight: "700",
-    fontSize: 14,
+    fontWeight: "800",
+    fontSize: 13,
     flex: 1,
+    letterSpacing: 0.3,
+    lineHeight: 18,
   },
-  textGreen: { color: "#155724" },
-  textRed: { color: "#721c24" },
+  textGreen: {
+    color: Colors.primary, // Vibrant Duo Green text
+  },
+  textRed: {
+    color: Colors.error, // Vibrant Duo Red text
+  },
 });

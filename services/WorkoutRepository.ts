@@ -775,10 +775,13 @@ export const WorkoutRepository = {
     const postRef = doc(db, "posts", postId);
 
     try {
-      // 1. Fetch User Details (for the Name)
+      // 1. Fetch User Details (Name & Photo)
       const userDoc = await getDoc(doc(db, "users", user.uid));
       const userData = userDoc.data();
+
       const userName = userData?.displayName || user.displayName || "Anonymous";
+      // Fallback: Try Firestore first, then Auth, then undefined
+      const userPhotoURL = userData?.photoURL || user.photoURL || undefined;
 
       // 2. Fetch Current Post Data
       const postSnap = await getDoc(postRef);
@@ -789,9 +792,10 @@ export const WorkoutRepository = {
 
       // 3. Create New Comment Object
       const newComment: PostComment = {
-        id: Date.now().toString(), // Simple ID
+        id: Date.now().toString(),
         userId: user.uid,
         userName: userName,
+        userPhotoURL: userPhotoURL, // <--- SAVING IT HERE
         text: text,
         createdAt: new Date().toISOString(),
         replies: [],
@@ -814,7 +818,6 @@ export const WorkoutRepository = {
           }
 
           // B. If replying to a Child Comment (Flatten to Root Parent)
-          // We check if the parentId exists inside this comment's replies
           const isReplyToChild = comment.replies?.some(
             (r) => r.id === parentCommentId,
           );
@@ -830,7 +833,6 @@ export const WorkoutRepository = {
           return comment;
         });
 
-        // Fallback: If parent not found (deleted?), just add as root
         if (!rootFound) {
           updatedComments.push(newComment);
         }

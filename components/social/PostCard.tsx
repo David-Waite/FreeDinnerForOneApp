@@ -188,11 +188,6 @@ export default function PostCard({
           />
           <Text style={styles.actionText}>REPLY</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="share-outline" size={20} color={Colors.textMuted} />
-          <Text style={styles.actionText}>SHARE</Text>
-        </TouchableOpacity>
       </View>
 
       <ReactionPicker

@@ -9,7 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { Image } from "expo-image"; // <--- Swapped to expo-image
+import { Image } from "expo-image";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
@@ -25,7 +25,6 @@ export default function WorkoutDashboard() {
   const { isActive } = useWorkoutContext();
   const currentUser = auth.currentUser;
 
-  // --- STATE ---
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>(
     currentUser?.uid || "",
@@ -34,7 +33,6 @@ export default function WorkoutDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // --- LOAD DATA ---
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -98,8 +96,6 @@ export default function WorkoutDashboard() {
     ]);
   };
 
-  // --- RENDERERS ---
-
   const renderUserSelector = () => {
     const sortedUsers = [
       ...users.filter((u) => u.uid === currentUser?.uid),
@@ -111,21 +107,20 @@ export default function WorkoutDashboard() {
         <FlatList
           horizontal
           data={sortedUsers}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
-          keyExtractor={(item) => item.uid}
+          extraData={selectedUserId}
           renderItem={({ item }) => {
             const isSelected = selectedUserId === item.uid;
             const isMe = item.uid === currentUser?.uid;
             return (
               <TouchableOpacity
+                activeOpacity={0.8}
                 style={[styles.userPill, isSelected && styles.userPillSelected]}
                 onPress={() => {
+                  if (selectedUserId === item.uid) return;
                   setLoading(true);
                   setSelectedUserId(item.uid);
                 }}
               >
-                {/* UPDATED PILL AVATAR WITH EXPO-IMAGE */}
                 {item.photoURL ? (
                   <Image
                     source={item.photoURL}
@@ -152,6 +147,9 @@ export default function WorkoutDashboard() {
               </TouchableOpacity>
             );
           }}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.selectorContent}
+          keyExtractor={(item) => item.uid}
         />
       </View>
     );
@@ -180,7 +178,7 @@ export default function WorkoutDashboard() {
 
           <View style={styles.cardActions}>
             {isMine ? (
-              <>
+              <View style={styles.actionRow}>
                 <TouchableOpacity
                   onPress={() =>
                     router.push({
@@ -189,12 +187,7 @@ export default function WorkoutDashboard() {
                     })
                   }
                 >
-                  <Ionicons
-                    name="pencil"
-                    size={20}
-                    color={Colors.textMuted}
-                    style={{ marginRight: 15 }}
-                  />
+                  <Ionicons name="pencil" size={20} color={Colors.textMuted} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => deleteTemplate(item.id)}>
                   <Ionicons
@@ -203,12 +196,15 @@ export default function WorkoutDashboard() {
                     color={Colors.error}
                   />
                 </TouchableOpacity>
-              </>
+              </View>
             ) : (
-              <TouchableOpacity onPress={() => stealRoutine(item)}>
+              <TouchableOpacity
+                style={styles.stealAction}
+                onPress={() => stealRoutine(item)}
+              >
                 <Ionicons
-                  name="download-outline"
-                  size={24}
+                  name="cloud-download"
+                  size={22}
                   color={Colors.primary}
                 />
               </TouchableOpacity>
@@ -220,13 +216,13 @@ export default function WorkoutDashboard() {
           {item.exercises.slice(0, 3).map((ex, i) => (
             <View key={i} style={styles.previewLine}>
               <View style={styles.dot} />
-              <Text style={styles.previewText}>{ex.name}</Text>
+              <Text style={styles.previewText} numberOfLines={1}>
+                {ex.name}
+              </Text>
             </View>
           ))}
           {item.exercises.length > 3 && (
-            <Text
-              style={[styles.previewText, { marginLeft: 16, opacity: 0.5 }]}
-            >
+            <Text style={styles.moreText}>
               + {item.exercises.length - 3} more
             </Text>
           )}
@@ -246,19 +242,11 @@ export default function WorkoutDashboard() {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[
-              styles.startBtn,
-              {
-                backgroundColor: Colors.surface,
-                borderWidth: 2,
-                borderColor: Colors.primary,
-              },
-            ]}
+            style={styles.downloadBtn}
             onPress={() => stealRoutine(item)}
           >
-            <Text style={[styles.startBtnText, { color: Colors.primary }]}>
-              SAVE COPY TO START
-            </Text>
+            <Ionicons name="add" size={20} color={Colors.primary} />
+            <Text style={styles.downloadBtnText}>ADD TO MY LIBRARY</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -278,14 +266,14 @@ export default function WorkoutDashboard() {
         <ActivityIndicator
           size="large"
           color={Colors.primary}
-          style={{ marginTop: 50 }}
+          style={styles.loader}
         />
       ) : (
         <FlatList
           data={templates}
           keyExtractor={(item) => item.id}
           renderItem={renderTemplateItem}
-          contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }}
+          contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -332,12 +320,8 @@ export default function WorkoutDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: 16,
-  },
-  headerContainer: { marginBottom: 15, marginTop: 10 },
+  container: { flex: 1, backgroundColor: Colors.background },
+  headerContainer: { paddingHorizontal: 16, marginBottom: 15, marginTop: 10 },
   headerSubtitle: {
     fontSize: 10,
     fontWeight: "900",
@@ -345,36 +329,42 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   headerTitle: { fontSize: 32, fontWeight: "900", color: Colors.text },
-  selectorContainer: { marginBottom: 15, height: 50 },
+
+  // User Selector Styles
+  selectorContainer: { height: 60, marginBottom: 10 },
+  selectorContent: { paddingHorizontal: 16, alignItems: "center", gap: 10 },
   userPill: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.surface,
     paddingVertical: 6,
-    paddingHorizontal: 8,
-    paddingRight: 16,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    borderRadius: 25,
     borderWidth: 2,
     borderColor: Colors.border,
-    marginRight: 8,
+    height: 44,
   },
   userPillSelected: {
     backgroundColor: Colors.background,
     borderColor: Colors.primary,
+    borderBottomWidth: 4, // Duo depth
   },
-  pillAvatar: { width: 30, height: 30, borderRadius: 15, marginRight: 8 },
+  pillAvatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
   pillAvatarPlaceholder: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Colors.border,
     marginRight: 8,
     justifyContent: "center",
     alignItems: "center",
   },
   pillLetter: { fontSize: 12, fontWeight: "900", color: Colors.text },
-  pillText: { fontSize: 13, fontWeight: "700", color: Colors.textMuted },
+  pillText: { fontSize: 13, fontWeight: "800", color: Colors.textMuted },
   pillTextSelected: { color: Colors.text },
+
+  // Card Styles
+  listContent: { paddingHorizontal: 16, paddingBottom: 120, paddingTop: 10 },
   card: {
     backgroundColor: Colors.surface,
     padding: 16,
@@ -407,12 +397,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cardSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     color: Colors.textMuted,
     marginTop: 2,
   },
-  cardActions: { flexDirection: "row", alignItems: "center" },
+  cardActions: { justifyContent: "center" },
+  actionRow: { flexDirection: "row", gap: 15, alignItems: "center" },
+  stealAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
   exercisePreview: {
     marginBottom: 20,
     backgroundColor: Colors.background,
@@ -429,7 +431,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     marginRight: 10,
   },
-  previewText: { color: Colors.text, fontSize: 14, fontWeight: "600" },
+  previewText: { color: Colors.text, fontSize: 13, fontWeight: "700", flex: 1 },
+  moreText: {
+    marginLeft: 16,
+    opacity: 0.5,
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+
   startBtn: {
     backgroundColor: Colors.primary,
     padding: 14,
@@ -444,6 +454,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 1,
   },
+  downloadBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.primary,
+  },
+  downloadBtnText: {
+    color: Colors.primary,
+    fontWeight: "900",
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
+
+  loader: { marginTop: 50 },
   fab: {
     position: "absolute",
     bottom: 30,
@@ -456,9 +486,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderBottomWidth: 5,
     borderBottomColor: "#1899d6",
-    shadowColor: Colors.black,
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
     elevation: 5,
   },
   fabText: {
@@ -466,7 +493,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginLeft: 8,
     fontSize: 14,
-    letterSpacing: 0.5,
   },
   emptyCard: {
     alignItems: "center",

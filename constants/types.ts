@@ -92,6 +92,7 @@ export type PostComment = {
   id: string;
   userId: string;
   userName: string;
+  userPhotoURL?: string; // <--- NEW FIELD
   text: string;
   createdAt: string;
   replies?: PostComment[];

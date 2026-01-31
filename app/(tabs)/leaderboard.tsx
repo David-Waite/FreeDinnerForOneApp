@@ -139,6 +139,7 @@ export default function LeaderboardScreen() {
           const gap = (secondLast?.score || 0) - lastPlace.score;
           const isMotivational = gap >= 20;
           setSplitMode(isMotivational ? "motivational" : "friendly");
+          // setSplitMode("motivational"); // For testing
 
           winners.forEach((u) => (u.payment = 0));
 
@@ -197,7 +198,6 @@ export default function LeaderboardScreen() {
           )}
         </View>
 
-        {/* UPDATED AVATAR WITH EXPO-IMAGE */}
         {item.photoURL ? (
           <Image
             source={item.photoURL}
@@ -213,11 +213,19 @@ export default function LeaderboardScreen() {
         )}
 
         <View style={styles.infoContainer}>
-          <Text style={styles.nameText}>{item.displayName}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text style={styles.scoreText}>{item.score} POINTS</Text>
-            <View style={styles.potentialBadge}>
-              <Text style={styles.potentialText}>MAX {item.potential}</Text>
+          <Text style={styles.nameText}>{item.displayName.toUpperCase()}</Text>
+
+          <View style={styles.scoreRow}>
+            <View style={styles.currentScoreBox}>
+              <Text style={styles.scoreValue}>{item.score}</Text>
+              <Text style={styles.scoreLabel}>PTS</Text>
+            </View>
+
+            <View style={styles.dividerLine} />
+
+            <View style={styles.potentialBox}>
+              <Text style={styles.potentialLabel}>CEILING</Text>
+              <Text style={styles.potentialValue}>{item.potential}</Text>
             </View>
           </View>
         </View>
@@ -273,7 +281,7 @@ export default function LeaderboardScreen() {
         />
         <Text style={styles.modeText}>
           {splitMode === "motivational"
-            ? "MOTIVATIONAL SPLIT 🔥"
+            ? "MOTIVATIONAL SPLIT "
             : "FRIENDLY SPLIT 🤝"}
         </Text>
       </View>
@@ -307,6 +315,65 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  scoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.1)",
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginTop: 6,
+    alignSelf: "flex-start",
+    gap: 10,
+  },
+  currentScoreBox: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
+  },
+  scoreValue: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: Colors.text,
+  },
+  scoreLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: Colors.textMuted,
+  },
+  dividerLine: {
+    width: 1,
+    height: 12,
+    backgroundColor: Colors.border,
+  },
+  potentialBox: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+  },
+  potentialLabel: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: Colors.gold, // Highlighting the 'potential' in gold
+    letterSpacing: 0.5,
+  },
+  potentialValue: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: Colors.gold,
+  },
+  nameText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: Colors.text,
+    letterSpacing: 0.5,
+  },
+  paymentLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 1,
+  },
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
     paddingHorizontal: 20,
@@ -391,7 +458,7 @@ const styles = StyleSheet.create({
   },
   avatarLetter: { fontSize: 22, fontWeight: "900", color: Colors.text },
   infoContainer: { flex: 1 },
-  nameText: { fontSize: 17, fontWeight: "800", color: Colors.text },
+
   scoreText: {
     fontSize: 12,
     fontWeight: "700",
@@ -399,7 +466,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   paymentContainer: { alignItems: "flex-end" },
-  paymentLabel: { fontSize: 10, fontWeight: "800", color: Colors.placeholder },
+
   paymentAmount: { fontSize: 20, fontWeight: "900", color: Colors.text },
   footerText: {
     textAlign: "center",
