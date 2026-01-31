@@ -25,7 +25,13 @@ import {
   where,
 } from "firebase/firestore"; // Import Firestore functions
 import CryptoJS from "crypto-js"; // Import Crypto
-import { getDownloadURL, ref, uploadBytes } from "@firebase/storage";
+import {
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytes,
+} from "@firebase/storage";
+import { updateProfile } from "@firebase/auth";
 
 const SESSION_KEY = "workout_sessions";
 const TEMPLATE_KEY = "workout_templates";
@@ -216,6 +222,47 @@ export const WorkoutRepository = {
       console.error("Failed to get game status", e);
       // Safe Fallback
       return { score: 0, cap: 4, remaining: 0, canPostToday: false };
+    }
+  },
+
+  /**
+   * Uploads a new profile picture to Firebase Storage and updates the User Profile.
+   * @param uri The local URI of the image selected from the gallery/camera
+   */
+  async uploadProfilePicture(uri: string): Promise<string> {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No user logged in");
+
+    try {
+      // 1. Convert URI to Blob
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      // 2. Create Reference with Timestamp (Critical for Caching!)
+      // Format: profile_pictures/UID_TIMESTAMP.jpg
+      const storage = getStorage();
+      const filename = `profile_pictures/${user.uid}_${Date.now()}.jpg`;
+      const storageRef = ref(storage, filename);
+
+      // 3. Upload
+      console.log("Uploading profile picture...");
+      await uploadBytes(storageRef, blob);
+
+      // 4. Get Download URL
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // 5. Update Auth Profile (Firebase Auth)
+      await updateProfile(user, { photoURL: downloadURL });
+
+      // 6. Update Firestore User Document (For Leaderboards/Search)
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, { photoURL: downloadURL }, { merge: true });
+
+      console.log("Profile picture updated successfully!");
+      return downloadURL;
+    } catch (error: any) {
+      console.error("Upload failed", error);
+      throw new Error("Failed to upload image: " + error.message);
     }
   },
 

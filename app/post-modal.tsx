@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Image,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -13,13 +12,14 @@ import {
   Modal,
   FlatList,
 } from "react-native";
+import { Image } from "expo-image"; // <--- Swapped to expo-image
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { WorkoutPost, WorkoutSession } from "../constants/types";
-import { useWorkoutContext } from "../context/WorkoutContext"; // <--- Import Context
+import { useWorkoutContext } from "../context/WorkoutContext";
 
 export default function PostModal() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function PostModal() {
   // 1. Get Game Status from Context
   const { gameStatus, refreshGameStatus } = useWorkoutContext();
 
-  // 2. Derive Logic (Cannot get out of sync)
+  // 2. Derive Logic
   const canPost = gameStatus.canPostToday && gameStatus.remaining > 0;
 
   // 3. Derive Status Message
@@ -88,7 +88,6 @@ export default function PostModal() {
   };
 
   const handlePost = async () => {
-    // Check Limits
     if (!canPost) {
       Alert.alert("Limit Reached", statusMsg);
       return;
@@ -106,8 +105,8 @@ export default function PostModal() {
     try {
       const newPost: WorkoutPost = {
         id: Date.now().toString(),
-        authorId: "temp", // Replaced by Repo
-        authorName: "temp", // Replaced by Repo
+        authorId: "temp",
+        authorName: "temp",
         message: message,
         imageUri: image,
         createdAt: new Date().toISOString(),
@@ -125,10 +124,7 @@ export default function PostModal() {
       };
 
       await WorkoutRepository.createPost(newPost);
-
-      // Update Context for next time
       await refreshGameStatus();
-
       router.back();
     } catch (error: any) {
       Alert.alert("POST FAILED", error.message);
@@ -143,7 +139,6 @@ export default function PostModal() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={styles.cancelBtn}>CANCEL</Text>
@@ -169,7 +164,6 @@ export default function PostModal() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          {/* GAME STATUS BANNER */}
           <View
             style={[
               styles.statusBanner,
@@ -203,7 +197,6 @@ export default function PostModal() {
             />
           </View>
 
-          {/* ATTACHED WORKOUT */}
           {selectedWorkout && (
             <View style={styles.attachedWorkoutCard}>
               <View style={styles.workoutIcon}>
@@ -231,10 +224,16 @@ export default function PostModal() {
             </View>
           )}
 
-          {/* IMAGE PREVIEW */}
+          {/* UPDATED IMAGE PREVIEW WITH EXPO-IMAGE */}
           {image && (
             <View style={styles.imageContainer}>
-              <Image source={{ uri: image }} style={styles.previewImage} />
+              <Image
+                source={image}
+                style={styles.previewImage}
+                contentFit="cover"
+                transition={300}
+                cachePolicy="disk"
+              />
               <TouchableOpacity
                 style={styles.removeImageBtn}
                 onPress={() => setImage(null)}
@@ -244,7 +243,6 @@ export default function PostModal() {
             </View>
           )}
 
-          {/* 3D MEDIA BUTTONS */}
           {!image && (
             <View style={styles.mediaButtonsContainer}>
               <TouchableOpacity style={styles.mediaBtn} onPress={takePhoto}>
@@ -286,7 +284,6 @@ export default function PostModal() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* WORKOUT PICKER */}
       <Modal
         visible={workoutPickerVisible}
         animationType="slide"
@@ -356,6 +353,9 @@ export default function PostModal() {
 }
 
 const styles = StyleSheet.create({
+  // ... Styles remain exactly as you provided them ...
+  // Note: 'resizeMode' in styles.previewImage is no longer strictly necessary
+  // since we used 'contentFit' on the component, but it doesn't hurt to keep.
   modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
   container: {
     flex: 1,
@@ -394,7 +394,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#46a302",
   },
   postBtnText: { color: Colors.white, fontWeight: "900", fontSize: 14 },
-
   content: { padding: 20 },
   inputCard: {
     backgroundColor: Colors.surface,
@@ -451,7 +450,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.border,
   },
-  previewImage: { width: "100%", height: 250, resizeMode: "cover" },
+  previewImage: { width: "100%", height: 250 },
   removeImageBtn: {
     position: "absolute",
     top: 12,
@@ -504,8 +503,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 14,
   },
-
-  // Picker Styles
   pickerWrapper: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -566,8 +563,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
-
-  // STATUS BANNER STYLES
   statusBanner: {
     flexDirection: "row",
     alignItems: "center",

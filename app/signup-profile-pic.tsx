@@ -7,16 +7,12 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { updateProfile } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage } from "../config/firebase";
 import Colors from "../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import { WorkoutRepository } from "../services/WorkoutRepository"; // <--- Import Repository
 
 export default function SignupProfilePicScreen() {
   const router = useRouter();
@@ -53,23 +49,11 @@ export default function SignupProfilePicScreen() {
   const handleSave = async () => {
     if (!image) return;
     setUploading(true);
-    const user = auth.currentUser;
-    if (!user) {
-      Alert.alert("ERROR", "No user found.");
-      setUploading(false);
-      return;
-    }
 
     try {
-      const response = await fetch(image);
-      const blob = await response.blob();
-      const storageRef = ref(storage, `profile/${user.uid}`);
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
-
-      await updateProfile(user, { photoURL: downloadURL });
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, { photoURL: downloadURL });
+      // --- USE THE REPOSITORY FUNCTION ---
+      // This handles blob conversion, timestamping, Auth update, and Firestore update
+      await WorkoutRepository.uploadProfilePicture(image);
 
       router.replace("/(tabs)");
     } catch (error: any) {

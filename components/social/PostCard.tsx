@@ -2,11 +2,11 @@ import React, { useRef, useState } from "react";
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   Platform,
 } from "react-native";
+import { Image } from "expo-image"; // <--- Swapped to expo-image
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutPost } from "../../constants/types";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
@@ -69,8 +69,11 @@ export default function PostCard({
       <View style={styles.header}>
         {post.authorAvatar ? (
           <Image
-            source={{ uri: post.authorAvatar }}
+            source={post.authorAvatar}
             style={styles.avatarImage}
+            contentFit="cover"
+            cachePolicy="disk"
+            transition={200}
           />
         ) : (
           <View style={styles.avatar}>
@@ -85,7 +88,7 @@ export default function PostCard({
         </View>
       </View>
 
-      {/* WORKOUT BANNER - Stylized like a Duolingo Lesson Card */}
+      {/* WORKOUT BANNER */}
       {post.workoutSummary && (
         <View style={styles.workoutContainer}>
           <TouchableOpacity
@@ -121,10 +124,16 @@ export default function PostCard({
         </Text>
       </View>
 
-      {/* IMAGE - Rounded like a Duolingo illustration */}
+      {/* POST IMAGE - HIGH PERFORMANCE CACHED */}
       {post.imageUri && (
         <View style={styles.imageWrapper}>
-          <Image source={{ uri: post.imageUri }} style={styles.postImage} />
+          <Image
+            source={post.imageUri}
+            style={styles.postImage}
+            contentFit="cover"
+            transition={300} // Smooth fade-in
+            cachePolicy="disk" // Ensures user only downloads this 2MB photo ONCE
+          />
         </View>
       )}
 
@@ -204,7 +213,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 6, // The "Duo" shelf effect
+    borderBottomWidth: 6,
   },
   header: {
     flexDirection: "row",
@@ -231,11 +240,9 @@ const styles = StyleSheet.create({
   avatarText: { color: Colors.textLight, fontWeight: "800", fontSize: 18 },
   userName: { fontWeight: "800", fontSize: 16, color: Colors.text },
   date: { color: Colors.textMuted, fontSize: 12, fontWeight: "600" },
-
   content: { paddingHorizontal: 16, marginBottom: 12 },
   caption: { fontSize: 15, lineHeight: 22, color: Colors.text },
   boldName: { fontWeight: "800", color: Colors.primary },
-
   workoutContainer: { paddingHorizontal: 16, marginBottom: 16 },
   workoutBanner: {
     flexDirection: "row",
@@ -263,7 +270,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   workoutSub: { color: Colors.textMuted, fontSize: 12, fontWeight: "700" },
-
   imageWrapper: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -272,8 +278,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.border,
   },
-  postImage: { width: "100%", height: 250, resizeMode: "cover" },
-
+  postImage: { width: "100%", height: 250 },
   actionBar: {
     flexDirection: "row",
     padding: 12,
@@ -297,7 +302,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.textMuted,
   },
-
   reactionRow: {
     flexDirection: "row",
     paddingHorizontal: 16,

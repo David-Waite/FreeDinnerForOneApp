@@ -6,10 +6,10 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  Image,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { Image } from "expo-image"; // <--- Swapped to expo-image
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
@@ -43,19 +43,15 @@ export default function WorkoutDashboard() {
 
   const loadData = async () => {
     try {
-      // 1. Fetch Users (for the selector) if not loaded
       if (users.length === 0) {
         const allUsers = await WorkoutRepository.getAllUsers();
         setUsers(allUsers);
       }
 
-      // 2. Fetch Templates based on selection
       if (selectedUserId === currentUser?.uid) {
-        // MY Routines (Local Storage)
         const data = await WorkoutRepository.getTemplates();
         setTemplates(data);
       } else {
-        // THEIR Public Routines (Firestore)
         const data = await WorkoutRepository.getPublicTemplates(selectedUserId);
         setTemplates(data);
       }
@@ -67,8 +63,6 @@ export default function WorkoutDashboard() {
     }
   };
 
-  // --- ACTIONS ---
-
   const deleteTemplate = async (id: string) => {
     Alert.alert("DELETE ROUTINE", "Ready to drop this training path?", [
       { text: "CANCEL", style: "cancel" },
@@ -77,7 +71,7 @@ export default function WorkoutDashboard() {
         style: "destructive",
         onPress: async () => {
           await WorkoutRepository.deleteTemplate(id);
-          loadData(); // Reload
+          loadData();
         },
       },
     ]);
@@ -91,8 +85,8 @@ export default function WorkoutDashboard() {
         onPress: async () => {
           const newRoutine = {
             ...template,
-            id: Date.now().toString(), // New ID
-            isPublic: false, // Make it private by default
+            id: Date.now().toString(),
+            isPublic: false,
           };
           await WorkoutRepository.saveTemplate(newRoutine);
           Alert.alert(
@@ -107,7 +101,6 @@ export default function WorkoutDashboard() {
   // --- RENDERERS ---
 
   const renderUserSelector = () => {
-    // Put current user first
     const sortedUsers = [
       ...users.filter((u) => u.uid === currentUser?.uid),
       ...users.filter((u) => u.uid !== currentUser?.uid),
@@ -132,10 +125,14 @@ export default function WorkoutDashboard() {
                   setSelectedUserId(item.uid);
                 }}
               >
+                {/* UPDATED PILL AVATAR WITH EXPO-IMAGE */}
                 {item.photoURL ? (
                   <Image
-                    source={{ uri: item.photoURL }}
+                    source={item.photoURL}
                     style={styles.pillAvatar}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="disk"
                   />
                 ) : (
                   <View style={styles.pillAvatarPlaceholder}>
@@ -177,19 +174,15 @@ export default function WorkoutDashboard() {
             <Text style={styles.cardTitle}>{item.name.toUpperCase()}</Text>
             <Text style={styles.cardSubtitle}>
               {item.exercises.length} EXERCISES
-              {/* Show Public Badge if it's mine */}
               {isMine && item.isPublic && " • PUBLIC"}
             </Text>
           </View>
 
-          {/* ACTIONS */}
           <View style={styles.cardActions}>
             {isMine ? (
               <>
                 <TouchableOpacity
                   onPress={() =>
-                    // Ensure this path matches your file structure!
-                    // If using the modal as discussed: "/template-modal"
                     router.push({
                       pathname: "/workouts/template-editor",
                       params: { id: item.id },
@@ -239,7 +232,6 @@ export default function WorkoutDashboard() {
           )}
         </View>
 
-        {/* START BUTTON (Only available for my routines for now, or you can allow starting others directly) */}
         {isMine ? (
           <TouchableOpacity
             style={styles.startBtn}
@@ -275,16 +267,13 @@ export default function WorkoutDashboard() {
 
   return (
     <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
-      {/* HEADER */}
       <View style={styles.headerContainer}>
         <Text style={styles.headerSubtitle}>CHOOSE YOUR PATH</Text>
         <Text style={styles.headerTitle}>Routines</Text>
       </View>
 
-      {/* USER SELECTOR */}
       {renderUserSelector()}
 
-      {/* LIST */}
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -329,11 +318,9 @@ export default function WorkoutDashboard() {
         />
       )}
 
-      {/* FAB (Only Show if viewing "My Library") */}
       {selectedUserId === currentUser?.uid && (
         <TouchableOpacity
           style={styles.fab}
-          // Ensure this matches your file name!
           onPress={() => router.push("/workouts/template-editor")}
         >
           <Ionicons name="add" size={30} color={Colors.white} />
@@ -358,8 +345,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   headerTitle: { fontSize: 32, fontWeight: "900", color: Colors.text },
-
-  // Selector Styles
   selectorContainer: { marginBottom: 15, height: 50 },
   userPill: {
     flexDirection: "row",
@@ -390,8 +375,6 @@ const styles = StyleSheet.create({
   pillLetter: { fontSize: 12, fontWeight: "900", color: Colors.text },
   pillText: { fontSize: 13, fontWeight: "700", color: Colors.textMuted },
   pillTextSelected: { color: Colors.text },
-
-  // Card Styles
   card: {
     backgroundColor: Colors.surface,
     padding: 16,
