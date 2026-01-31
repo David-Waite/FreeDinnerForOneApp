@@ -1,5 +1,3 @@
-// FreeDinnerForOneApp/hooks/useWorkoutSession.ts
-
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WorkoutSession, WorkoutSet, Exercise } from "../constants/types";
@@ -61,14 +59,11 @@ export const useWorkoutSession = () => {
       const template = await WorkoutRepository.getTemplateById(templateId);
       if (template) {
         name = template.name;
-
-        // Populate exercises and pre-fill history
         newExercises = await Promise.all(
           template.exercises.map(async (ex) => {
             const setPromises = Array(parseInt(ex.targetSets) || 3)
               .fill(null)
               .map(async (_, i) => {
-                // Fetch history for this specific set index
                 const history = await WorkoutRepository.getHistoricSetValues(
                   ex.name,
                   i,
@@ -76,14 +71,12 @@ export const useWorkoutSession = () => {
                 return {
                   id: Date.now().toString() + i + Math.random(),
                   weight: history ? history.weight : "",
-                  reps: "", // Reps are input by user, but...
-                  previousReps: history ? history.reps : "", // ...historic reps go here
+                  reps: "",
+                  previousReps: history ? history.reps : "",
                   completed: false,
                 };
               });
-
             const sets = await Promise.all(setPromises);
-
             return {
               id: ex.id,
               name: ex.name,
@@ -173,11 +166,9 @@ export const useWorkoutSession = () => {
   };
 
   const addSet = async (exId: string) => {
-    // 1. Find the exercise
     const exercise = exercises.find((e) => e.id === exId);
     if (!exercise) return;
 
-    // 2. Get history for the NEW index (length of current sets)
     const newSetIndex = exercise.sets.length;
     const history = await WorkoutRepository.getHistoricSetValues(
       exercise.name,
@@ -186,14 +177,13 @@ export const useWorkoutSession = () => {
 
     const newSet: WorkoutSet = {
       id: Date.now().toString(),
-      // Pre-fill weight from history, or copy previous set if no history, or empty
       weight: history
         ? history.weight
         : exercise.sets.length > 0
           ? exercise.sets[exercise.sets.length - 1].weight
           : "",
       reps: "",
-      previousReps: history ? history.reps : "", // Placeholder
+      previousReps: history ? history.reps : "",
       completed: false,
     };
 
@@ -231,7 +221,6 @@ export const useWorkoutSession = () => {
     await AsyncStorage.removeItem(CURRENT_SESSION_KEY);
     await AsyncStorage.removeItem(TIMER_START_KEY);
 
-    // Force reset state
     setSessionId(null);
     setExercises([]);
     setStartTime(null);
@@ -253,6 +242,7 @@ export const useWorkoutSession = () => {
     sessionName,
     exercises,
     elapsedSeconds,
+    startTime, // <--- ADDED HERE
     isPaused,
     startWorkout,
     togglePause,

@@ -9,9 +9,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
+import { useWorkoutTimer } from "../../hooks/useWorkoutTimer";
 
 type Props = {
   elapsedSeconds: number;
+  startTime: number | null;
   isPaused: boolean;
   autoExpandTrigger?: number; // New prop to force open
   onPauseToggle: () => void;
@@ -34,8 +36,8 @@ const formatTime = (totalSeconds: number) => {
 };
 
 export default function ActiveWorkoutControls({
-  elapsedSeconds,
   isPaused,
+  startTime,
   autoExpandTrigger,
   onPauseToggle,
   onFinish,
@@ -72,6 +74,8 @@ export default function ActiveWorkoutControls({
       speed: 12,
     }).start();
   }, [isOpen]);
+
+  const elapsedSeconds = useWorkoutTimer(startTime, isPaused);
 
   const panResponder = useRef(
     PanResponder.create({

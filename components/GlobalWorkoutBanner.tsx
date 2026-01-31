@@ -5,12 +5,15 @@ import { useRouter, usePathname } from "expo-router";
 import { useWorkoutContext } from "../context/WorkoutContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
+import { useWorkoutTimer } from "../hooks/useWorkoutTimer";
 
 export default function GlobalWorkoutBanner() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isActive, elapsedSeconds, sessionId, sessionName } =
+  const { isActive, sessionId, sessionName, startTime, isPaused } =
     useWorkoutContext();
+
+  const elapsedSeconds = useWorkoutTimer(isActive ? startTime : null, isPaused);
 
   // Return null if not active or if we are currently ON the recording screen
   if (!isActive || !sessionId || pathname === "/record-workout") {

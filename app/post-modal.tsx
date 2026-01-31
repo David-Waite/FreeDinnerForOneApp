@@ -11,8 +11,9 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  InteractionManager, // <--- 1. IMPORT THIS
 } from "react-native";
-import { Image } from "expo-image"; // <--- Swapped to expo-image
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -123,13 +124,22 @@ export default function PostModal() {
           : undefined,
       };
 
+      // 1. Perform Network Request
       await WorkoutRepository.createPost(newPost);
-      await refreshGameStatus();
+
+      // 2. TRIGGER NAVIGATION IMMEDIATELY
+      // We close the modal *before* asking the rest of the app to re-render.
       router.back();
+
+      // 3. DEFER THE HEAVY GLOBAL UPDATE
+      // InteractionManager waits until the close animation is fully complete
+      // before firing the global context update.
+      InteractionManager.runAfterInteractions(() => {
+        refreshGameStatus();
+      });
     } catch (error: any) {
       Alert.alert("POST FAILED", error.message);
-    } finally {
-      setUploading(false);
+      setUploading(false); // Only stop loading if we failed and stayed on screen
     }
   };
 
@@ -171,9 +181,9 @@ export default function PostModal() {
             ]}
           >
             <Ionicons
-              name={canPost ? "sparkles" : "lock-closed"} // Swapped to more "game-like" icons
+              name={canPost ? "sparkles" : "lock-closed"}
               size={22}
-              color={canPost ? Colors.primary : Colors.error} // Using theme colors
+              color={canPost ? Colors.primary : Colors.error}
             />
             <Text
               style={[
@@ -181,7 +191,7 @@ export default function PostModal() {
                 canPost ? styles.textGreen : styles.textRed,
               ]}
             >
-              {statusMsg.toUpperCase()} {/* Uppercase for that Duo UI feel */}
+              {statusMsg.toUpperCase()}
             </Text>
           </View>
 
@@ -224,7 +234,7 @@ export default function PostModal() {
             </View>
           )}
 
-          {/* UPDATED IMAGE PREVIEW WITH EXPO-IMAGE */}
+          {/* IMAGE PREVIEW */}
           {image && (
             <View style={styles.imageContainer}>
               <Image
@@ -243,6 +253,7 @@ export default function PostModal() {
             </View>
           )}
 
+          {/* MEDIA BUTTONS */}
           {!image && (
             <View style={styles.mediaButtonsContainer}>
               <TouchableOpacity style={styles.mediaBtn} onPress={takePhoto}>
@@ -353,9 +364,6 @@ export default function PostModal() {
 }
 
 const styles = StyleSheet.create({
-  // ... Styles remain exactly as you provided them ...
-  // Note: 'resizeMode' in styles.previewImage is no longer strictly necessary
-  // since we used 'contentFit' on the component, but it doesn't hurt to keep.
   modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
   container: {
     flex: 1,
@@ -563,7 +571,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
-
   statusBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -571,16 +578,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 20,
     borderWidth: 2,
-    borderBottomWidth: 5, // Signature 3D depth
+    borderBottomWidth: 5,
     gap: 12,
   },
   statusGreen: {
-    backgroundColor: "#233610", // Deep Dark Green (Duo Dark mode success)
+    backgroundColor: "#233610",
     borderColor: Colors.primary,
     borderBottomColor: "#46a302",
   },
   statusRed: {
-    backgroundColor: "#3b1717", // Deep Dark Red (Duo Dark mode error)
+    backgroundColor: "#3b1717",
     borderColor: Colors.error,
     borderBottomColor: "#a62626",
   },
@@ -592,9 +599,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   textGreen: {
-    color: Colors.primary, // Vibrant Duo Green text
+    color: Colors.primary,
   },
   textRed: {
-    color: Colors.error, // Vibrant Duo Red text
+    color: Colors.error,
   },
 });

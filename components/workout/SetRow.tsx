@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ type Props = {
   onRemove: () => void;
 };
 
-export default function SetRow({
+function SetRowComponent({
   set,
   index,
   isExpanded,
@@ -138,6 +138,19 @@ export default function SetRow({
     </Swipeable>
   );
 }
+
+// Optimization: Check immutable data props and primitives.
+// Ignore function props as they are recreated on every parent render.
+function arePropsEqual(prev: Props, next: Props) {
+  return (
+    prev.set === next.set && // Checks object reference (fast & accurate if state is immutable)
+    prev.index === next.index &&
+    prev.isExpanded === next.isExpanded &&
+    prev.isError === next.isError
+  );
+}
+
+export default memo(SetRowComponent, arePropsEqual);
 
 const styles = StyleSheet.create({
   container: {

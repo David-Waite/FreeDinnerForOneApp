@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
@@ -24,7 +24,7 @@ type Props = {
   onSetDone: (setId: string) => void;
 };
 
-export default function ExerciseCard({
+function ExerciseCardComponent({
   exercise,
   isExpanded,
   expandedSetId,
@@ -105,6 +105,20 @@ export default function ExerciseCard({
     </View>
   );
 }
+
+// Optimization: Only re-render if data/layout state changes.
+// We ignore function props (onToggle, etc.) assuming they are stable in logic
+// even if their references change (which happens with inline arrow functions).
+function arePropsEqual(prev: Props, next: Props) {
+  return (
+    prev.isExpanded === next.isExpanded &&
+    prev.expandedSetId === next.expandedSetId &&
+    prev.exercise === next.exercise && // Checks object reference (fast)
+    prev.highlightedSets === next.highlightedSets
+  );
+}
+
+export default memo(ExerciseCardComponent, arePropsEqual);
 
 const styles = StyleSheet.create({
   card: {

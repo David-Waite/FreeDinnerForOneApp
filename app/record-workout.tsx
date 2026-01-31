@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -8,12 +14,13 @@ import {
   Alert,
   Platform,
   UIManager,
+  InteractionManager, // <--- 1. Import InteractionManager
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
-import { ExerciseNote } from "../constants/types";
+import { ExerciseNote, WorkoutSet } from "../constants/types";
 import { useWorkoutContext } from "../context/WorkoutContext";
 import NotesModal from "../components/workout/NotesModal";
 import RestTimerModal from "../components/workout/RestTimerModal";
@@ -40,6 +47,7 @@ export default function RecordWorkoutScreen() {
     sessionName,
     exercises,
     elapsedSeconds,
+    startTime,
     isPaused,
     togglePause,
     updateSet,
@@ -51,6 +59,9 @@ export default function RecordWorkoutScreen() {
   } = useWorkoutContext();
 
   const [isExiting, setIsExiting] = useState(false);
+  // 2. Use Ref for synchronous access inside event listeners
+  const isExitingRef = useRef(false);
+
   const [highlightedSets, setHighlightedSets] = useState<Set<string>>(
     new Set(),
   );
@@ -91,11 +102,14 @@ export default function RecordWorkoutScreen() {
     if (exercises.length > 0 && expandedExerciseId === null) {
       setExpandedExerciseId(exercises[0].id);
     }
-  }, [exercises.length]); // Run when exercises load
+  }, [exercises.length]);
 
+  // 3. Optimized Navigation Listener
   useEffect(() => {
     const removeListener = navigation.addListener("beforeRemove", (e) => {
-      if (isExiting) return;
+      // Check the ref immediately. If true, let navigation happen.
+      if (isExitingRef.current) return;
+
       e.preventDefault();
       Alert.alert(
         "MISSION IN PROGRESS",
@@ -104,65 +118,147 @@ export default function RecordWorkoutScreen() {
       );
     });
     return removeListener;
-  }, [navigation, isExiting]);
+  }, [navigation]);
+
+  // --- ACTIONS WRAPPED IN USECALLBACK ---
+
+  const handleToggleExercise = useCallback((exId: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedExerciseId((prev) => (prev === exId ? null : exId));
+  }, []);
+
+  const handleSetExpand = useCallback((setId: string | null) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSetId(setId);
+  }, []);
+
+  const handleUpdateSet = useCallback(
+    (exId: string, setId: string, field: keyof WorkoutSet, value: any) => {
+      setHighlightedSets((prev) => {
+        if (prev.has(setId)) {
+          const next = new Set(prev);
+          next.delete(setId);
+          return next;
+        }
+        return prev;
+      });
+      updateSet(exId, setId, field, value);
+    },
+    [updateSet],
+  );
+
+  const handleAddSet = useCallback(
+    (exId: string) => {
+      addSet(exId);
+    },
+    [addSet],
+  );
+
+  const handleRemoveSet = useCallback(
+    (exId: string, setId: string) => {
+      removeSet(exId, setId);
+    },
+    [removeSet],
+  );
+
+  const handleOpenNotes = useCallback(async (exName: string) => {
+    setCurrentNoteExercise(exName);
+    const notes = await WorkoutRepository.getNotes(exName);
+    setNotesList(notes);
+    setNotesModalVisible(true);
+  }, []);
+
+  const handleStartRestTimer = useCallback(
+    (duration: number, setId: string, exId: string) => {
+      setTimerDuration(duration);
+      setActiveSetForTimer({ exId, setId });
+      setTimerVisible(true);
+    },
+    [],
+  );
 
   // 2. & 3. SMART VALIDATION & AUTO-ADVANCE LOGIC
-  const handleSetDone = (exerciseId: string, setId: string) => {
-    const exerciseIndex = exercises.findIndex((e) => e.id === exerciseId);
-    if (exerciseIndex === -1) return;
+  const handleSetDone = useCallback(
+    (exerciseId: string, setId: string) => {
+      const exerciseIndex = exercises.findIndex((e) => e.id === exerciseId);
+      if (exerciseIndex === -1) return;
 
-    const exercise = exercises[exerciseIndex];
-    const set = exercise.sets.find((s) => s.id === setId);
-    if (!set) return;
+      const exercise = exercises[exerciseIndex];
+      const set = exercise.sets.find((s) => s.id === setId);
+      if (!set) return;
 
-    const isInvalid = !set.reps || set.reps === "0";
-    const isAlreadyHighlighted = highlightedSets.has(setId);
+      const isInvalid = !set.reps || set.reps === "0";
+      const isAlreadyHighlighted = highlightedSets.has(setId);
 
-    // Validation Check
-    if (isInvalid && !isAlreadyHighlighted) {
-      // First click with error: Highlight RED
-      setHighlightedSets((prev) => new Set(prev).add(setId));
-      return;
-    }
-
-    // Valid OR Second Click (Forced): Complete the set
-    if (isAlreadyHighlighted) {
-      setHighlightedSets((prev) => {
-        const next = new Set(prev);
-        next.delete(setId);
-        return next;
-      });
-    }
-
-    markSetComplete(exerciseId, setId);
-
-    // Auto-Advance Logic
-    const setIndex = exercise.sets.findIndex((s) => s.id === setId);
-    const isLastSet = setIndex === exercise.sets.length - 1;
-
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
-    if (!isLastSet) {
-      // Go to next set
-      setExpandedSetId(exercise.sets[setIndex + 1].id);
-    } else {
-      // Exercise Complete
-      if (exerciseIndex < exercises.length - 1) {
-        // Open next exercise
-        const nextExercise = exercises[exerciseIndex + 1];
-        setExpandedExerciseId(nextExercise.id);
-        // Optional: Expand first set of next exercise
-        if (nextExercise.sets.length > 0) {
-          setExpandedSetId(nextExercise.sets[0].id);
-        }
-      } else {
-        // Last Exercise Complete: Open Controls
-        setControlsExpandTrigger(Date.now());
+      // Validation Check
+      if (isInvalid && !isAlreadyHighlighted) {
+        setHighlightedSets((prev) => new Set(prev).add(setId));
+        return;
       }
-    }
-  };
 
-  const handleFinish = async () => {
+      // Valid OR Second Click (Forced): Complete the set
+      if (isAlreadyHighlighted) {
+        setHighlightedSets((prev) => {
+          const next = new Set(prev);
+          next.delete(setId);
+          return next;
+        });
+      }
+
+      markSetComplete(exerciseId, setId);
+
+      // Auto-Advance Logic
+      const setIndex = exercise.sets.findIndex((s) => s.id === setId);
+      const isLastSet = setIndex === exercise.sets.length - 1;
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+      if (!isLastSet) {
+        // Go to next set
+        setExpandedSetId(exercise.sets[setIndex + 1].id);
+      } else {
+        // Exercise Complete
+        if (exerciseIndex < exercises.length - 1) {
+          // Open next exercise
+          const nextExercise = exercises[exerciseIndex + 1];
+          setExpandedExerciseId(nextExercise.id);
+          if (nextExercise.sets.length > 0) {
+            setExpandedSetId(nextExercise.sets[0].id);
+          }
+        } else {
+          // Last Exercise Complete: Open Controls
+          setControlsExpandTrigger(Date.now());
+        }
+      }
+    },
+    [exercises, highlightedSets, markSetComplete],
+  );
+
+  // --- OPTIMIZED SAVE & CANCEL HANDLERS ---
+
+  const performSave = useCallback(() => {
+    // 1. Synchronously flag exit (unblocks navigation)
+    isExitingRef.current = true;
+    setIsExiting(true);
+
+    // 2. Start Animation IMMEDIATELY
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+
+    // 3. Defer Heavy Logic (DB Writes) until animation completes
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        await saveSession();
+      } catch (e) {
+        console.error("Failed to save session in background", e);
+      }
+    });
+  }, [saveSession, router]);
+
+  const handleFinish = useCallback(async () => {
     const invalidIds = new Set<string>();
     exercises.forEach((ex) => {
       ex.sets.forEach((set) => {
@@ -183,19 +279,9 @@ export default function RecordWorkoutScreen() {
     } else {
       performSave();
     }
-  };
+  }, [exercises, performSave]);
 
-  const performSave = async () => {
-    setIsExiting(true);
-    await saveSession();
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/(tabs)");
-    }
-  };
-
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     Alert.alert(
       "ABANDON MISSION?",
       "All progress in this session will be lost forever!",
@@ -204,19 +290,38 @@ export default function RecordWorkoutScreen() {
         {
           text: "ABANDON",
           style: "destructive",
-          onPress: async () => {
+          onPress: () => {
+            // 1. Flag Exit
+            isExitingRef.current = true;
             setIsExiting(true);
-            await cancelSession();
+
+            // 2. Navigate Immediately
             if (router.canGoBack()) {
               router.back();
             } else {
-              router.replace("/(tabs)"); // Fallback if no history exists
+              router.replace("/(tabs)");
             }
+
+            // 3. Clean up storage in background
+            InteractionManager.runAfterInteractions(() => {
+              cancelSession();
+            });
           },
         },
       ],
     );
-  };
+  }, [cancelSession, router]);
+
+  const handleMinimize = useCallback(() => {
+    // Just navigation, but good to keep consistent
+    isExitingRef.current = true;
+    setIsExiting(true);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  }, [router]);
 
   return (
     <View style={styles.container}>
@@ -246,40 +351,17 @@ export default function RecordWorkoutScreen() {
             isExpanded={expandedExerciseId === exercise.id}
             expandedSetId={expandedSetId}
             highlightedSets={highlightedSets}
-            onToggle={() => {
-              LayoutAnimation.configureNext(
-                LayoutAnimation.Presets.easeInEaseOut,
-              );
-              setExpandedExerciseId(
-                expandedExerciseId === exercise.id ? null : exercise.id,
-              );
-            }}
-            onSetExpand={(setId) => {
-              LayoutAnimation.configureNext(
-                LayoutAnimation.Presets.easeInEaseOut,
-              );
-              setExpandedSetId(setId);
-            }}
-            onUpdateSet={(setId, field, value) => {
-              if (highlightedSets.has(setId)) {
-                const next = new Set(highlightedSets);
-                next.delete(setId);
-                setHighlightedSets(next);
-              }
-              updateSet(exercise.id, setId, field as any, value);
-            }}
-            onAddSet={() => addSet(exercise.id)}
-            onRemoveSet={(setId) => removeSet(exercise.id, setId)}
-            onOpenNotes={async () => {
-              setCurrentNoteExercise(exercise.name);
-              setNotesList(await WorkoutRepository.getNotes(exercise.name));
-              setNotesModalVisible(true);
-            }}
-            onStartRestTimer={(dur, setId) => {
-              setTimerDuration(dur);
-              setActiveSetForTimer({ exId: exercise.id, setId });
-              setTimerVisible(true);
-            }}
+            onToggle={() => handleToggleExercise(exercise.id)}
+            onSetExpand={handleSetExpand}
+            onUpdateSet={(setId, field, value) =>
+              handleUpdateSet(exercise.id, setId, field as any, value)
+            }
+            onAddSet={() => handleAddSet(exercise.id)}
+            onRemoveSet={(setId) => handleRemoveSet(exercise.id, setId)}
+            onOpenNotes={() => handleOpenNotes(exercise.name)}
+            onStartRestTimer={(dur, setId) =>
+              handleStartRestTimer(dur, setId, exercise.id)
+            }
             onSetDone={(setId) => handleSetDone(exercise.id, setId)}
           />
         ))}
@@ -288,19 +370,13 @@ export default function RecordWorkoutScreen() {
 
       <ActiveWorkoutControls
         elapsedSeconds={elapsedSeconds}
+        startTime={startTime}
         isPaused={isPaused}
         autoExpandTrigger={controlsExpandTrigger}
         onPauseToggle={togglePause}
         onFinish={handleFinish}
         onCancel={handleCancel}
-        onMinimize={() => {
-          setIsExiting(true);
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.replace("/(tabs)"); // Fallback if no history exists
-          }
-        }}
+        onMinimize={handleMinimize}
       />
 
       <NotesModal
