@@ -267,6 +267,7 @@ export default function PostCard({
           />
           <Text style={styles.actionText}>
             {commentCount > 0 ? `${commentCount} ` : ""}COMMENT
+            {commentCount > 0 ? "S" : ""}
           </Text>
         </DuoTouch>
       </View>
