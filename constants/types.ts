@@ -70,29 +70,41 @@ export type BodyWeightLog = {
   weight: number;
 };
 
+// --- NEW REACTION TYPE ---
+export type ReactionDetail = {
+  userId: string;
+  emoji: string;
+  userAvatar?: string;
+  userName?: string;
+};
+
 // --- UPDATED POST TYPE ---
 export type WorkoutPost = {
   id: string;
-  authorId: string; // Changed from userId
-  authorName: string; // Changed from userName
-  authorAvatar?: string; // New
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
   message: string;
   imageUri: string;
-  createdAt: string; // Changed from date
+  createdAt: string;
 
-  // We keep these arrays for UI compatibility, but we will convert to Maps for Firestore
   comments: PostComment[];
+
+  // LEGACY: Kept for backward compatibility (uid -> emoji)
   reactions: Record<string, string>;
 
+  // NEW: Rich data for display (uid -> ReactionDetail)
+  reactionData?: Record<string, ReactionDetail>;
+
   workoutSummary?: WorkoutSummary;
-  sessionId?: string; // New
+  sessionId?: string;
 };
 
 export type PostComment = {
   id: string;
   userId: string;
   userName: string;
-  userPhotoURL?: string; // <--- NEW FIELD
+  userPhotoURL?: string;
   text: string;
   createdAt: string;
   replies?: PostComment[];

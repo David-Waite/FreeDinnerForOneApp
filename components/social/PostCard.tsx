@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { WorkoutPost } from "../../constants/types";
+import { WorkoutPost, ReactionDetail } from "../../constants/types"; // Updated Import
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import ReactionPicker from "./ReactionPicker";
 import Colors from "../../constants/Colors";
@@ -43,9 +43,15 @@ export default function PostCard({
   onCommentPress,
   onWorkoutPress,
 }: Props) {
+  // State for legacy map (uid -> emoji)
   const [reactions, setReactions] = useState<Record<string, string>>(
     post.reactions || {},
   );
+  // State for rich data (uid -> ReactionDetail)
+  const [reactionDetails, setReactionDetails] = useState<
+    Record<string, ReactionDetail>
+  >(post.reactionData || {});
+
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(
     null,
@@ -54,14 +60,30 @@ export default function PostCard({
     useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
   const currentUserId = auth.currentUser?.uid;
-  const reactionValues = Object.values(reactions);
-  const reactionCounts = reactionValues.reduce(
-    (acc, emoji) => {
-      acc[emoji] = (acc[emoji] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+
+  // Process Reactions for Display
+  const reactionGroups = useMemo(() => {
+    const groups: Record<string, { count: number; avatars: string[] }> = {};
+
+    // Iterate over the keys (User IDs)
+    Object.keys(reactions).forEach((uid) => {
+      const emoji = reactions[uid];
+      const detail = reactionDetails[uid];
+
+      if (!groups[emoji]) {
+        groups[emoji] = { count: 0, avatars: [] };
+      }
+
+      groups[emoji].count += 1;
+
+      // Add avatar if available (and limit to 3 per emoji type to prevent clutter)
+      if (detail?.userAvatar && groups[emoji].avatars.length < 3) {
+        groups[emoji].avatars.push(detail.userAvatar);
+      }
+    });
+
+    return groups;
+  }, [reactions, reactionDetails]);
 
   const myReactionEmoji = currentUserId ? reactions[currentUserId] : undefined;
 
@@ -76,11 +98,14 @@ export default function PostCard({
 
   const handleReaction = async (emoji: string) => {
     if (!currentUserId) return;
-    const updatedReactions = await WorkoutRepository.toggleReaction(
-      post.id,
-      emoji,
-    );
-    if (updatedReactions) setReactions(updatedReactions);
+
+    // Optimistic / Actual Update
+    const result = await WorkoutRepository.toggleReaction(post.id, emoji);
+
+    if (result) {
+      setReactions(result.reactions);
+      setReactionDetails(result.reactionData);
+    }
   };
 
   const handleLongPress = () => {
@@ -109,7 +134,6 @@ export default function PostCard({
         )}
         <View>
           <Text style={styles.userName}>{post.authorName}</Text>
-          {/* UPDATED: Using helper function */}
           <Text style={styles.date}>{getRelativeTime(post.createdAt)}</Text>
         </View>
       </View>
@@ -164,15 +188,41 @@ export default function PostCard({
       )}
 
       {/* REACTION BADGES */}
-      {Object.keys(reactionCounts).length > 0 && (
-        <View style={styles.reactionRow}>
-          {Object.keys(reactionCounts).map((emoji) => (
-            <View key={emoji} style={styles.reactionBadge}>
-              <Text style={styles.reactionText}>
-                {emoji} {reactionCounts[emoji]}
-              </Text>
-            </View>
-          ))}
+      {/* COMPACT REACTION TILES */}
+      {Object.keys(reactions).length > 0 && (
+        <View style={styles.compactReactionRow}>
+          {Object.keys(reactions).map((uid) => {
+            const emoji = reactions[uid];
+            const detail = reactionDetails[uid];
+
+            return (
+              <View key={uid} style={styles.compactTileWrapper}>
+                {/* THE USER SQUIRCLE */}
+                <View style={styles.miniSquircleBase}>
+                  {detail?.userAvatar ? (
+                    <Image
+                      source={detail.userAvatar}
+                      style={styles.miniSquircleImage}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View
+                      style={[styles.miniSquircleImage, styles.miniPlaceholder]}
+                    >
+                      <Text style={styles.miniLetter}>
+                        {detail?.userName?.[0] || "?"}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* THE EMOJI BADGE (Top Right) */}
+                <View style={styles.emojiBadgeOverlay}>
+                  <Text style={styles.emojiBadgeText}>{emoji}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -204,7 +254,7 @@ export default function PostCard({
           </Text>
         </DuoTouch>
 
-        {/* COMMENT BUTTON (with Count) */}
+        {/* COMMENT BUTTON */}
         <DuoTouch
           style={styles.actionButton}
           onPress={() => onCommentPress(post)}
@@ -328,20 +378,67 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.textMuted,
   },
-  reactionRow: {
+  compactReactionRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     flexWrap: "wrap",
-    gap: 6,
+    gap: 10, // Space between tiles
   },
-  reactionBadge: {
-    backgroundColor: Colors.background,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  compactTileWrapper: {
+    position: "relative",
+    width: 42, // Total width of the tile
+    height: 42,
+  },
+  miniSquircleBase: {
+    width: 40,
+    height: 40,
+    backgroundColor: Colors.border, // The 3D shadow color
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingBottom: 3, // Creates the 3D lift
   },
-  reactionText: { fontSize: 12, color: Colors.text, fontWeight: "700" },
+  miniSquircleImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  miniPlaceholder: {
+    backgroundColor: Colors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  miniLetter: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: Colors.textMuted,
+  },
+  emojiBadgeOverlay: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    backgroundColor: Colors.surface,
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    // Add a tiny shadow to make it "sit" on top
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  emojiBadgeText: {
+    fontSize: 10,
+  },
 });

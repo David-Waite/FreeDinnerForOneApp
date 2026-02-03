@@ -10,6 +10,7 @@ import {
   MasterExercise,
   BodyWeightLog,
   UserProfile,
+  ReactionDetail,
 } from "../constants/types";
 import { auth, db, storage } from "../config/firebase"; // Import Firebase Auth & DB
 import {
@@ -863,47 +864,74 @@ export const WorkoutRepository = {
   async toggleReaction(
     postId: string,
     emoji: string,
-  ): Promise<Record<string, string> | null> {
+  ): Promise<{
+    reactions: Record<string, string>;
+    reactionData: Record<string, ReactionDetail>;
+  } | null> {
     const user = auth.currentUser;
     if (!user) return null;
 
     const postRef = doc(db, "posts", postId);
 
     try {
-      // 1. Get current state to see if we are adding or removing
+      // 1. Get current state
       const postSnap = await getDoc(postRef);
       if (!postSnap.exists()) return null;
 
       const postData = postSnap.data() as WorkoutPost;
       const currentReactions = postData.reactions || {};
+      const currentReactionData = postData.reactionData || {};
       const currentEmoji = currentReactions[user.uid];
 
-      // 2. Prepare Update
+      // 2. Fetch User Details (to ensure we store the latest avatar)
+      // We try to get it from the Auth object first, then fallback to Firestore if needed
+      let userAvatar = user.photoURL;
+      let userName = user.displayName;
+
+      if (!userAvatar || !userName) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          userAvatar = userData.photoURL || userAvatar;
+          userName = userData.displayName || userName;
+        }
+      }
+
+      // 3. Prepare Update
       if (currentEmoji === emoji) {
-        // Toggle OFF: Remove the field
+        // Toggle OFF: Remove from both fields
         await updateDoc(postRef, {
           [`reactions.${user.uid}`]: deleteField(),
+          [`reactionData.${user.uid}`]: deleteField(),
         });
 
-        // Return optimistic update for UI
         delete currentReactions[user.uid];
-        return currentReactions;
+        delete currentReactionData[user.uid];
       } else {
-        // Toggle ON (or Switch Emoji): Update the field
+        // Toggle ON (or Switch): Update both fields
+        const newDetail: ReactionDetail = {
+          userId: user.uid,
+          emoji: emoji,
+          userAvatar: userAvatar || undefined,
+          userName: userName || "Unknown",
+        };
+
         await updateDoc(postRef, {
           [`reactions.${user.uid}`]: emoji,
+          [`reactionData.${user.uid}`]: newDetail,
         });
 
-        // Return optimistic update for UI
         currentReactions[user.uid] = emoji;
-        return currentReactions;
+        currentReactionData[user.uid] = newDetail;
       }
+
+      // Return both for the UI to update optimistically
+      return { reactions: currentReactions, reactionData: currentReactionData };
     } catch (e) {
       console.error("Failed to toggle reaction", e);
       return null;
     }
   },
-
   // --- MASTER EXERCISES ---
 
   normalizeId(name: string): string {
