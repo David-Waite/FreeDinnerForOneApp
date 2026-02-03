@@ -15,6 +15,7 @@ const KEYS_TO_WIPE = [
   "workout_templates",
   "body_weight_logs",
   "exercise_notes",
+  "master_exercises", // <--- ADDED: This deletes "doggies are cool" on logout
 ];
 
 // 1. Define the Keys
@@ -23,9 +24,10 @@ const FALLBACK_SECRET = "default-secret"; // For legacy dev data
 
 export const SyncService = {
   async wipeLocalData() {
+    console.log("🧹 Wiping local data...");
     try {
       await AsyncStorage.multiRemove(KEYS_TO_WIPE);
-      console.log("Local data wiped successfully.");
+      console.log("✨ Local data wiped successfully.");
     } catch (e) {
       console.error("Failed to wipe local data", e);
     }
@@ -38,6 +40,9 @@ export const SyncService = {
         this.syncSessions(userId),
         this.syncTemplates(userId),
         this.syncWeightLogs(userId),
+        // Note: We generally don't sync "Master Exercises" DOWN from Firestore
+        // because we just query the global list live.
+        // But wiping it locally forces the app to re-fetch the defaults next time.
       ]);
       console.log("Hydration Complete!");
     } catch (e) {
@@ -45,12 +50,13 @@ export const SyncService = {
     }
   },
 
+  // ... (Rest of your file remains exactly the same) ...
+
   // --- INTERNAL HELPER: Safe Decrypt ---
-  // Tries multiple keys to rescue data
   tryDecrypt(cipherText: string, userId: string): any | null {
     const keysToTry = [
-      `${userId}-${ENV_SECRET}`, // 1. Try current env key
-      `${userId}-${FALLBACK_SECRET}`, // 2. Try default dev key
+      `${userId}-${ENV_SECRET}`,
+      `${userId}-${FALLBACK_SECRET}`,
     ];
 
     for (const key of keysToTry) {
@@ -58,17 +64,16 @@ export const SyncService = {
         const bytes = CryptoJS.AES.decrypt(cipherText, key);
         const str = bytes.toString(CryptoJS.enc.Utf8);
         if (str) {
-          return JSON.parse(str); // Success!
+          return JSON.parse(str);
         }
       } catch (e) {
-        // Continue to next key
+        // Continue
       }
     }
-    return null; // All keys failed
+    return null;
   },
 
   // --- SYNC FUNCTIONS ---
-
   async syncSessions(userId: string) {
     const q = query(collection(db, "users", userId, "sessions"));
     const snap = await getDocs(q);
@@ -78,7 +83,6 @@ export const SyncService = {
       const data = doc.data();
 
       if (data.isEncrypted && data.data) {
-        // Use helper to try decrypting
         const decryptedExercises = this.tryDecrypt(data.data, userId);
 
         if (decryptedExercises) {
@@ -90,14 +94,9 @@ export const SyncService = {
             exercises: decryptedExercises,
           });
         } else {
-          console.warn(
-            `⚠️ Skipped session ${data.id}: Decryption failed (Key mismatch).`,
-          );
-          // Optional: Push a "Locked" session so the user knows it exists?
-          // sessions.push({ ...data, exercises: [], name: "🔒 Locked Session" } as WorkoutSession);
+          console.warn(`⚠️ Skipped session ${data.id}: Decryption failed.`);
         }
       } else {
-        // Plain text data
         sessions.push(data as WorkoutSession);
       }
     });
@@ -113,7 +112,6 @@ export const SyncService = {
     const templates: WorkoutTemplate[] = [];
 
     snap.forEach((doc) => {
-      // If you ever encrypt templates, use this.tryDecrypt() here too
       templates.push(doc.data() as WorkoutTemplate);
     });
 
@@ -130,12 +128,7 @@ export const SyncService = {
     snap.forEach((doc) => {
       const data = doc.data();
       if (data.isEncrypted && data.data) {
-        // Weight is just a number string, not JSON, so handle slightly differently
-        // or just wrap it in JSON logic if you stored it as JSON string
-
         let weightVal = null;
-
-        // Manual Decrypt Loop for simple string
         const keysToTry = [
           `${userId}-${ENV_SECRET}`,
           `${userId}-${FALLBACK_SECRET}`,

@@ -195,10 +195,10 @@ export default function LeaderboardScreen() {
           const isMotivational = gap >= 20;
 
           // Force motivational for testing or logic as per your snippet
-          setSplitMode("motivational");
+          setSplitMode(isMotivational ? "motivational" : "friendly");
           winners.forEach((u) => (u.payment = 0));
 
-          if (isMotivational || true) {
+          if (isMotivational) {
             // Logic preservation
             let totalDeficit = 0;
             losers.forEach((u) => {

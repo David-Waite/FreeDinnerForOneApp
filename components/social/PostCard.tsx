@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
-import { Image } from "expo-image"; // <--- Swapped to expo-image
+import { Image } from "expo-image";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WorkoutPost } from "../../constants/types";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
@@ -14,6 +14,23 @@ import ReactionPicker from "./ReactionPicker";
 import Colors from "../../constants/Colors";
 import { auth } from "../../config/firebase";
 import DuoTouch from "../ui/DuoTouch";
+
+// --- HELPER FUNCTION ---
+const getRelativeTime = (timestamp: any) => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 10) return "Just now";
+  if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800)
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+  return date.toLocaleDateString();
+};
 
 type Props = {
   post: WorkoutPost;
@@ -48,6 +65,15 @@ export default function PostCard({
 
   const myReactionEmoji = currentUserId ? reactions[currentUserId] : undefined;
 
+  // Calculate Comment Count
+  const commentCount = useMemo(() => {
+    if (!post.comments) return 0;
+    return post.comments.reduce((total, comment) => {
+      // Count the comment itself + any replies
+      return total + 1 + (comment.replies?.length || 0);
+    }, 0);
+  }, [post.comments]);
+
   const handleReaction = async (emoji: string) => {
     if (!currentUserId) return;
     const updatedReactions = await WorkoutRepository.toggleReaction(
@@ -59,12 +85,11 @@ export default function PostCard({
 
   const handleLongPress = () => {
     heartButtonRef.current?.measureInWindow((x, y, width, height) => {
-      // Adjusted: subtract more from Y (upwards) to account for the thicker bar
-      // subtract width/2 from X to center it
       setPickerPos({ x: x + width / 2, y: y - 15 });
       setPickerVisible(true);
     });
   };
+
   return (
     <View style={styles.card}>
       {/* HEADER */}
@@ -84,9 +109,8 @@ export default function PostCard({
         )}
         <View>
           <Text style={styles.userName}>{post.authorName}</Text>
-          <Text style={styles.date}>
-            {new Date(post.createdAt).toLocaleDateString()}
-          </Text>
+          {/* UPDATED: Using helper function */}
+          <Text style={styles.date}>{getRelativeTime(post.createdAt)}</Text>
         </View>
       </View>
 
@@ -126,15 +150,15 @@ export default function PostCard({
         </Text>
       </View>
 
-      {/* POST IMAGE - HIGH PERFORMANCE CACHED */}
+      {/* POST IMAGE */}
       {post.imageUri && (
         <View style={styles.imageWrapper}>
           <Image
             source={post.imageUri}
             style={styles.postImage}
             contentFit="cover"
-            transition={300} // Smooth fade-in
-            cachePolicy="disk" // Ensures user only downloads this 2MB photo ONCE
+            transition={300}
+            cachePolicy="disk"
           />
         </View>
       )}
@@ -154,16 +178,16 @@ export default function PostCard({
 
       {/* ACTION BAR */}
       <View style={styles.actionBar}>
-        {/* LIKE / REACTION BUTTON */}
+        {/* LIKE BUTTON */}
         <DuoTouch
-          ref={heartButtonRef} // Note: DuoTouch needs to forwardRef if you use measureInWindow
+          ref={heartButtonRef}
           style={[
             styles.actionButton,
             myReactionEmoji && styles.activeActionButton,
           ]}
           onPress={() => handleReaction("❤️")}
           onLongPress={handleLongPress}
-          hapticStyle={myReactionEmoji ? "light" : "medium"} // Heavier haptic when first liking
+          hapticStyle={myReactionEmoji ? "light" : "medium"}
         >
           <Ionicons
             name={myReactionEmoji ? "heart" : "heart-outline"}
@@ -180,7 +204,7 @@ export default function PostCard({
           </Text>
         </DuoTouch>
 
-        {/* REPLY BUTTON */}
+        {/* COMMENT BUTTON (with Count) */}
         <DuoTouch
           style={styles.actionButton}
           onPress={() => onCommentPress(post)}
@@ -191,7 +215,9 @@ export default function PostCard({
             size={20}
             color={Colors.textMuted}
           />
-          <Text style={styles.actionText}>COMMENT</Text>
+          <Text style={styles.actionText}>
+            {commentCount > 0 ? `${commentCount} ` : ""}COMMENT
+          </Text>
         </DuoTouch>
       </View>
 

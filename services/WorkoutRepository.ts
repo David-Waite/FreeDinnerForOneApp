@@ -279,6 +279,7 @@ export const WorkoutRepository = {
   },
 
   async saveWorkout(workout: WorkoutSession): Promise<void> {
+    console.log("Saving workout:", workout.id);
     const names = workout.exercises.map((e) => e.name);
     await this.ensureExercisesExist(names);
 
@@ -523,6 +524,12 @@ export const WorkoutRepository = {
   async saveTemplate(template: WorkoutTemplate): Promise<void> {
     const user = auth.currentUser;
     if (!user) return;
+
+    // --- NEW: Harvest Exercises ---
+    // Extract names and ensure they exist in the master list/global DB
+    const exerciseNames = template.exercises.map((e) => e.name);
+    await this.ensureExercisesExist(exerciseNames);
+    // ------------------------------
 
     // 1. Local Save (Always)
     const existing = await this.getTemplates();
@@ -907,29 +914,12 @@ export const WorkoutRepository = {
     try {
       const jsonValue = await AsyncStorage.getItem(MASTER_EXERCISE_KEY);
       if (jsonValue == null) {
-        return this.seedDefaultExercises();
+        return [];
       }
       return JSON.parse(jsonValue);
     } catch (e) {
       return [];
     }
-  },
-
-  async seedDefaultExercises(): Promise<MasterExercise[]> {
-    const defaults = [
-      "Bench Press",
-      "Squat",
-      "Deadlift",
-      "Overhead Press",
-      "Barbell Row",
-      "Pull Up",
-      "Dumbbell Curl",
-      "Tricep Extension",
-      "Leg Press",
-      "Lat Pulldown",
-    ].map((name) => ({ id: name, name }));
-    await AsyncStorage.setItem(MASTER_EXERCISE_KEY, JSON.stringify(defaults));
-    return defaults;
   },
 
   async syncGlobalExercises(): Promise<void> {
