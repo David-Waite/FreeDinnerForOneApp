@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
@@ -10,15 +10,62 @@ import { useWorkoutTimer } from "../hooks/useWorkoutTimer";
 export default function GlobalWorkoutBanner() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isActive, sessionId, sessionName, startTime, isPaused } =
-    useWorkoutContext();
+  const {
+    isActive,
+    sessionId,
+    sessionName,
+    startTime,
+    isPaused,
+    restTimer,
+    maximizeRestTimer,
+  } = useWorkoutContext();
 
   const elapsedSeconds = useWorkoutTimer(isActive ? startTime : null, isPaused);
+  const [restSecondsLeft, setRestSecondsLeft] = useState(0);
 
-  // Return null if not active or if we are currently ON the recording screen
-  if (!isActive || !sessionId || pathname === "/record-workout") {
-    return null;
-  }
+  // LOGGING STATE CHANGES
+  useEffect(() => {
+    if (restTimer) {
+      console.log(
+        `[Banner] Update: Finished=${restTimer.isFinished}, EndTime=${restTimer.endTime}`,
+      );
+    }
+  }, [restTimer]);
+
+  // --- TICKER ---
+  useEffect(() => {
+    if (restTimer && !restTimer.isFinished) {
+      const update = () => {
+        const left = Math.ceil((restTimer.endTime - Date.now()) / 1000);
+        setRestSecondsLeft(left > 0 ? left : 0);
+      };
+      update();
+      const interval = setInterval(update, 1000);
+      return () => clearInterval(interval);
+    } else if (restTimer?.isFinished) {
+      setRestSecondsLeft(0);
+    }
+  }, [restTimer]);
+
+  // DECISION LOGIC
+  const showRestBanner = !!restTimer;
+  const isRestFinished = restTimer?.isFinished ?? false;
+
+  const showSessionBanner =
+    isActive && sessionId && pathname !== "/record-workout" && !showRestBanner;
+
+  if (!showRestBanner && !showSessionBanner) return null;
+
+  const handlePress = () => {
+    if (showRestBanner) {
+      maximizeRestTimer();
+      if (pathname !== "/record-workout") {
+        router.push("/record-workout");
+      }
+    } else {
+      router.push("/record-workout");
+    }
+  };
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);
@@ -26,35 +73,77 @@ export default function GlobalWorkoutBanner() {
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
+  // --- DYNAMIC STYLING ---
+  let backgroundColor = Colors.primary;
+  let borderColor = "#46a302";
+  let iconName: any = "lightning-bolt";
+  let labelText = "LIVE SESSION";
+  let titleText = sessionName || "Workout";
+  let timeText = formatTime(elapsedSeconds);
+
+  if (showRestBanner) {
+    if (isRestFinished) {
+      // --- FINISHED STATE (RED) ---
+      backgroundColor = Colors.error;
+      borderColor = "#a62626";
+      iconName = "bell-ring";
+      labelText = "REST COMPLETE";
+      titleText = `Next: ${restTimer?.exerciseName}`;
+      timeText = "READY";
+    } else {
+      // --- COUNTDOWN STATE (ORANGE) ---
+      backgroundColor = Colors.warning;
+      borderColor = "#cc7a00";
+      iconName = "timer-sand";
+      labelText = "REST TIMER";
+      titleText = restTimer?.exerciseName || "Rest";
+      timeText = formatTime(restSecondsLeft);
+    }
+  }
+
   return (
-    <View style={styles.wrapper}>
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <View style={[styles.wrapper, { backgroundColor }]}>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor }]}
+        edges={["top"]}
+      >
         <TouchableOpacity
-          style={styles.container}
-          onPress={() => router.push("/record-workout")}
+          style={[
+            styles.container,
+            { backgroundColor, borderBottomColor: borderColor },
+          ]}
+          onPress={handlePress}
           activeOpacity={0.9}
         >
           <View style={styles.content}>
             <View style={styles.leftSide}>
               <View style={styles.iconCircle}>
                 <MaterialCommunityIcons
-                  name="lightning-bolt"
+                  name={iconName}
                   size={16}
                   color={Colors.white}
                 />
               </View>
               <View>
-                <Text style={styles.label}>LIVE SESSION</Text>
+                <Text style={styles.label}>{labelText}</Text>
                 <Text style={styles.sessionTitle} numberOfLines={1}>
-                  {sessionName || "Workout"}
+                  {titleText}
                 </Text>
               </View>
             </View>
 
             <View style={styles.rightSide}>
               <View style={styles.timerContainer}>
-                <Ionicons name="time" size={14} color={Colors.white} />
-                <Text style={styles.timer}>{formatTime(elapsedSeconds)}</Text>
+                {isRestFinished ? (
+                  <MaterialCommunityIcons
+                    name="check-bold"
+                    size={14}
+                    color={Colors.white}
+                  />
+                ) : (
+                  <Ionicons name="time" size={14} color={Colors.white} />
+                )}
+                <Text style={styles.timer}>{timeText}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={Colors.white} />
             </View>
@@ -67,9 +156,6 @@ export default function GlobalWorkoutBanner() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    // REMOVED absolute positioning.
-    // This allows the banner to push the content down, preventing overlap.
-    backgroundColor: Colors.primary,
     zIndex: 9999,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -77,15 +163,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
-  safeArea: {
-    backgroundColor: Colors.primary,
-  },
+  safeArea: {},
   container: {
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: Colors.primary,
     borderBottomWidth: 4,
-    borderBottomColor: "#46a302",
   },
   content: {
     flexDirection: "row",

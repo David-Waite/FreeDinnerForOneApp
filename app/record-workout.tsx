@@ -14,10 +14,15 @@ import {
   Alert,
   Platform,
   UIManager,
-  InteractionManager, // <--- 1. Import InteractionManager
+  InteractionManager,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+  useNavigation,
+  useFocusEffect,
+} from "expo-router";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { ExerciseNote, WorkoutSet } from "../constants/types";
@@ -56,10 +61,17 @@ export default function RecordWorkoutScreen() {
     removeSet,
     saveSession,
     cancelSession,
+    // Rest Timer Context
+    restTimer,
+    startRestTimer,
+    cancelRestTimer,
+    minimizeRestTimer,
+    maximizeRestTimer,
+    isRestTimerMinimized,
+    addRestTime,
   } = useWorkoutContext();
 
   const [isExiting, setIsExiting] = useState(false);
-  // 2. Use Ref for synchronous access inside event listeners
   const isExitingRef = useRef(false);
 
   const [highlightedSets, setHighlightedSets] = useState<Set<string>>(
@@ -77,12 +89,61 @@ export default function RecordWorkoutScreen() {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [currentNoteExercise, setCurrentNoteExercise] = useState<string>("");
   const [notesList, setNotesList] = useState<ExerciseNote[]>([]);
-  const [timerVisible, setTimerVisible] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(60);
-  const [activeSetForTimer, setActiveSetForTimer] = useState<{
-    exId: string;
-    setId: string;
-  } | null>(null);
+
+  // Track if screen is focused (to control auto-advance behavior)
+  const [isFocused, setIsFocused] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, []),
+  );
+
+  // --- AUTO-ADVANCE LOGIC ---
+  const advanceToNextSet = useCallback(
+    (currentExId: string, currentSetId: string) => {
+      const exerciseIndex = exercises.findIndex((e) => e.id === currentExId);
+      if (exerciseIndex === -1) return;
+
+      const exercise = exercises[exerciseIndex];
+      const setIndex = exercise.sets.findIndex((s) => s.id === currentSetId);
+      if (setIndex === -1) return;
+
+      const isLastSet = setIndex === exercise.sets.length - 1;
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+      if (!isLastSet) {
+        setExpandedSetId(exercise.sets[setIndex + 1].id);
+      } else {
+        if (exerciseIndex < exercises.length - 1) {
+          const nextExercise = exercises[exerciseIndex + 1];
+          setExpandedExerciseId(nextExercise.id);
+          if (nextExercise.sets.length > 0) {
+            setExpandedSetId(nextExercise.sets[0].id);
+          }
+        } else {
+          setControlsExpandTrigger(Date.now());
+        }
+      }
+    },
+    [exercises],
+  );
+
+  // --- EFFECT: HANDLE TIMER FINISH ---
+  useEffect(() => {
+    // If we are on this screen and the timer is finished, we MUST clean it up.
+    if (isFocused && restTimer?.isFinished) {
+      console.log("Timer finished while focused. Clearing and advancing.");
+
+      // 1. Clear the timer (so it stops being "active")
+      cancelRestTimer();
+
+      // 2. Advance the UI
+      advanceToNextSet(restTimer.exerciseId, restTimer.setId);
+    }
+  }, [isFocused, restTimer, cancelRestTimer, advanceToNextSet]);
 
   const progress = useMemo(() => {
     const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
@@ -97,19 +158,15 @@ export default function RecordWorkoutScreen() {
     if (!isActive && !sessionId && !isExiting) startWorkout(templateId);
   }, [isActive, sessionId, templateId, isExiting]);
 
-  // 1. AUTO-EXPAND FIRST EXERCISE
   useEffect(() => {
     if (exercises.length > 0 && expandedExerciseId === null) {
       setExpandedExerciseId(exercises[0].id);
     }
   }, [exercises.length]);
 
-  // 3. Optimized Navigation Listener
   useEffect(() => {
     const removeListener = navigation.addListener("beforeRemove", (e) => {
-      // Check the ref immediately. If true, let navigation happen.
       if (isExitingRef.current) return;
-
       e.preventDefault();
       Alert.alert(
         "MISSION IN PROGRESS",
@@ -120,7 +177,7 @@ export default function RecordWorkoutScreen() {
     return removeListener;
   }, [navigation]);
 
-  // --- ACTIONS WRAPPED IN USECALLBACK ---
+  // --- ACTIONS ---
 
   const handleToggleExercise = useCallback((exId: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -170,14 +227,13 @@ export default function RecordWorkoutScreen() {
 
   const handleStartRestTimer = useCallback(
     (duration: number, setId: string, exId: string) => {
-      setTimerDuration(duration);
-      setActiveSetForTimer({ exId, setId });
-      setTimerVisible(true);
+      const ex = exercises.find((e) => e.id === exId);
+      const name = ex ? ex.name : "Exercise";
+      startRestTimer(duration, exId, setId, name);
     },
-    [],
+    [startRestTimer, exercises],
   );
 
-  // 2. & 3. SMART VALIDATION & AUTO-ADVANCE LOGIC
   const handleSetDone = useCallback(
     (exerciseId: string, setId: string) => {
       const exerciseIndex = exercises.findIndex((e) => e.id === exerciseId);
@@ -190,13 +246,11 @@ export default function RecordWorkoutScreen() {
       const isInvalid = !set.reps || set.reps === "0";
       const isAlreadyHighlighted = highlightedSets.has(setId);
 
-      // Validation Check
       if (isInvalid && !isAlreadyHighlighted) {
         setHighlightedSets((prev) => new Set(prev).add(setId));
         return;
       }
 
-      // Valid OR Second Click (Forced): Complete the set
       if (isAlreadyHighlighted) {
         setHighlightedSets((prev) => {
           const next = new Set(prev);
@@ -205,50 +259,31 @@ export default function RecordWorkoutScreen() {
         });
       }
 
-      markSetComplete(exerciseId, setId);
-
-      // Auto-Advance Logic
-      const setIndex = exercise.sets.findIndex((s) => s.id === setId);
-      const isLastSet = setIndex === exercise.sets.length - 1;
-
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
-      if (!isLastSet) {
-        // Go to next set
-        setExpandedSetId(exercise.sets[setIndex + 1].id);
-      } else {
-        // Exercise Complete
-        if (exerciseIndex < exercises.length - 1) {
-          // Open next exercise
-          const nextExercise = exercises[exerciseIndex + 1];
-          setExpandedExerciseId(nextExercise.id);
-          if (nextExercise.sets.length > 0) {
-            setExpandedSetId(nextExercise.sets[0].id);
-          }
-        } else {
-          // Last Exercise Complete: Open Controls
-          setControlsExpandTrigger(Date.now());
-        }
+      if (restTimer && restTimer.setId === setId) {
+        cancelRestTimer();
       }
+
+      markSetComplete(exerciseId, setId);
+      advanceToNextSet(exerciseId, setId);
     },
-    [exercises, highlightedSets, markSetComplete],
+    [
+      exercises,
+      highlightedSets,
+      markSetComplete,
+      restTimer,
+      cancelRestTimer,
+      advanceToNextSet,
+    ],
   );
 
-  // --- OPTIMIZED SAVE & CANCEL HANDLERS ---
-
   const performSave = useCallback(() => {
-    // 1. Synchronously flag exit (unblocks navigation)
     isExitingRef.current = true;
     setIsExiting(true);
-
-    // 2. Start Animation IMMEDIATELY
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/(tabs)");
     }
-
-    // 3. Defer Heavy Logic (DB Writes) until animation completes
     InteractionManager.runAfterInteractions(async () => {
       try {
         await saveSession();
@@ -291,18 +326,14 @@ export default function RecordWorkoutScreen() {
           text: "ABANDON",
           style: "destructive",
           onPress: () => {
-            // 1. Flag Exit
             isExitingRef.current = true;
             setIsExiting(true);
-
-            // 2. Navigate Immediately
+            cancelRestTimer();
             if (router.canGoBack()) {
               router.back();
             } else {
               router.replace("/(tabs)");
             }
-
-            // 3. Clean up storage in background
             InteractionManager.runAfterInteractions(() => {
               cancelSession();
             });
@@ -310,10 +341,9 @@ export default function RecordWorkoutScreen() {
         },
       ],
     );
-  }, [cancelSession, router]);
+  }, [cancelSession, router, cancelRestTimer]);
 
   const handleMinimize = useCallback(() => {
-    // Just navigation, but good to keep consistent
     isExitingRef.current = true;
     setIsExiting(true);
     if (router.canGoBack()) {
@@ -329,7 +359,6 @@ export default function RecordWorkoutScreen() {
         <View style={styles.header}>
           <Text style={styles.headerSubtitle}>CURRENT MISSION</Text>
           <Text style={styles.headerTitle}>{sessionName?.toUpperCase()}</Text>
-
           <View style={styles.progressBarBg}>
             <View
               style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
@@ -351,6 +380,8 @@ export default function RecordWorkoutScreen() {
             isExpanded={expandedExerciseId === exercise.id}
             expandedSetId={expandedSetId}
             highlightedSets={highlightedSets}
+            activeRestTimer={restTimer}
+            onOpenRestTimer={maximizeRestTimer}
             onToggle={() => handleToggleExercise(exercise.id)}
             onSetExpand={handleSetExpand}
             onUpdateSet={(setId, field, value) =>
@@ -403,14 +434,16 @@ export default function RecordWorkoutScreen() {
       />
 
       <RestTimerModal
-        visible={timerVisible}
-        seconds={timerDuration}
-        onClose={() => setTimerVisible(false)}
-        onComplete={() => {
-          setTimerVisible(false);
-          if (activeSetForTimer) {
-            handleSetDone(activeSetForTimer.exId, activeSetForTimer.setId);
-            setActiveSetForTimer(null);
+        // KEY CHANGE: If the timer is finished, FORCE HIDE the modal.
+        // This prevents the "frozen screen" if the cleanup effect is slightly delayed.
+        visible={!!restTimer && !isRestTimerMinimized && !restTimer.isFinished}
+        endTime={restTimer?.endTime || 0}
+        onMinimize={minimizeRestTimer}
+        onCancel={cancelRestTimer}
+        onAdd30={() => addRestTime(30)}
+        onSkip={() => {
+          if (restTimer) {
+            handleSetDone(restTimer.exerciseId, restTimer.setId);
           }
         }}
       />

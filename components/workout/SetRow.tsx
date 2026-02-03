@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -19,10 +19,12 @@ type Props = {
   index: number;
   isExpanded: boolean;
   isError?: boolean;
+  activeRestEndTime?: number;
   onToggleExpand: () => void;
-  onUpdate: (field: keyof WorkoutSet, value: number) => void;
+  onUpdate: (field: keyof WorkoutSet, value: string | number) => void;
   onDone: () => void;
   onStartTimer: () => void;
+  onOpenTimer: () => void;
   onRemove: () => void;
 };
 
@@ -31,15 +33,40 @@ function SetRowComponent({
   index,
   isExpanded,
   isError,
+  activeRestEndTime,
   onToggleExpand,
   onUpdate,
   onDone,
   onStartTimer,
+  onOpenTimer,
   onRemove,
 }: Props) {
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  // --- TIMER TICKER ---
+  useEffect(() => {
+    if (activeRestEndTime) {
+      const tick = () => {
+        const now = Date.now();
+        const diff = Math.ceil((activeRestEndTime - now) / 1000);
+        setTimeLeft(diff > 0 ? diff : 0);
+      };
+
+      tick(); // Immediate update
+      const interval = setInterval(tick, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeRestEndTime]);
+
   const handlePress = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggleExpand();
+  };
+
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   const renderRightActions = (
@@ -70,7 +97,8 @@ function SetRowComponent({
         onPress={handlePress}
         style={[
           styles.container,
-          set.completed && !isExpanded && styles.containerCompleted,
+          // CHANGED: Removed "&& !isExpanded" so it stays green even when open
+          set.completed && styles.containerCompleted,
           isError && styles.containerError,
         ]}
       >
@@ -90,7 +118,7 @@ function SetRowComponent({
           <View style={styles.inputGroup}>
             <TextInput
               style={styles.input}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={Colors.placeholder}
               value={
@@ -98,7 +126,7 @@ function SetRowComponent({
                   ? ""
                   : String(set.weight)
               }
-              onChangeText={(v) => onUpdate("weight", Number(v))}
+              onChangeText={(v) => onUpdate("weight", v)}
             />
             <Text style={styles.unit}>KG</Text>
           </View>
@@ -120,19 +148,38 @@ function SetRowComponent({
 
         {isExpanded && (
           <View style={styles.bottomRow}>
-            {/* REST TIMER BUTTON */}
-            <DuoTouch
-              style={styles.timerBtn}
-              onPress={onStartTimer}
-              hapticStyle="light"
-            >
-              <MaterialCommunityIcons
-                name="timer-outline"
-                size={20}
-                color={Colors.primary}
-              />
-              <Text style={styles.timerText}>REST</Text>
-            </DuoTouch>
+            {/* CONDITIONAL TIMER BUTTON */}
+            {activeRestEndTime && timeLeft > 0 ? (
+              // ACTIVE COUNTDOWN (Orange)
+              <DuoTouch
+                style={styles.timerBtnActive}
+                onPress={onOpenTimer}
+                hapticStyle="light"
+              >
+                <MaterialCommunityIcons
+                  name="timer-sand"
+                  size={20}
+                  color={Colors.white}
+                />
+                <Text style={styles.timerTextActive}>
+                  {formatTime(timeLeft)}
+                </Text>
+              </DuoTouch>
+            ) : (
+              // STANDARD START BUTTON
+              <DuoTouch
+                style={styles.timerBtn}
+                onPress={onStartTimer}
+                hapticStyle="light"
+              >
+                <MaterialCommunityIcons
+                  name="timer-outline"
+                  size={20}
+                  color={Colors.primary}
+                />
+                <Text style={styles.timerText}>REST</Text>
+              </DuoTouch>
+            )}
 
             {/* DONE / CHECK BUTTON */}
             <DuoTouch
@@ -150,14 +197,13 @@ function SetRowComponent({
   );
 }
 
-// Optimization: Check immutable data props and primitives.
-// Ignore function props as they are recreated on every parent render.
 function arePropsEqual(prev: Props, next: Props) {
   return (
-    prev.set === next.set && // Checks object reference (fast & accurate if state is immutable)
+    prev.set === next.set &&
     prev.index === next.index &&
     prev.isExpanded === next.isExpanded &&
-    prev.isError === next.isError
+    prev.isError === next.isError &&
+    prev.activeRestEndTime === next.activeRestEndTime
   );
 }
 
@@ -171,10 +217,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 4, // 3D Effect
+    borderBottomWidth: 4,
   },
   containerCompleted: {
-    backgroundColor: "#233610", // Subdued Dark Green
+    backgroundColor: "#233610",
     borderColor: Colors.primary,
     borderBottomColor: "#46a302",
   },
@@ -234,6 +280,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     gap: 10,
   },
+  // --- DEFAULT TIMER STYLES ---
   timerBtn: {
     flex: 1,
     flexDirection: "row",
@@ -252,6 +299,26 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 12,
   },
+  // --- ACTIVE TIMER STYLES (ORANGE) ---
+  timerBtnActive: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.warning, // Orange
+    padding: 10,
+    borderRadius: 12,
+    borderBottomWidth: 4,
+    borderBottomColor: "#cc7a00", // Darker Orange
+  },
+  timerTextActive: {
+    color: Colors.white,
+    fontWeight: "900",
+    marginLeft: 6,
+    fontSize: 14, // Slightly larger
+    fontVariant: ["tabular-nums"],
+  },
+
   doneBtn: {
     flex: 1,
     flexDirection: "row",

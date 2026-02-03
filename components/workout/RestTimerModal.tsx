@@ -1,149 +1,43 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  AppState, // <--- 1. Import AppState
-  AppStateStatus,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import Colors from "../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import { NotificationService } from "../../services/NotificationService";
 import DuoTouch from "../ui/DuoTouch";
 
 type Props = {
   visible: boolean;
-  seconds: number;
-  onClose: () => void;
-  onComplete: () => void;
+  endTime: number; // CHANGED: We pass the target end time, not seconds
+  onMinimize: () => void; // NEW
+  onCancel: () => void;
+  onAdd30: () => void;
+  // "Complete" is handled by skipping the timer, effectively
+  onSkip: () => void;
 };
 
 export default function RestTimerModal({
   visible,
-  seconds,
-  onClose,
-  onComplete,
+  endTime,
+  onMinimize,
+  onCancel,
+  onAdd30,
+  onSkip,
 }: Props) {
-  const [timeLeft, setTimeLeft] = useState(seconds);
-  const [isActive, setIsActive] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(0);
 
-  // We track the exact timestamp when the timer SHOULD end
-  const endTimeRef = useRef<number>(0);
-  const appState = useRef(AppState.currentState);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // --- 1. INITIAL SETUP ---
+  // Visual Tick Only (Logic is in Context)
   useEffect(() => {
-    if (visible) {
-      startTimer(seconds);
-    } else {
-      stopTimer();
+    if (visible && endTime) {
+      const tick = () => {
+        const now = Date.now();
+        const remaining = Math.ceil((endTime - now) / 1000);
+        setTimeLeft(remaining > 0 ? remaining : 0);
+      };
+
+      tick(); // run immediately
+      const interval = setInterval(tick, 1000);
+      return () => clearInterval(interval);
     }
-  }, [visible, seconds]);
-
-  // --- 2. HANDLE BACKGROUND/FOREGROUND ---
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === "active"
-      ) {
-        // APP JUST WOKE UP
-        if (isActive && endTimeRef.current > 0) {
-          const now = Date.now();
-          const remaining = Math.ceil((endTimeRef.current - now) / 1000);
-
-          if (remaining <= 0) {
-            setTimeLeft(0);
-            handleComplete();
-          } else {
-            setTimeLeft(remaining);
-          }
-        }
-      }
-      appState.current = nextAppState;
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isActive]);
-
-  // --- 3. THE TICKER (Visual Only) ---
-  useEffect(() => {
-    if (isActive && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isActive]);
-
-  // --- HELPER FUNCTIONS ---
-
-  const startTimer = (duration: number) => {
-    setTimeLeft(duration);
-    setIsActive(true);
-
-    // Calculate the target end time (e.g., Now + 60000ms)
-    endTimeRef.current = Date.now() + duration * 1000;
-
-    // Sync Notification
-    NotificationService.cancelAllNotifications();
-    NotificationService.scheduleRestTimer(duration);
-  };
-
-  const stopTimer = () => {
-    setIsActive(false);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    NotificationService.cancelAllNotifications();
-  };
-
-  const toggleTimer = () => {
-    if (isActive) {
-      // PAUSE: Just stop everything
-      setIsActive(false);
-      NotificationService.cancelAllNotifications();
-    } else {
-      // RESUME: Recalculate end time based on CURRENT timeLeft
-      setIsActive(true);
-      endTimeRef.current = Date.now() + timeLeft * 1000;
-      NotificationService.scheduleRestTimer(timeLeft);
-    }
-  };
-
-  const addTime = (amount: number) => {
-    const newTime = timeLeft + amount;
-    setTimeLeft(newTime);
-
-    // If active, push the end time back
-    if (isActive) {
-      endTimeRef.current = Date.now() + newTime * 1000;
-      NotificationService.cancelAllNotifications();
-      NotificationService.scheduleRestTimer(newTime);
-    }
-  };
-
-  const handleComplete = () => {
-    stopTimer();
-    onComplete();
-  };
-
-  const handleCancel = () => {
-    stopTimer();
-    onClose();
-  };
+  }, [visible, endTime]);
 
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
@@ -155,32 +49,31 @@ export default function RestTimerModal({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.container}>
-          <Text style={styles.title}>REST PERIOD</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>REST PERIOD</Text>
+
+            {/* MINIMIZE BUTTON */}
+            <TouchableOpacity onPress={onMinimize} style={styles.minimizeBtn}>
+              <Ionicons
+                name="chevron-down"
+                size={24}
+                color={Colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.timerContainer}>
             <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
           </View>
 
           <View style={styles.controls}>
-            {/* PLAY / PAUSE TOGGLE */}
-            <DuoTouch
-              onPress={toggleTimer}
-              hapticStyle="medium"
-              style={[
-                styles.controlBtn,
-                { backgroundColor: isActive ? Colors.surface : Colors.primary },
-              ]}
-            >
-              <Ionicons
-                name={isActive ? "pause" : "play"}
-                size={28}
-                color={isActive ? Colors.primary : Colors.white}
-              />
-            </DuoTouch>
+            {/* PAUSE (Actually just Cancel/Stop for now, per simple logic, or we can just keep running) 
+                For now let's keep it simple: Add Time or Skip. 
+            */}
 
             {/* ADD 30 SECONDS */}
             <DuoTouch
-              onPress={() => addTime(30)}
+              onPress={onAdd30}
               hapticStyle="light"
               style={styles.controlBtn}
             >
@@ -188,22 +81,22 @@ export default function RestTimerModal({
             </DuoTouch>
           </View>
 
-          {/* MAIN ACTION: MARK SET COMPLETE */}
+          {/* MAIN ACTION: MARK SET COMPLETE (Skip Timer) */}
           <DuoTouch
-            onPress={handleComplete}
-            hapticStyle="success" // A victory pulse for finishing the set!
+            onPress={onSkip}
+            hapticStyle="success"
             style={styles.skipBtn}
           >
             <Text style={styles.skipText}>MARK SET COMPLETE</Text>
           </DuoTouch>
 
-          {/* SECONDARY ACTION: CANCEL */}
+          {/* SECONDARY ACTION: CANCEL TIMER (Go back to set) */}
           <DuoTouch
-            onPress={handleCancel}
+            onPress={onCancel}
             hapticStyle="light"
             style={styles.closeBtn}
           >
-            <Text style={styles.closeText}>CANCEL</Text>
+            <Text style={styles.closeText}>CANCEL TIMER</Text>
           </DuoTouch>
         </View>
       </View>
@@ -228,10 +121,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderBottomWidth: 6,
   },
+  headerRow: {
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 16,
+    // We use absolute positioning for the minimize button to keep title centered
+  },
+  minimizeBtn: {
+    position: "absolute",
+    right: 0,
+    top: -4,
+    padding: 4,
+  },
   title: {
     fontSize: 12,
     color: Colors.textMuted,
-    marginBottom: 16,
     letterSpacing: 2,
     fontWeight: "900",
   },
@@ -247,7 +151,7 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 64,
     fontWeight: "900",
-    color: Colors.gold,
+    color: Colors.warning, // Changed to Orange/Gold
     fontVariant: ["tabular-nums"],
   },
   controls: {

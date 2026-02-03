@@ -15,7 +15,9 @@ const KEYS_TO_WIPE = [
   "workout_templates",
   "body_weight_logs",
   "exercise_notes",
-  "master_exercises", // <--- ADDED: This deletes "doggies are cool" on logout
+  "master_exercises",
+  "current_workout_session", // <--- ADDED: Wipes the active workout JSON
+  "workout_timer_start", // <--- ADDED: Wipes the session stopwatch
 ];
 
 // 1. Define the Keys
@@ -40,17 +42,12 @@ export const SyncService = {
         this.syncSessions(userId),
         this.syncTemplates(userId),
         this.syncWeightLogs(userId),
-        // Note: We generally don't sync "Master Exercises" DOWN from Firestore
-        // because we just query the global list live.
-        // But wiping it locally forces the app to re-fetch the defaults next time.
       ]);
       console.log("Hydration Complete!");
     } catch (e) {
       console.error("Hydration failed", e);
     }
   },
-
-  // ... (Rest of your file remains exactly the same) ...
 
   // --- INTERNAL HELPER: Safe Decrypt ---
   tryDecrypt(cipherText: string, userId: string): any | null {

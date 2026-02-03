@@ -10,6 +10,7 @@ type Props = {
   isExpanded: boolean;
   expandedSetId: string | null;
   highlightedSets?: Set<string>;
+  activeRestTimer?: { setId: string; endTime: number } | null; // <--- NEW PROP
   onToggle: () => void;
   onSetExpand: (setId: string | null) => void;
   onUpdateSet: (
@@ -21,6 +22,7 @@ type Props = {
   onRemoveSet: (setId: string) => void;
   onOpenNotes: () => void;
   onStartRestTimer: (duration: number, setId: string) => void;
+  onOpenRestTimer: () => void; // <--- NEW PROP
   onSetDone: (setId: string) => void;
 };
 
@@ -29,6 +31,7 @@ function ExerciseCardComponent({
   isExpanded,
   expandedSetId,
   highlightedSets,
+  activeRestTimer,
   onToggle,
   onSetExpand,
   onUpdateSet,
@@ -36,6 +39,7 @@ function ExerciseCardComponent({
   onRemoveSet,
   onOpenNotes,
   onStartRestTimer,
+  onOpenRestTimer,
   onSetDone,
 }: Props) {
   const isComplete =
@@ -67,22 +71,32 @@ function ExerciseCardComponent({
 
       {isExpanded && (
         <View style={styles.cardBody}>
-          {exercise.sets.map((set, index) => (
-            <SetRow
-              key={set.id}
-              set={set}
-              index={index}
-              isExpanded={expandedSetId === set.id}
-              isError={highlightedSets?.has(set.id)}
-              onToggleExpand={() =>
-                onSetExpand(expandedSetId === set.id ? null : set.id)
-              }
-              onUpdate={(field, val) => onUpdateSet(set.id, field, val)}
-              onDone={() => onSetDone(set.id)}
-              onStartTimer={() => onStartRestTimer(exercise.restTime, set.id)}
-              onRemove={() => onRemoveSet(set.id)}
-            />
-          ))}
+          {exercise.sets.map((set, index) => {
+            // Check if THIS set is the one with the running timer
+            const isTimerActive = activeRestTimer?.setId === set.id;
+
+            return (
+              <SetRow
+                key={set.id}
+                set={set}
+                index={index}
+                isExpanded={expandedSetId === set.id}
+                isError={highlightedSets?.has(set.id)}
+                // Pass timer data if active
+                activeRestEndTime={
+                  isTimerActive ? activeRestTimer.endTime : undefined
+                }
+                onToggleExpand={() =>
+                  onSetExpand(expandedSetId === set.id ? null : set.id)
+                }
+                onUpdate={(field, val) => onUpdateSet(set.id, field, val)}
+                onDone={() => onSetDone(set.id)}
+                onStartTimer={() => onStartRestTimer(exercise.restTime, set.id)}
+                onOpenTimer={onOpenRestTimer}
+                onRemove={() => onRemoveSet(set.id)}
+              />
+            );
+          })}
 
           <View style={styles.cardFooter}>
             <TouchableOpacity style={styles.addSetButton} onPress={onAddSet}>
@@ -106,15 +120,13 @@ function ExerciseCardComponent({
   );
 }
 
-// Optimization: Only re-render if data/layout state changes.
-// We ignore function props (onToggle, etc.) assuming they are stable in logic
-// even if their references change (which happens with inline arrow functions).
 function arePropsEqual(prev: Props, next: Props) {
   return (
     prev.isExpanded === next.isExpanded &&
     prev.expandedSetId === next.expandedSetId &&
-    prev.exercise === next.exercise && // Checks object reference (fast)
-    prev.highlightedSets === next.highlightedSets
+    prev.exercise === next.exercise &&
+    prev.highlightedSets === next.highlightedSets &&
+    prev.activeRestTimer === next.activeRestTimer // <--- Check for timer updates
   );
 }
 
@@ -125,10 +137,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 24,
     marginBottom: 16,
-    // REMOVED overflow: "hidden",
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 6, // The "Duo" 3D Shelf
+    borderBottomWidth: 6,
   },
   cardComplete: {
     borderColor: Colors.primary,
@@ -139,7 +150,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    // REMOVED backgroundColor: Colors.surface so it doesn't need its own radius
   },
   cardHeaderActive: {
     borderBottomWidth: 2,
@@ -176,8 +186,7 @@ const styles = StyleSheet.create({
   cardBody: {
     padding: 12,
     backgroundColor: Colors.background,
-    // Manually mask the bottom corners
-    borderBottomLeftRadius: 18, // 24px - 6px border
+    borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
   },
   cardFooter: {

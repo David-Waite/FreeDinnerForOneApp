@@ -9,13 +9,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#131f24",
     "newArchEnabled": true,
-
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#131f24"
     },
-
     "ios": {
       "bundleIdentifier": "com.david.freeDinnerForOneApp",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -25,15 +23,17 @@
         "CADisableMinimumFrameDurationOnPhone": true
       }
     },
-
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#131f24"
       },
-      "package": "com.david.freeDinnerForOneApp"
+      "package": "com.david.freeDinnerForOneApp",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
-
     "plugins": [
       [
         "expo-build-properties",
@@ -58,7 +58,6 @@
       "expo-image-picker",
       "@react-native-firebase/app"
     ],
-
     "extra": {
       "router": {
         "origin": false
@@ -66,6 +65,12 @@
       "eas": {
         "projectId": "5897876e-20d1-4316-9370-36da02fe86aa"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5897876e-20d1-4316-9370-36da02fe86aa"
     }
   }
 }
