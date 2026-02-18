@@ -106,6 +106,7 @@ export default function WorkoutHistoryScreen() {
 
       <View style={styles.calendarCard}>
         <Calendar
+          firstDay={1}
           onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
           markedDates={markedDates}
           theme={{

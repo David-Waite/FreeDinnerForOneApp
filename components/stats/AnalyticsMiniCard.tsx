@@ -107,7 +107,7 @@ export default function AnalyticsMiniCard({
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.value}>{latestValue.toFixed(0)}</Text>
+        <Text style={styles.value}>{Number(latestValue.toFixed(1))}</Text>
         <Text style={styles.unit}>{unit.toUpperCase()}</Text>
       </View>
     </TouchableOpacity>

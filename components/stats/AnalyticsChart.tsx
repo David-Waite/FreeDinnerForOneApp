@@ -108,9 +108,12 @@ export default function AnalyticsChart({
   const activeValueStr = useDerivedValue(() => {
     if (!isActive) {
       const lastVal = processedData[processedData.length - 1]?.y ?? 0;
-      return `${lastVal.toFixed(0)} ${unit}`;
+      // CHANGE: Format with Number() logic
+      return `${Number(lastVal.toFixed(1))} ${unit}`;
     }
-    return `${pressState.y.y.value.value.toFixed(0)} ${unit}`;
+    // CHANGE: Format with Number() logic
+    const val = pressState.y.y.value.value;
+    return `${Number(val.toFixed(1))} ${unit}`;
   });
 
   const activeDateStr = useDerivedValue(() => {

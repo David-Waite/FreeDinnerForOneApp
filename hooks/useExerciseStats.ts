@@ -158,7 +158,7 @@ export const useExerciseStats = (
         if (sessionBestLift > 0)
           actMax.push({ x: dateStr, y: sessionBestLift });
         if (sessionEst1RM > 0)
-          est1rm.push({ x: dateStr, y: Math.round(sessionEst1RM) });
+          est1rm.push({ x: dateStr, y: Number(sessionEst1RM.toFixed(1)) });
       }
     });
 
