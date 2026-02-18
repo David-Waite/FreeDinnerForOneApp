@@ -18,6 +18,11 @@ import Colors from "../../../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import ExerciseAutocomplete from "../../../components/workout/ExerciseAutocomplete";
 import DuoTouch from "../../../components/ui/DuoTouch";
+import Animated, {
+  LinearTransition,
+  FadeIn,
+  FadeOut,
+} from "react-native-reanimated";
 
 export default function TemplateEditor() {
   const router = useRouter();
@@ -72,6 +77,26 @@ export default function TemplateEditor() {
     // setTimeout(() => {
     //   scrollViewRef.current?.scrollToEnd({ animated: true });
     // }, 100);
+  };
+
+  const moveExercise = (index: number, direction: "up" | "down") => {
+    const newExercises = [...exercises];
+    if (direction === "up") {
+      if (index === 0) return; // Can't move top item up
+      // Swap with previous
+      [newExercises[index - 1], newExercises[index]] = [
+        newExercises[index],
+        newExercises[index - 1],
+      ];
+    } else {
+      if (index === newExercises.length - 1) return; // Can't move bottom item down
+      // Swap with next
+      [newExercises[index + 1], newExercises[index]] = [
+        newExercises[index],
+        newExercises[index + 1],
+      ];
+    }
+    setExercises(newExercises);
   };
 
   const updateExercise = (
@@ -183,78 +208,130 @@ export default function TemplateEditor() {
           <Text style={styles.sectionTitle}>EXERCISES</Text>
 
           {exercises.map((ex, index) => (
-            <View
+            <Animated.View
               key={ex.id}
+              // NEW: This prop handles the moving animation automatically
+              layout={LinearTransition.springify().damping(100)}
+              // NEW: These handle adding/deleting animations
+              entering={FadeIn}
+              exiting={FadeOut}
               style={styles.exerciseCard}
               onLayout={(event) => {
                 cardPositions.current[index] = event.nativeEvent.layout.y;
               }}
             >
-              <View style={styles.cardTopRow}>
-                <View style={styles.indexBadge}>
-                  <Text style={styles.exerciseIndex}>{index + 1}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => removeExercise(ex.id)}
-                  style={styles.removeBtn}
-                >
-                  <Ionicons name="trash" size={18} color={Colors.error} />
-                </TouchableOpacity>
-              </View>
+              <View
+                key={ex.id}
+                onLayout={(event) => {
+                  cardPositions.current[index] = event.nativeEvent.layout.y;
+                }}
+              >
+                {/* UPDATED HEADER ROW */}
+                <View style={styles.cardTopRow}>
+                  <View style={styles.headerLeftGroup}>
+                    <View style={styles.indexBadge}>
+                      <Text style={styles.exerciseIndex}>{index + 1}</Text>
+                    </View>
 
-              <View style={{ zIndex: 100 - index, marginBottom: 12 }}>
-                <ExerciseAutocomplete
-                  style={styles.exerciseNameInput}
-                  placeholder="What's the exercise?"
-                  value={ex.name}
-                  onChangeText={(v) => updateExercise(ex.id, "name", v)}
-                  onFocus={() => handleInputFocus(index)} // TRIGGER SCROLL
+                    {/* REORDER ARROWS */}
+                    <View style={styles.reorderControls}>
+                      <TouchableOpacity
+                        disabled={index === 0}
+                        onPress={() => moveExercise(index, "up")}
+                        style={[
+                          styles.arrowBtn,
+                          index === 0 && { opacity: 0.3 },
+                        ]}
+                      >
+                        <Ionicons
+                          name="chevron-up"
+                          size={20}
+                          color={Colors.textMuted}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        disabled={index === exercises.length - 1}
+                        onPress={() => moveExercise(index, "down")}
+                        style={[
+                          styles.arrowBtn,
+                          index === exercises.length - 1 && { opacity: 0.3 },
+                        ]}
+                      >
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color={Colors.textMuted}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => removeExercise(ex.id)}
+                    style={styles.removeBtn}
+                  >
+                    <Ionicons name="trash" size={18} color={Colors.error} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ zIndex: 100 - index, marginBottom: 12 }}>
+                  <ExerciseAutocomplete
+                    style={styles.exerciseNameInput}
+                    placeholder="What's the exercise?"
+                    value={ex.name}
+                    onChangeText={(v) => updateExercise(ex.id, "name", v)}
+                    onFocus={() => handleInputFocus(index)} // TRIGGER SCROLL
+                  />
+                </View>
+
+                {/* SETS / REPS / REST ROW */}
+                <View style={styles.row}>
+                  <View style={styles.col}>
+                    <Text style={styles.subLabel}>SETS</Text>
+                    <TextInput
+                      style={styles.smallInput}
+                      placeholder="3"
+                      keyboardType="numeric"
+                      placeholderTextColor={Colors.placeholder}
+                      value={ex.targetSets}
+                      onChangeText={(v) =>
+                        updateExercise(ex.id, "targetSets", v)
+                      }
+                    />
+                  </View>
+                  <View style={styles.col}>
+                    <Text style={styles.subLabel}>REPS</Text>
+                    <TextInput
+                      style={styles.smallInput}
+                      placeholder="8-12"
+                      placeholderTextColor={Colors.placeholder}
+                      value={ex.targetReps}
+                      onChangeText={(v) =>
+                        updateExercise(ex.id, "targetReps", v)
+                      }
+                    />
+                  </View>
+                  <View style={styles.col}>
+                    <Text style={styles.subLabel}>REST</Text>
+                    <TextInput
+                      style={styles.smallInput}
+                      placeholder="60s"
+                      placeholderTextColor={Colors.placeholder}
+                      value={ex.restTime}
+                      onChangeText={(v) => updateExercise(ex.id, "restTime", v)}
+                    />
+                  </View>
+                </View>
+
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="Add session tips..."
+                  placeholderTextColor={Colors.placeholder}
+                  value={ex.notes}
+                  onChangeText={(v) => updateExercise(ex.id, "notes", v)}
                 />
               </View>
-
-              {/* SETS / REPS / REST ROW */}
-              <View style={styles.row}>
-                <View style={styles.col}>
-                  <Text style={styles.subLabel}>SETS</Text>
-                  <TextInput
-                    style={styles.smallInput}
-                    placeholder="3"
-                    keyboardType="numeric"
-                    placeholderTextColor={Colors.placeholder}
-                    value={ex.targetSets}
-                    onChangeText={(v) => updateExercise(ex.id, "targetSets", v)}
-                  />
-                </View>
-                <View style={styles.col}>
-                  <Text style={styles.subLabel}>REPS</Text>
-                  <TextInput
-                    style={styles.smallInput}
-                    placeholder="8-12"
-                    placeholderTextColor={Colors.placeholder}
-                    value={ex.targetReps}
-                    onChangeText={(v) => updateExercise(ex.id, "targetReps", v)}
-                  />
-                </View>
-                <View style={styles.col}>
-                  <Text style={styles.subLabel}>REST</Text>
-                  <TextInput
-                    style={styles.smallInput}
-                    placeholder="60s"
-                    placeholderTextColor={Colors.placeholder}
-                    value={ex.restTime}
-                    onChangeText={(v) => updateExercise(ex.id, "restTime", v)}
-                  />
-                </View>
-              </View>
-
-              <TextInput
-                style={styles.notesInput}
-                placeholder="Add session tips..."
-                placeholderTextColor={Colors.placeholder}
-                value={ex.notes}
-                onChangeText={(v) => updateExercise(ex.id, "notes", v)}
-              />
-            </View>
+            </Animated.View>
           ))}
 
           <DuoTouch
@@ -275,7 +352,33 @@ export default function TemplateEditor() {
 }
 
 const styles = StyleSheet.create({
-  // ... (Your existing styles) ...
+  cardTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center", // Align items vertically
+    marginBottom: 12,
+  },
+
+  // NEW STYLES
+  headerLeftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  reorderControls: {
+    flexDirection: "row",
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden", // Keeps the rounded corners clean
+  },
+  arrowBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
   container: {
     flex: 1,
@@ -386,11 +489,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderBottomWidth: 5,
   },
-  cardTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
+
   indexBadge: {
     backgroundColor: Colors.background,
     width: 28,
