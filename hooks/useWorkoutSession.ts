@@ -209,7 +209,8 @@ export const useWorkoutSession = () => {
     name: string,
     setCount: number,
     restTime: number,
-  ) => {
+  ): Promise<string> => {
+    // <--- Changed return type
     const newExId = Date.now().toString();
 
     // Generate sets based on the requested count
@@ -239,6 +240,7 @@ export const useWorkoutSession = () => {
     const updated = [...exercises, newExercise];
     setExercises(updated);
     saveSessionState(updated);
+    return newExId;
   };
 
   const togglePause = () => setIsPaused(!isPaused);

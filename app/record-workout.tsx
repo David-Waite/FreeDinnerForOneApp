@@ -43,7 +43,7 @@ if (
 ) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
+const SET_ROW_HEIGHT = 74;
 export default function RecordWorkoutScreen() {
   const router = useRouter();
   const navigation = useNavigation();
@@ -76,6 +76,10 @@ export default function RecordWorkoutScreen() {
     isRestTimerMinimized,
     addRestTime,
   } = useWorkoutContext();
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const cardPositions = useRef<{ [key: string]: number }>({});
+  const pendingScrollId = useRef<string | null>(null);
 
   const [isExiting, setIsExiting] = useState(false);
   const isExitingRef = useRef(false);
@@ -113,6 +117,16 @@ export default function RecordWorkoutScreen() {
     }, []),
   );
 
+  const scrollToCard = (exId: string) => {
+    const y = cardPositions.current[exId];
+    if (y !== undefined) {
+      // Small delay to allow layout animation or keyboard to settle
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: y - 10, animated: true });
+      }, 300);
+    }
+  };
+
   const handleConfirmAddExercise = async () => {
     if (!newExName.trim()) {
       Alert.alert("MISSING NAME", "Please choose an exercise.");
@@ -124,6 +138,8 @@ export default function RecordWorkoutScreen() {
 
     await addExerciseToSession(newExName, sets, rest);
 
+    const newId = await addExerciseToSession(newExName, sets, rest);
+    pendingScrollId.current = newId;
     // Reset and close
     setIsAddingExercise(false);
     setNewExName("");
@@ -131,7 +147,9 @@ export default function RecordWorkoutScreen() {
     setNewExReps("8-12");
     setNewExRest("60");
 
-    // Scroll to bottom (optional, but nice)
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 500);
   };
 
   // --- AUTO-ADVANCE LOGIC ---
@@ -213,9 +231,38 @@ export default function RecordWorkoutScreen() {
 
   // --- ACTIONS ---
 
+  const immediateScrollTo = (y: number) => {
+    scrollViewRef.current?.scrollTo({ y: y - 10, animated: true });
+  };
+
   const handleToggleExercise = useCallback((exId: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedExerciseId((prev) => (prev === exId ? null : exId));
+
+    setExpandedExerciseId((prev) => {
+      const isExpanding = prev !== exId;
+
+      if (isExpanding) {
+        // Mark this ID as pending. We will scroll to it in onLayout
+        pendingScrollId.current = exId;
+      }
+
+      return isExpanding ? exId : null;
+    });
+  }, []);
+
+  const handleInputFocus = useCallback((exId: string, setIndex: number) => {
+    const cardY = cardPositions.current[exId];
+
+    if (cardY !== undefined) {
+      let targetY = cardY;
+
+      if (setIndex >= 2) {
+        const offsetCount = setIndex - 2;
+        targetY += offsetCount * SET_ROW_HEIGHT;
+      }
+
+      immediateScrollTo(targetY);
+    }
   }, []);
 
   const handleSetExpand = useCallback((setId: string | null) => {
@@ -404,31 +451,49 @@ export default function RecordWorkoutScreen() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef} // ATTACH REF
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {exercises.map((exercise) => (
-          <ExerciseCard
+          <View
             key={exercise.id}
-            exercise={exercise}
-            isExpanded={expandedExerciseId === exercise.id}
-            expandedSetId={expandedSetId}
-            highlightedSets={highlightedSets}
-            activeRestTimer={restTimer}
-            onOpenRestTimer={maximizeRestTimer}
-            onToggle={() => handleToggleExercise(exercise.id)}
-            onSetExpand={handleSetExpand}
-            onUpdateSet={(setId, field, value) =>
-              handleUpdateSet(exercise.id, setId, field as any, value)
-            }
-            onAddSet={() => handleAddSet(exercise.id)}
-            onRemoveSet={(setId) => handleRemoveSet(exercise.id, setId)}
-            onOpenNotes={() => handleOpenNotes(exercise.name)}
-            onStartRestTimer={(dur, setId) =>
-              handleStartRestTimer(dur, setId, exercise.id)
-            }
-            onSetDone={(setId) => handleSetDone(exercise.id, setId)}
-          />
+            onLayout={(event) => {
+              const y = event.nativeEvent.layout.y;
+              cardPositions.current[exercise.id] = y;
+
+              // REACTIVE SCROLL CHECK
+              if (pendingScrollId.current === exercise.id) {
+                immediateScrollTo(y);
+                pendingScrollId.current = null; // Reset
+              }
+            }}
+          >
+            <ExerciseCard
+              exercise={exercise}
+              isExpanded={expandedExerciseId === exercise.id}
+              expandedSetId={expandedSetId}
+              highlightedSets={highlightedSets}
+              activeRestTimer={restTimer}
+              onOpenRestTimer={maximizeRestTimer}
+              onToggle={() => handleToggleExercise(exercise.id)}
+              onSetExpand={handleSetExpand}
+              onUpdateSet={(setId, field, value) =>
+                handleUpdateSet(exercise.id, setId, field as any, value)
+              }
+              onAddSet={() => handleAddSet(exercise.id)}
+              onRemoveSet={(setId) => handleRemoveSet(exercise.id, setId)}
+              onOpenNotes={() => handleOpenNotes(exercise.name)}
+              onStartRestTimer={(dur, setId) =>
+                handleStartRestTimer(dur, setId, exercise.id)
+              }
+              onSetDone={(setId) => handleSetDone(exercise.id, setId)}
+              onInputFocus={(setIndex) =>
+                handleInputFocus(exercise.id, setIndex)
+              }
+            />
+          </View>
         ))}
 
         {/* --- ADD EXERCISE SECTION --- */}
@@ -504,7 +569,7 @@ export default function RecordWorkoutScreen() {
             </View>
           )}
         </View>
-        <View style={{ height: 200 }} />
+        <View style={{ height: 400 }} />
       </ScrollView>
 
       <ActiveWorkoutControls

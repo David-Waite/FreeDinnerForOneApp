@@ -24,6 +24,7 @@ type Props = {
   onStartRestTimer: (duration: number, setId: string) => void;
   onOpenRestTimer: () => void; // <--- NEW PROP
   onSetDone: (setId: string) => void;
+  onInputFocus: (setIndex: number) => void;
 };
 
 function ExerciseCardComponent({
@@ -41,6 +42,7 @@ function ExerciseCardComponent({
   onStartRestTimer,
   onOpenRestTimer,
   onSetDone,
+  onInputFocus,
 }: Props) {
   const isComplete =
     exercise.sets.every((s) => s.completed) && exercise.sets.length > 0;
@@ -94,6 +96,7 @@ function ExerciseCardComponent({
                 onStartTimer={() => onStartRestTimer(exercise.restTime, set.id)}
                 onOpenTimer={onOpenRestTimer}
                 onRemove={() => onRemoveSet(set.id)}
+                onInputFocus={onInputFocus}
               />
             );
           })}
@@ -123,10 +126,11 @@ function ExerciseCardComponent({
 function arePropsEqual(prev: Props, next: Props) {
   return (
     prev.isExpanded === next.isExpanded &&
-    prev.expandedSetId === next.expandedSetId &&
-    prev.exercise === next.exercise &&
-    prev.highlightedSets === next.highlightedSets &&
-    prev.activeRestTimer === next.activeRestTimer // <--- Check for timer updates
+      prev.expandedSetId === next.expandedSetId &&
+      prev.exercise === next.exercise &&
+      prev.highlightedSets === next.highlightedSets &&
+      prev.activeRestTimer === next.activeRestTimer, // <--- Check for timer updates
+    prev.onInputFocus === next.onInputFocus
   );
 }
 

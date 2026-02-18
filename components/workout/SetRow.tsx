@@ -26,6 +26,7 @@ type Props = {
   onStartTimer: () => void;
   onOpenTimer: () => void;
   onRemove: () => void;
+  onInputFocus: (index: number) => void; // Using the existing prop for scroll logic
 };
 
 function SetRowComponent({
@@ -40,6 +41,7 @@ function SetRowComponent({
   onStartTimer,
   onOpenTimer,
   onRemove,
+  onInputFocus,
 }: Props) {
   const [timeLeft, setTimeLeft] = useState(0);
 
@@ -60,6 +62,12 @@ function SetRowComponent({
 
   const handlePress = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    // CHANGED: If we are opening the row, trigger the scroll logic
+    if (!isExpanded) {
+      onInputFocus(index);
+    }
+
     onToggleExpand();
   };
 
@@ -97,7 +105,6 @@ function SetRowComponent({
         onPress={handlePress}
         style={[
           styles.container,
-          // CHANGED: Removed "&& !isExpanded" so it stays green even when open
           set.completed && styles.containerCompleted,
           isError && styles.containerError,
         ]}
@@ -127,6 +134,7 @@ function SetRowComponent({
                   : String(set.weight)
               }
               onChangeText={(v) => onUpdate("weight", v)}
+              onFocus={() => onInputFocus(index)}
             />
             <Text style={styles.unit}>KG</Text>
           </View>
@@ -141,6 +149,7 @@ function SetRowComponent({
                 set.reps === "0" || set.reps === "" ? "" : String(set.reps)
               }
               onChangeText={(v) => onUpdate("reps", Number(v))}
+              onFocus={() => onInputFocus(index)}
             />
             <Text style={styles.unit}>REPS</Text>
           </View>
@@ -203,7 +212,8 @@ function arePropsEqual(prev: Props, next: Props) {
     prev.index === next.index &&
     prev.isExpanded === next.isExpanded &&
     prev.isError === next.isError &&
-    prev.activeRestEndTime === next.activeRestEndTime
+    prev.activeRestEndTime === next.activeRestEndTime &&
+    prev.onInputFocus === next.onInputFocus
   );
 }
 
