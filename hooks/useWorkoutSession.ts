@@ -205,6 +205,42 @@ export const useWorkoutSession = () => {
     saveSessionState(updated);
   };
 
+  const addExerciseToSession = async (
+    name: string,
+    setCount: number,
+    restTime: number,
+  ) => {
+    const newExId = Date.now().toString();
+
+    // Generate sets based on the requested count
+    // We also try to fetch history for each set index to pre-fill weights
+    const setPromises = Array(setCount)
+      .fill(null)
+      .map(async (_, i) => {
+        const history = await WorkoutRepository.getHistoricSetValues(name, i);
+        return {
+          id: Date.now().toString() + i + Math.random(), // Unique ID
+          weight: history ? history.weight : "",
+          reps: "",
+          previousReps: history ? history.reps : "",
+          completed: false,
+        };
+      });
+
+    const newSets = await Promise.all(setPromises);
+
+    const newExercise: Exercise = {
+      id: newExId,
+      name: name,
+      restTime: restTime,
+      sets: newSets,
+    };
+
+    const updated = [...exercises, newExercise];
+    setExercises(updated);
+    saveSessionState(updated);
+  };
+
   const togglePause = () => setIsPaused(!isPaused);
 
   const saveSession = async () => {
@@ -251,10 +287,11 @@ export const useWorkoutSession = () => {
     sessionName,
     exercises,
     elapsedSeconds,
-    startTime, // <--- ADDED HERE
+    startTime,
     isPaused,
     startWorkout,
     togglePause,
+    addExerciseToSession,
     updateSet,
     markSetComplete,
     addSet,

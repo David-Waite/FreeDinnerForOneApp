@@ -15,6 +15,7 @@ import {
   Platform,
   UIManager,
   InteractionManager,
+  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -31,6 +32,10 @@ import NotesModal from "../components/workout/NotesModal";
 import RestTimerModal from "../components/workout/RestTimerModal";
 import ExerciseCard from "../components/workout/ExerciseCard";
 import ActiveWorkoutControls from "../components/workout/ActiveWorkoutControls";
+import { Ionicons } from "@expo/vector-icons";
+import ExerciseAutocomplete from "../components/workout/ExerciseAutocomplete";
+import DuoTouch from "../components/ui/DuoTouch";
+import { TextInput } from "react-native-gesture-handler";
 
 if (
   Platform.OS === "android" &&
@@ -55,6 +60,7 @@ export default function RecordWorkoutScreen() {
     startTime,
     isPaused,
     togglePause,
+    addExerciseToSession,
     updateSet,
     markSetComplete,
     addSet,
@@ -93,12 +99,40 @@ export default function RecordWorkoutScreen() {
   // Track if screen is focused (to control auto-advance behavior)
   const [isFocused, setIsFocused] = useState(false);
 
+  // --- NEW STATE FOR ADDING EXERCISE ---
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const [newExName, setNewExName] = useState("");
+  const [newExSets, setNewExSets] = useState("3");
+  const [newExReps, setNewExReps] = useState("8-12"); // Visual only
+  const [newExRest, setNewExRest] = useState("60");
+
   useFocusEffect(
     useCallback(() => {
       setIsFocused(true);
       return () => setIsFocused(false);
     }, []),
   );
+
+  const handleConfirmAddExercise = async () => {
+    if (!newExName.trim()) {
+      Alert.alert("MISSING NAME", "Please choose an exercise.");
+      return;
+    }
+
+    const sets = parseInt(newExSets) || 3;
+    const rest = parseInt(newExRest) || 60;
+
+    await addExerciseToSession(newExName, sets, rest);
+
+    // Reset and close
+    setIsAddingExercise(false);
+    setNewExName("");
+    setNewExSets("3");
+    setNewExReps("8-12");
+    setNewExRest("60");
+
+    // Scroll to bottom (optional, but nice)
+  };
 
   // --- AUTO-ADVANCE LOGIC ---
   const advanceToNextSet = useCallback(
@@ -396,7 +430,81 @@ export default function RecordWorkoutScreen() {
             onSetDone={(setId) => handleSetDone(exercise.id, setId)}
           />
         ))}
-        <View style={{ height: 180 }} />
+
+        {/* --- ADD EXERCISE SECTION --- */}
+        <View style={styles.addSection}>
+          {!isAddingExercise ? (
+            <DuoTouch
+              style={styles.addBtn}
+              onPress={() => setIsAddingExercise(true)}
+            >
+              <Ionicons name="add-circle" size={24} color={Colors.primary} />
+              <Text style={styles.addBtnText}>ADD EXERCISE</Text>
+            </DuoTouch>
+          ) : (
+            <View style={styles.newExerciseCard}>
+              <Text style={styles.newCardTitle}>NEW EXERCISE</Text>
+
+              <View style={{ zIndex: 100, marginBottom: 16 }}>
+                <ExerciseAutocomplete
+                  placeholder="Search exercise..."
+                  value={newExName}
+                  onChangeText={setNewExName}
+                  style={styles.exerciseNameInput}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={styles.col}>
+                  <Text style={styles.subLabel}>SETS</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={newExSets}
+                    onChangeText={setNewExSets}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                  />
+                </View>
+                <View style={styles.col}>
+                  <Text style={styles.subLabel}>REPS</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={newExReps}
+                    onChangeText={setNewExReps}
+                    // Reps is just a placeholder here, session doesn't store target reps strictly
+                    selectTextOnFocus
+                  />
+                </View>
+                <View style={styles.col}>
+                  <Text style={styles.subLabel}>REST (s)</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={newExRest}
+                    onChangeText={setNewExRest}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                  />
+                </View>
+              </View>
+
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.cancelActionBtn}
+                  onPress={() => setIsAddingExercise(false)}
+                >
+                  <Text style={styles.cancelActionText}>CANCEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmActionBtn}
+                  onPress={handleConfirmAddExercise}
+                >
+                  <Text style={styles.confirmActionText}>CONFIRM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+        <View style={{ height: 200 }} />
       </ScrollView>
 
       <ActiveWorkoutControls
@@ -452,6 +560,107 @@ export default function RecordWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
+  addSection: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
+    borderStyle: "dashed",
+  },
+  addBtnText: {
+    color: Colors.primary,
+    fontWeight: "900",
+    fontSize: 14,
+    marginLeft: 8,
+    letterSpacing: 1,
+  },
+
+  // Card Styles (Mimicking TemplateEditor)
+  newExerciseCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 5,
+  },
+  newCardTitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    marginBottom: 12,
+    letterSpacing: 1.5,
+  },
+  exerciseNameInput: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: Colors.primary,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
+    paddingBottom: 8,
+  },
+  row: { flexDirection: "row", gap: 10, marginBottom: 20 },
+  col: { flex: 1 },
+  subLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: Colors.placeholder,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  smallInput: {
+    backgroundColor: Colors.background,
+    padding: 10,
+    borderRadius: 12,
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
+  // Action Buttons
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cancelActionBtn: {
+    flex: 1,
+    padding: 12,
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  cancelActionText: {
+    color: Colors.textMuted,
+    fontWeight: "900",
+    fontSize: 12,
+  },
+  confirmActionBtn: {
+    flex: 1,
+    padding: 12,
+    alignItems: "center",
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    borderBottomWidth: 4,
+    borderBottomColor: "#46a302", // Darker green shade
+  },
+  confirmActionText: {
+    color: Colors.white,
+    fontWeight: "900",
+    fontSize: 12,
+  },
   container: { flex: 1, backgroundColor: Colors.background },
   topSafeArea: {
     backgroundColor: Colors.surface,
