@@ -456,17 +456,26 @@ export const WorkoutRepository = {
     setIndex: number,
   ): Promise<{ weight: string; reps: string } | null> {
     try {
+      // CHANGED: Increased limit from 2 to 10 to look back further if recent sets were skipped
       const recentSessions = await this.getRecentHistoryForExercise(
         exerciseName,
-        2,
+        10,
       );
+
       for (const session of recentSessions) {
         const exercise = session.exercises.find(
           (e) => e.name.toLowerCase() === exerciseName.toLowerCase(),
         );
         if (exercise && exercise.sets[setIndex]) {
           const set = exercise.sets[setIndex];
-          if (set.weight || set.reps) {
+
+          const isValid =
+            set.reps &&
+            set.reps !== "" &&
+            set.reps !== "0" &&
+            set.reps !== "-1";
+
+          if (isValid) {
             return { weight: set.weight, reps: set.reps };
           }
         }

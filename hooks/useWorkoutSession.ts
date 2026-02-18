@@ -209,12 +209,21 @@ export const useWorkoutSession = () => {
 
   const saveSession = async () => {
     if (!sessionId) return;
+
+    const sanitizedExercises = exercises.map((e) => ({
+      ...e,
+      sets: e.sets.map((s) => ({
+        ...s,
+        reps: s.reps === "" || s.reps === "0" ? "-1" : s.reps,
+      })),
+    }));
+
     const finalSession: WorkoutSession = {
       id: sessionId,
       name: sessionName,
       date: new Date().toISOString(),
       duration: elapsedSeconds,
-      exercises,
+      exercises: sanitizedExercises, // <--- Use sanitized version
     };
 
     await WorkoutRepository.saveWorkout(finalSession);

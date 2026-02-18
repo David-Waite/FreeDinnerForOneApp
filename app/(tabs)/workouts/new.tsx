@@ -321,8 +321,7 @@ export default function WorkoutDashboard() {
           onPress={() => router.push("/workouts/template-editor")}
           hapticStyle="heavy"
         >
-          <Ionicons name="add" size={30} color={Colors.white} />
-          <Text style={styles.fabText}>NEW TEMPLATE</Text>
+          <Text style={styles.fabText}>NEW ROUTINE</Text>
         </DuoTouch>
       )}
     </View>
