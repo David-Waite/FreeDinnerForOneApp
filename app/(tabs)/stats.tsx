@@ -32,6 +32,7 @@ export default function StatsScreen() {
     useState<MasterExercise | null>(null);
   const [exerciseList, setExerciseList] = useState<MasterExercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [favoriteId, setFavoriteId] = useState<string | null>(null);
 
   const targetUserId =
     currentUser?.uid === auth.currentUser?.uid ? undefined : currentUser?.uid;
@@ -51,17 +52,37 @@ export default function StatsScreen() {
   }, []);
 
   const loadInitData = async () => {
-    const [users, exercises] = await Promise.all([
+    // CHANGED: Load favorite stat exercise as well
+    const [users, exercises, favId] = await Promise.all([
       WorkoutRepository.getAllUsers(),
       WorkoutRepository.getMasterExercises(),
+      WorkoutRepository.getFavoriteStatExercise(),
     ]);
+
     setAllUsers(users);
     setExerciseList(exercises);
+    setFavoriteId(favId); // Set initial favorite state
+
     const me = users.find((u) => u.uid === auth.currentUser?.uid);
     if (me) setCurrentUser(me);
-    if (exercises.length > 0) setSelectedExercise(exercises[0]);
+
+    if (exercises.length > 0) {
+      // CHANGED: Priority Selection: Favorite > First in List
+      const defaultEx = favId
+        ? exercises.find((e) => e.id === favId) || exercises[0]
+        : exercises[0];
+
+      setSelectedExercise(defaultEx);
+    }
   };
 
+  const handleToggleFavorite = async (id: string) => {
+    // If clicking the current favorite, strictly speaking we could un-favorite,
+    // but usually "Radio button" logic applies (always one selected).
+    // For now, we just set it.
+    setFavoriteId(id);
+    await WorkoutRepository.setFavoriteStatExercise(id);
+  };
   const isMe = !targetUserId;
   const showWorkouts = isMe || !currentUser?.privacySettings?.encryptWorkouts;
   const showWeight = isMe || !currentUser?.privacySettings?.encryptBodyWeight;
@@ -272,24 +293,43 @@ export default function StatsScreen() {
             <FlatList
               data={exerciseList}
               keyExtractor={(i) => i.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.pickerItem}
-                  onPress={() => {
-                    setSelectedExercise(item);
-                    setPickerVisible(false);
-                  }}
-                >
-                  <Text style={styles.pickerItemText}>{item.name}</Text>
-                  {selectedExercise?.id === item.id && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={Colors.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isFav = favoriteId === item.id;
+                const isSelected = selectedExercise?.id === item.id;
+
+                return (
+                  <View style={styles.pickerItemWrapper}>
+                    <TouchableOpacity
+                      style={styles.pickerItemContent}
+                      onPress={() => {
+                        setSelectedExercise(item);
+                        setPickerVisible(false);
+                      }}
+                    >
+                      <Text style={styles.pickerItemText}>{item.name}</Text>
+                      {isSelected && (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={24}
+                          color={Colors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
+
+                    {/* NEW: Star Button */}
+                    <TouchableOpacity
+                      style={styles.starButton}
+                      onPress={() => handleToggleFavorite(item.id)}
+                    >
+                      <Ionicons
+                        name={isFav ? "star" : "star-outline"}
+                        size={24}
+                        color={isFav ? Colors.gold : Colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                );
+              }}
             />
           </View>
         </View>
@@ -299,6 +339,31 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
+  pickerItemWrapper: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 15,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden", // Ensure children don't bleed
+  },
+  pickerItemContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    paddingRight: 8, // Make room for star
+  },
+  pickerItemText: { fontSize: 16, fontWeight: "800", color: Colors.text },
+  starButton: {
+    padding: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: "row",
@@ -450,5 +515,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pickerAvatarText: { color: Colors.white, fontWeight: "900", fontSize: 18 },
-  pickerItemText: { fontSize: 16, fontWeight: "800", color: Colors.text },
 });

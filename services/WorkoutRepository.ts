@@ -39,6 +39,7 @@ const TEMPLATE_KEY = "workout_templates";
 const NOTES_KEY = "exercise_notes";
 const MASTER_EXERCISE_KEY = "master_exercises";
 const WEIGHT_KEY = "body_weight_logs";
+const FAV_STAT_KEY = "fav_stat_exercise";
 
 const APP_SECRET =
   process.env.EXPO_PUBLIC_ENCRYPTION_KEY || "default-secret-key-change-me";
@@ -98,6 +99,21 @@ const getMelbourneWeekId = () => {
 };
 
 export const WorkoutRepository = {
+  async getFavoriteStatExercise(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(FAV_STAT_KEY);
+    } catch (e) {
+      return null;
+    }
+  },
+
+  async setFavoriteStatExercise(id: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(FAV_STAT_KEY, id);
+    } catch (e) {
+      console.error("Failed to save fav stat", e);
+    }
+  },
   async overrideLocalSessions(sessions: WorkoutSession[]): Promise<void> {
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
   },
