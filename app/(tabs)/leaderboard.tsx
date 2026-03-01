@@ -103,6 +103,7 @@ export default function LeaderboardScreen() {
     "friendly",
   );
   const [totalPool, setTotalPool] = useState(0);
+  const [isDeactivated, setIsDeactivated] = useState(false);
 
   const calculateLeaderboard = async () => {
     try {
@@ -111,6 +112,15 @@ export default function LeaderboardScreen() {
         WorkoutRepository.getPosts(),
         getDoc(doc(db, "game_state", "weekly_config")),
       ]);
+
+      // --- ADD THIS BLOCK ---
+      const currentUserProfile = users.find(
+        (u) => u.uid === auth.currentUser?.uid,
+      );
+      setIsDeactivated(currentUserProfile?.isCompActive === false);
+
+      // Filter out users who are not active in the comp
+      const activeUsers = users.filter((u) => u.isCompActive !== false);
 
       let weeklyCap = 4;
       if (configSnap.exists()) {
@@ -148,7 +158,7 @@ export default function LeaderboardScreen() {
         }
       });
 
-      let rankedUsers: LeaderboardUser[] = users.map((u) => {
+      let rankedUsers: LeaderboardUser[] = activeUsers.map((u) => {
         const currentScore = scores[u.uid] || 0;
         const hasPostedToday = postedTodayMap[u.uid];
         const remainingSlots = hasPostedToday
@@ -324,6 +334,22 @@ export default function LeaderboardScreen() {
           )}
         </View>
       </View>
+
+      {isDeactivated && (
+        <View
+          style={[
+            styles.modeBanner,
+            {
+              backgroundColor: Colors.error,
+              borderBottomColor: "#a62626",
+              marginBottom: 0,
+            },
+          ]}
+        >
+          <Text style={styles.modeText}>YOU ARE DEACTIVATED FROM THE COMP</Text>
+          <Text style={styles.modeSubtext}>Please contact the admin.</Text>
+        </View>
+      )}
 
       {loading ? (
         <View

@@ -1115,6 +1115,8 @@ export const WorkoutRepository = {
           displayName: data.displayName || "Unknown",
           photoURL: data.photoURL,
           privacySettings: data.privacySettings,
+          isAdmin: data.isAdmin, // <-- ADD THIS
+          isCompActive: data.isCompActive, // <-- ADD THIS
         });
       });
       return users;

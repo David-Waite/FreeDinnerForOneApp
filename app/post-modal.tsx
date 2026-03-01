@@ -22,19 +22,24 @@ import { WorkoutRepository } from "../services/WorkoutRepository";
 import { WorkoutPost, WorkoutSession } from "../constants/types";
 import { useWorkoutContext } from "../context/WorkoutContext";
 import DuoTouch from "../components/ui/DuoTouch";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../config/firebase";
 
 export default function PostModal() {
   const router = useRouter();
 
   // 1. Get Game Status from Context
   const { gameStatus, refreshGameStatus } = useWorkoutContext();
-
+  const [isDeactivated, setIsDeactivated] = useState(false);
   // 2. Derive Logic
-  const canPost = gameStatus.canPostToday && gameStatus.remaining > 0;
+  const canPost =
+    !isDeactivated && gameStatus.canPostToday && gameStatus.remaining > 0;
 
   // 3. Derive Status Message
   let statusMsg = "";
-  if (!gameStatus.canPostToday) {
+  if (isDeactivated) {
+    statusMsg = "Deactivated from comp. Contact Admin.";
+  } else if (!gameStatus.canPostToday) {
     statusMsg = "You have already posted today! Come back tomorrow.";
   } else if (gameStatus.remaining <= 0) {
     if (gameStatus.score >= gameStatus.cap) {
@@ -59,7 +64,18 @@ export default function PostModal() {
   useEffect(() => {
     loadTodaysWorkouts();
     refreshGameStatus();
+    checkUserStatus(); // <-- ADD THIS
   }, []);
+
+  const checkUserStatus = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const docRef = doc(db, "users", user.uid);
+    const snap = await getDoc(docRef);
+    if (snap.exists() && snap.data().isCompActive === false) {
+      setIsDeactivated(true);
+    }
+  };
 
   const loadTodaysWorkouts = async () => {
     const all = await WorkoutRepository.getWorkouts();

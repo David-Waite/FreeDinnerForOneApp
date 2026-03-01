@@ -2,6 +2,8 @@ export type UserProfile = {
   uid: string;
   displayName: string;
   photoURL?: string;
+  isAdmin?: boolean;
+  isCompActive?: boolean;
   privacySettings?: {
     encryptWorkouts: boolean;
     encryptBodyWeight: boolean;

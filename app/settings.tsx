@@ -232,6 +232,31 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* ADMIN CARD (CONDITIONAL) */}
+        {userData?.isAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>ADMIN PANEL</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => router.push("/admin")}
+              >
+                <View style={styles.textContainer}>
+                  <Text style={styles.settingLabel}>ADMIN SETTINGS</Text>
+                  <Text style={styles.settingDescription}>
+                    Manage global app features and users.
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={24}
+                  color={Colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <TouchableOpacity
           style={styles.logoutBtn}
           onPress={() => auth.signOut()}
