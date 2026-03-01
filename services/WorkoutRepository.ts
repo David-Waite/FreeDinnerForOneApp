@@ -1231,4 +1231,49 @@ export const WorkoutRepository = {
       return authorId ? this.getRemoteWorkoutById(id, authorId) : undefined;
     }
   },
+
+  async createAdminBacklogPost(
+    targetUser: UserProfile,
+    dateString: string,
+    message: string,
+    imageUri: string,
+  ): Promise<void> {
+    const admin = auth.currentUser;
+    if (!admin) throw new Error("Admin must be logged in");
+
+    try {
+      const postId = Date.now().toString();
+
+      // 1. Upload Image
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const imageRef = ref(storage, `posts/${postId}/image.jpg`);
+      await uploadBytes(imageRef, blob);
+      const downloadURL = await getDownloadURL(imageRef);
+
+      // 2. Format Date (Assume dateString is "YYYY-MM-DD", append midday time to avoid timezone shifts)
+      const postDate = new Date(`${dateString}T12:00:00`).toISOString();
+
+      // 3. Prepare Post
+      const firestorePost: WorkoutPost = {
+        id: postId,
+        authorId: targetUser.uid,
+        authorName: targetUser.displayName,
+        authorAvatar: targetUser.photoURL || "",
+        imageUri: downloadURL,
+        message: message,
+        createdAt: postDate,
+        isBacklog: true, // Flag it!
+        reactions: {},
+        comments: [],
+      };
+
+      // 4. Save to Firestore
+      await setDoc(doc(db, "posts", postId), firestorePost);
+      console.log("Backlog post uploaded successfully!");
+    } catch (e) {
+      console.error("Failed to create backlog post", e);
+      throw e;
+    }
+  },
 };

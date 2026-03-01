@@ -89,15 +89,11 @@ export type WorkoutPost = {
   message: string;
   imageUri: string;
   createdAt: string;
+  isBacklog?: boolean; // <-- Add this line
 
   comments: PostComment[];
-
-  // LEGACY: Kept for backward compatibility (uid -> emoji)
   reactions: Record<string, string>;
-
-  // NEW: Rich data for display (uid -> ReactionDetail)
   reactionData?: Record<string, ReactionDetail>;
-
   workoutSummary?: WorkoutSummary;
   sessionId?: string;
 };

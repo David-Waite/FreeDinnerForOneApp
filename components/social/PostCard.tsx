@@ -138,6 +138,14 @@ export default function PostCard({
         </View>
       </View>
 
+      {/* BACKLOG BANNER */}
+      {post.isBacklog && (
+        <View style={styles.backlogBanner}>
+          <Ionicons name="time" size={14} color={Colors.background} />
+          <Text style={styles.backlogText}>ADMIN BACKLOG POST</Text>
+        </View>
+      )}
+
       {/* WORKOUT BANNER */}
       {post.workoutSummary && (
         <View style={styles.workoutContainer}>
@@ -441,5 +449,22 @@ const styles = StyleSheet.create({
   },
   emojiBadgeText: {
     fontSize: 10,
+  },
+  backlogBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.info,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  backlogText: {
+    color: Colors.background,
+    fontWeight: "900",
+    fontSize: 11,
+    letterSpacing: 1,
   },
 });
