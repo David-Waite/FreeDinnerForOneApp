@@ -11,6 +11,7 @@ import {
   BodyWeightLog,
   UserProfile,
   ReactionDetail,
+  CardioSession,
 } from "../constants/types";
 import { auth, db, storage } from "../config/firebase"; // Import Firebase Auth & DB
 import {
@@ -35,6 +36,7 @@ import {
 import { updateProfile } from "@firebase/auth";
 
 const SESSION_KEY = "workout_sessions";
+const CARDIO_SESSION_KEY = "cardio_sessions";
 const TEMPLATE_KEY = "workout_templates";
 const NOTES_KEY = "exercise_notes";
 const MASTER_EXERCISE_KEY = "master_exercises";
@@ -368,6 +370,76 @@ export const WorkoutRepository = {
       }
     } catch (e) {
       console.error("Failed to delete workout", e);
+    }
+  },
+
+  // --- CARDIO SESSIONS ---
+
+  async getCardioSessions(): Promise<CardioSession[]> {
+    try {
+      const jsonValue = await AsyncStorage.getItem(CARDIO_SESSION_KEY);
+      return jsonValue != null ? JSON.parse(jsonValue) : [];
+    } catch (e) {
+      console.error("Failed to load cardio sessions", e);
+      return [];
+    }
+  },
+
+  async saveCardioSession(session: CardioSession): Promise<void> {
+    const existing = await this.getCardioSessions();
+    const index = existing.findIndex((s) => s.id === session.id);
+    let updated;
+    if (index >= 0) {
+      updated = [...existing];
+      updated[index] = session;
+    } else {
+      updated = [session, ...existing];
+    }
+    await AsyncStorage.setItem(CARDIO_SESSION_KEY, JSON.stringify(updated));
+
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        await setDoc(
+          doc(db, "users", user.uid, "cardio_sessions", session.id),
+          session,
+        );
+      } catch (e) {
+        console.error("Failed to upload cardio session", e);
+      }
+    }
+  },
+
+  async deleteCardioSession(id: string): Promise<void> {
+    try {
+      const existing = await this.getCardioSessions();
+      await AsyncStorage.setItem(
+        CARDIO_SESSION_KEY,
+        JSON.stringify(existing.filter((s) => s.id !== id)),
+      );
+      const user = auth.currentUser;
+      if (user) {
+        await deleteDoc(doc(db, "users", user.uid, "cardio_sessions", id));
+      }
+    } catch (e) {
+      console.error("Failed to delete cardio session", e);
+    }
+  },
+
+  async getRemoteCardioSessions(userId: string): Promise<CardioSession[]> {
+    if (!auth.currentUser) return [];
+    try {
+      const snapshot = await getDocs(
+        collection(db, "users", userId, "cardio_sessions"),
+      );
+      const sessions: CardioSession[] = [];
+      snapshot.forEach((doc) => sessions.push(doc.data() as CardioSession));
+      return sessions.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+    } catch (e) {
+      console.error("Failed to fetch remote cardio sessions", e);
+      return [];
     }
   },
 
@@ -1101,6 +1173,16 @@ export const WorkoutRepository = {
       return posts.find((p) => p.workoutSummary?.id === workoutId);
     } catch (e) {
       return undefined;
+    }
+  },
+  async getPostDatesForUser(userId: string): Promise<string[]> {
+    try {
+      const posts = await this.getPosts();
+      return posts
+        .filter((p) => p.authorId === userId)
+        .map((p) => p.createdAt.split("T")[0]);
+    } catch (e) {
+      return [];
     }
   },
   async getAllUsers(): Promise<UserProfile[]> {

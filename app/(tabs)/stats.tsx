@@ -161,11 +161,11 @@ export default function StatsScreen() {
               </TouchableOpacity>
             )}
 
-            {/* 3. MINI STATS GRID */}
-            <Text style={styles.sectionHeader}>INSIGHTS & PERFORMANCE</Text>
-            <View style={styles.grid}>
-              {showWorkouts && (
-                <>
+            {/* 3. EXERCISE-SPECIFIC STATS */}
+            {showWorkouts && (
+              <>
+                <Text style={styles.sectionHeader}>INSIGHTS & PERFORMANCE</Text>
+                <View style={styles.grid}>
                   <AnalyticsMiniCard
                     title="Volume"
                     data={volumeData}
@@ -190,35 +190,48 @@ export default function StatsScreen() {
                     unit="kg"
                     onPress={() => navigateToDetail("estimated")}
                   />
-                  <AnalyticsMiniCard
-                    title="Consistency"
-                    data={consistencyData}
-                    type="grid"
-                    color={Colors.purple}
-                    unit="days"
-                    onPress={() => navigateToDetail("consistency")}
-                  />
-                  <AnalyticsMiniCard
-                    title="Duration"
-                    data={durationData}
-                    type="bar"
-                    color={Colors.error}
-                    unit="min"
-                    onPress={() => navigateToDetail("time")}
-                  />
-                </>
-              )}
-              {showWeight && (
-                <AnalyticsMiniCard
-                  title="Weight"
-                  data={bodyWeightData}
-                  type="line"
-                  color={Colors.primary}
-                  unit="kg"
-                  onPress={() => navigateToDetail("weight")}
-                />
-              )}
-            </View>
+                </View>
+              </>
+            )}
+
+            {/* 4. GENERAL / INDEPENDENT STATS */}
+            {(showWorkouts || showWeight) && (
+              <>
+                <Text style={styles.sectionHeader}>GENERAL ACTIVITY</Text>
+                <View style={styles.grid}>
+                  {showWorkouts && (
+                    <>
+                      <AnalyticsMiniCard
+                        title="Consistency"
+                        data={consistencyData}
+                        type="grid"
+                        color={Colors.purple}
+                        unit="days"
+                        onPress={() => navigateToDetail("consistency")}
+                      />
+                      <AnalyticsMiniCard
+                        title="Duration"
+                        data={durationData}
+                        type="bar"
+                        color={Colors.error}
+                        unit="min"
+                        onPress={() => navigateToDetail("time")}
+                      />
+                    </>
+                  )}
+                  {showWeight && (
+                    <AnalyticsMiniCard
+                      title="Weight"
+                      data={bodyWeightData}
+                      type="line"
+                      color={Colors.primary}
+                      unit="kg"
+                      onPress={() => navigateToDetail("weight")}
+                    />
+                  )}
+                </View>
+              </>
+            )}
           </>
         )}
       </ScrollView>

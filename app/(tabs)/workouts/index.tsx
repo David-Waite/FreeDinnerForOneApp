@@ -18,11 +18,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"; // Import
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import {
   WorkoutSession,
+  CardioSession,
+  AnySession,
   NotesStorage,
   ExerciseNote,
 } from "../../../constants/types";
 import Colors from "../../../constants/Colors";
 import HistoryWorkoutCard from "../../../components/workout/HistoryWorkoutCard";
+import CardioHistoryCard from "../../../components/workout/CardioHistoryCard";
 import { useWorkoutContext } from "../../../context/WorkoutContext"; // Import
 import DuoTouch from "../../../components/ui/DuoTouch";
 
@@ -32,6 +35,7 @@ export default function WorkoutHistoryScreen() {
   const { isActive } = useWorkoutContext(); // Get Active State
 
   const [history, setHistory] = useState<WorkoutSession[]>([]);
+  const [cardioHistory, setCardioHistory] = useState<CardioSession[]>([]);
   const [allNotes, setAllNotes] = useState<NotesStorage>({});
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
@@ -51,14 +55,17 @@ export default function WorkoutHistoryScreen() {
   );
 
   const loadData = async () => {
-    const [workouts, notes] = await Promise.all([
+    const [workouts, cardio, notes] = await Promise.all([
       WorkoutRepository.getWorkouts(),
+      WorkoutRepository.getCardioSessions(),
       WorkoutRepository.getAllNotes(),
     ]);
-    const sorted = workouts.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    setHistory(
+      workouts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     );
-    setHistory(sorted);
+    setCardioHistory(
+      cardio.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    );
     setAllNotes(notes);
   };
 
@@ -80,6 +87,10 @@ export default function WorkoutHistoryScreen() {
       const dateKey = session.date.split("T")[0];
       marks[dateKey] = { marked: true, dotColor: Colors.gold };
     });
+    cardioHistory.forEach((session) => {
+      const dateKey = session.date.split("T")[0];
+      if (!marks[dateKey]) marks[dateKey] = { marked: true, dotColor: Colors.error };
+    });
     marks[selectedDate] = {
       ...(marks[selectedDate] || {}),
       selected: true,
@@ -87,12 +98,15 @@ export default function WorkoutHistoryScreen() {
       selectedTextColor: Colors.white,
     };
     return marks;
-  }, [history, selectedDate]);
+  }, [history, cardioHistory, selectedDate]);
 
-  const dayWorkouts = useMemo(
-    () => history.filter((s) => s.date.startsWith(selectedDate)),
-    [history, selectedDate],
-  );
+  const dayItems = useMemo((): AnySession[] => {
+    const weights = history.filter((s) => s.date.startsWith(selectedDate));
+    const cardio = cardioHistory.filter((s) => s.date.startsWith(selectedDate));
+    return [...weights, ...cardio].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [history, cardioHistory, selectedDate]);
 
   const renderHeader = () => (
     <View style={styles.headerWrapper}>
@@ -155,21 +169,28 @@ export default function WorkoutHistoryScreen() {
     // FIX: Conditional Padding
     <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
       <FlatList
-        data={dayWorkouts}
+        data={dayItems}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
           <View style={styles.itemWrapper}>
-            <HistoryWorkoutCard
-              workout={item}
-              defaultExpanded={dayWorkouts.length === 1}
-              allNotes={allNotes}
-              onViewNotes={(notes) => {
-                setViewingNotes(notes);
-                setNotesModalVisible(true);
-              }}
-            />
+            {item.sessionType === "cardio" ? (
+              <CardioHistoryCard
+                session={item}
+                onDeleted={loadData}
+              />
+            ) : (
+              <HistoryWorkoutCard
+                workout={item as WorkoutSession}
+                defaultExpanded={dayItems.length === 1}
+                allNotes={allNotes}
+                onViewNotes={(notes) => {
+                  setViewingNotes(notes);
+                  setNotesModalVisible(true);
+                }}
+              />
+            )}
           </View>
         )}
         ListEmptyComponent={
@@ -199,7 +220,7 @@ export default function WorkoutHistoryScreen() {
         onPress={() =>
           isActive
             ? router.push("/record-workout")
-            : router.push("/workouts/new")
+            : router.push("/activity-picker")
         }
       >
         <Ionicons

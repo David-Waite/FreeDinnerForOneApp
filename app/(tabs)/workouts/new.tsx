@@ -312,17 +312,19 @@ export default function WorkoutDashboard() {
               </Text>
             </View>
           }
+          ListFooterComponent={
+            selectedUserId === currentUser?.uid ? (
+              <DuoTouch
+                style={styles.newRoutineBtn}
+                onPress={() => router.push("/workouts/template-editor")}
+                hapticStyle="heavy"
+              >
+                <Ionicons name="add" size={20} color={Colors.white} />
+                <Text style={styles.newRoutineBtnText}>NEW ROUTINE</Text>
+              </DuoTouch>
+            ) : null
+          }
         />
-      )}
-
-      {selectedUserId === currentUser?.uid && (
-        <DuoTouch
-          style={styles.fab}
-          onPress={() => router.push("/workouts/template-editor")}
-          hapticStyle="heavy"
-        >
-          <Text style={styles.fabText}>NEW ROUTINE</Text>
-        </DuoTouch>
       )}
     </View>
   );
@@ -373,7 +375,7 @@ const styles = StyleSheet.create({
   pillTextSelected: { color: Colors.text },
 
   // Card Styles
-  listContent: { paddingHorizontal: 16, paddingBottom: 120, paddingTop: 10 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 10 },
   card: {
     backgroundColor: Colors.surface,
     padding: 16,
@@ -483,25 +485,23 @@ const styles = StyleSheet.create({
   },
 
   loader: { marginTop: 50 },
-  fab: {
-    position: "absolute",
-    bottom: 30,
-    alignSelf: "center",
+  newRoutineBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: Colors.info,
-    paddingVertical: 16,
-    paddingHorizontal: 28,
+    padding: 16,
     borderRadius: 20,
     borderBottomWidth: 5,
     borderBottomColor: "#1899d6",
-    elevation: 5,
+    marginBottom: 16,
   },
-  fabText: {
+  newRoutineBtnText: {
     color: Colors.white,
     fontWeight: "900",
-    marginLeft: 8,
-    fontSize: 14,
+    fontSize: 15,
+    letterSpacing: 1,
   },
   emptyCard: {
     alignItems: "center",

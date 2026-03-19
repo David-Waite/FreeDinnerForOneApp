@@ -45,9 +45,28 @@ function AppContent() {
             headerShown: false,
             gestureEnabled: false,
             presentation: "fullScreenModal",
-            // DUO POLISH: Fast slide from bottom
             animation: "slide_from_bottom",
-            animationDuration: 250, // Standard Duo "snappy" speed
+            animationDuration: 250,
+          }}
+        />
+
+        <Stack.Screen
+          name="activity-picker"
+          options={{
+            presentation: "modal",
+            headerShown: false,
+            animation: "slide_from_bottom",
+          }}
+        />
+
+        <Stack.Screen
+          name="record-cardio"
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
+            presentation: "fullScreenModal",
+            animation: "slide_from_bottom",
+            animationDuration: 250,
           }}
         />
 

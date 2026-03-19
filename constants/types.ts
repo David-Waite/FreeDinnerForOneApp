@@ -32,6 +32,7 @@ export type WorkoutSession = {
   date: string;
   duration: number;
   exercises: Exercise[];
+  sessionType?: "hypertrophy";
 };
 
 export type TemplateExercise = {
@@ -95,6 +96,7 @@ export type WorkoutPost = {
   reactions: Record<string, string>;
   reactionData?: Record<string, ReactionDetail>;
   workoutSummary?: WorkoutSummary;
+  cardioSummary?: CardioSummary;
   sessionId?: string;
 };
 
@@ -120,3 +122,28 @@ export type WorkoutSummary = {
   duration: number;
   exerciseCount: number;
 };
+
+// --- CARDIO TYPES ---
+export type CardioActivityType = "run" | "walk" | "cycle";
+
+export type CardioSession = {
+  id: string;
+  sessionType: "cardio";
+  activityType: CardioActivityType;
+  date: string;       // ISO timestamp
+  duration: number;   // seconds
+  distance: number;   // kilometres
+  pace: number;       // seconds per km
+  calories?: number;
+  mode: "manual" | "live";
+};
+
+export type CardioSummary = {
+  id: string;
+  activityType: CardioActivityType;
+  duration: number;
+  distance: number;
+  pace: number;
+};
+
+export type AnySession = WorkoutSession | CardioSession;

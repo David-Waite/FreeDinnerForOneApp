@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { WorkoutSession, BodyWeightLog } from "../constants/types";
+import { auth } from "../config/firebase";
 
-export type ChartDataPoint = { x: string; y: number; label?: string };
+export type ChartDataPoint = {
+  x: string;
+  y: number;
+  label?: string;
+  kind?: "workout" | "post";
+};
 
 export const useExerciseStats = (
   exerciseName: string | null = null,
@@ -57,8 +63,18 @@ export const useExerciseStats = (
       }));
       setBodyWeightData(weightPoints);
 
-      // 4. Process Workout Stats
-      processGlobalStats(sortedWorkouts);
+      // 4. Fetch post dates + cardio dates for consistency
+      const targetId = userId || auth.currentUser?.uid || "";
+      const [postDates, cardioSessions] = await Promise.all([
+        targetId ? WorkoutRepository.getPostDatesForUser(targetId) : Promise.resolve([]),
+        userId
+          ? WorkoutRepository.getRemoteCardioSessions(userId)
+          : WorkoutRepository.getCardioSessions(),
+      ]);
+      const cardioDates = cardioSessions.map((s) => s.date.split("T")[0]);
+
+      // 5. Process Workout Stats
+      processGlobalStats(sortedWorkouts, postDates, cardioDates);
 
       // 5. Process Specific Exercise Stats (if selected)
       if (exerciseName) {
@@ -80,7 +96,7 @@ export const useExerciseStats = (
 
   // --- PROCESSING LOGIC ---
 
-  const processGlobalStats = (data: WorkoutSession[]) => {
+  const processGlobalStats = (data: WorkoutSession[], postDates: string[], cardioDates: string[] = []) => {
     // Duration
     const dur: ChartDataPoint[] = data.map((s) => ({
       x: s.date.split("T")[0],
@@ -88,38 +104,25 @@ export const useExerciseStats = (
     }));
     setDurationData(dur);
 
-    // Consistency (Weeks)
-    const weekMap = new Map<string, number>();
-    const now = new Date();
-    // Initialize last 12 weeks with 0
-    for (let i = 11; i >= 0; i--) {
+    // Consistency (Days) - one entry per day for the last 90 days
+    const dailyWorkoutDates = new Set([
+      ...data.map((s) => s.date.split("T")[0]),
+      ...cardioDates,
+    ]);
+    const postDatesSet = new Set(postDates);
+    const cons: ChartDataPoint[] = [];
+    for (let i = 89; i >= 0; i--) {
       const d = new Date();
-      d.setDate(now.getDate() - i * 7);
-      // Find Monday of that week
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      monday.setHours(0, 0, 0, 0);
-      weekMap.set(monday.toISOString().split("T")[0], 0);
-    }
-
-    data.forEach((s) => {
-      const d = new Date(s.date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      monday.setHours(0, 0, 0, 0);
-      const key = monday.toISOString().split("T")[0];
-
-      // Only count if it's within our tracked window
-      if (weekMap.has(key)) {
-        weekMap.set(key, (weekMap.get(key) || 0) + 1);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      if (dailyWorkoutDates.has(dateStr)) {
+        cons.push({ x: dateStr, y: 1, kind: "workout" });
+      } else if (postDatesSet.has(dateStr)) {
+        cons.push({ x: dateStr, y: 1, kind: "post" });
+      } else {
+        cons.push({ x: dateStr, y: 0 });
       }
-    });
-
-    const cons: ChartDataPoint[] = Array.from(weekMap.entries())
-      .map(([k, v]) => ({ x: k, y: v }))
-      .sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
+    }
 
     setConsistencyData(cons);
   };

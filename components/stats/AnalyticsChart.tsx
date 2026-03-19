@@ -47,8 +47,25 @@ export default function AnalyticsChart({
     y: { y: 0 },
   });
 
+  // --- STREAK CALCULATION (grid/consistency only) ---
+  const longestStreak = useMemo(() => {
+    if (type !== "grid") return 0;
+    const activeDays = new Set(data.filter((d) => d.y > 0).map((d) => d.x));
+    let longest = 0;
+    let streak = 0;
+    data.forEach((d) => {
+      if (activeDays.has(d.x)) {
+        streak++;
+        if (streak > longest) longest = streak;
+      } else {
+        streak = 0;
+      }
+    });
+    return longest;
+  }, [data, type]);
+
   // --- DATA PREPARATION ---
-  const { processedData, yDomain, xDomain, gridData } = useMemo(() => {
+  const { processedData, yDomain, xDomain, gridData, barLabelData } = useMemo(() => {
     const fullData = data.map((d) => ({ x: new Date(d.x).getTime(), y: d.y }));
     const now = new Date().getTime();
     let cutoff = 0;
@@ -74,35 +91,41 @@ export default function AnalyticsChart({
     const filtered = fullData.filter((d) => d.x >= cutoff);
 
     // --- Grid Logic (for consistency view) ---
-    // Calculate how many days to show based on range
-    const daysToShow = range === "1W" ? 7 : range === "1M" ? 30 : 90; // Limit grid size for clarity
+    const daysToShow = range === "1W" ? 7 : range === "1M" ? 30 : 90;
     const gridItems = Array.from({ length: daysToShow }).map((_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (daysToShow - 1 - i));
       const dateStr = date.toISOString().split("T")[0];
-      const hasActivity = data.some((d) => d.x.startsWith(dateStr) && d.y > 0);
-      return { active: hasActivity, date: dateStr };
+      const entry = data.find((d) => d.x === dateStr && d.y > 0);
+      return { active: !!entry, kind: entry?.kind, date: dateStr };
     });
 
     // --- Chart Domains ---
     const yValues = filtered.map((d) => d.y);
-    const minY = yValues.length ? Math.min(...yValues) : 0;
     const maxY = yValues.length ? Math.max(...yValues) : 100;
-    const yPadding = (maxY - minY) * 0.15 || 10; // Increased padding to prevent clipping
+    const minY = yValues.length ? Math.min(...yValues) : 0;
+    const yPadding = maxY * 0.15 || 10;
 
-    let minX =
-      range === "All" && fullData.length
+    // Bar charts: sequential x so bars are evenly spaced, y always starts at 0
+    const isBar = type === "bar";
+    const barData = filtered.map((d, i) => ({ x: i, y: d.y }));
+
+    let minX = range === "All" && fullData.length
         ? Math.min(...fullData.map((d) => d.x))
         : cutoff;
-    let maxX = now;
 
     return {
-      processedData: filtered,
+      processedData: isBar ? barData : filtered,
+      barLabelData: filtered, // real timestamps for bar x-axis labels
       gridData: gridItems,
-      yDomain: [minY - yPadding, maxY + yPadding] as [number, number],
-      xDomain: [minX, maxX] as [number, number],
+      yDomain: isBar
+        ? [0, maxY + yPadding] as [number, number]
+        : [minY - yPadding, maxY + yPadding] as [number, number],
+      xDomain: isBar
+        ? [-0.5, filtered.length - 0.5] as [number, number]
+        : [minX, now] as [number, number],
     };
-  }, [data, range]);
+  }, [data, range, type]);
 
   // --- ANIMATED LABELS ---
   const activeValueStr = useDerivedValue(() => {
@@ -140,31 +163,44 @@ export default function AnalyticsChart({
   return (
     <View style={styles.container}>
       <View style={styles.activeLabel}>
-        <AnimatedTextInput
-          style={styles.activeValue}
-          animatedProps={valueProps}
-        />
-        <AnimatedTextInput
-          style={[styles.activeDate, { color: color }]}
-          animatedProps={dateProps}
-        />
+        {type === "grid" ? (
+          <>
+            <Text style={styles.activeValue}>{longestStreak}</Text>
+            <Text style={[styles.activeDate, { color }]}>LONGEST STREAK</Text>
+          </>
+        ) : (
+          <>
+            <AnimatedTextInput
+              style={styles.activeValue}
+              animatedProps={valueProps}
+            />
+            <AnimatedTextInput
+              style={[styles.activeDate, { color: color }]}
+              animatedProps={dateProps}
+            />
+          </>
+        )}
       </View>
 
       <View style={styles.chartWrapper}>
         {type === "grid" ? (
           <View style={styles.gridContainer}>
-            {gridData.map((day, i) => (
+            {gridData.map((day, i) => {
+              const size = range === "1W" ? 32 : range === "1M" ? 22 : 14;
+              const bgColor = day.active
+                ? day.kind === "post"
+                  ? "rgba(206, 130, 255, 0.35)"
+                  : color
+                : Colors.border;
+              return (
               <View
                 key={i}
                 style={[
                   styles.gridSquare,
-                  {
-                    backgroundColor: day.active ? color : Colors.border,
-                    width: range === "1W" ? "12%" : "4%", // Dynamic sizing for range
-                  },
+                  { backgroundColor: bgColor, width: size, height: size },
                 ]}
               />
-            ))}
+            );})}
           </View>
         ) : (
           <CartesianChart
@@ -178,8 +214,14 @@ export default function AnalyticsChart({
               font,
               labelColor: Colors.textMuted,
               lineColor: Colors.border,
-              tickCount: 5,
+              tickCount: type === "bar" ? Math.min(barLabelData.length, 6) : 5,
               formatXLabel: (v) => {
+                if (type === "bar") {
+                  const item = barLabelData[Math.round(v)];
+                  if (!item) return "";
+                  const d = new Date(item.x);
+                  return `${d.getDate()}/${d.getMonth() + 1}`;
+                }
                 const d = new Date(v);
                 return `${d.getDate()}/${d.getMonth() + 1}`;
               },
@@ -302,7 +344,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   gridSquare: {
-    aspectRatio: 1,
     borderRadius: 4,
   },
 });

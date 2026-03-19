@@ -26,6 +26,7 @@ export default function StatsDetailScreen() {
     durationData,
     consistencyData,
     bodyWeightData,
+    sessions,
   } = useExerciseStats(exerciseName as string, targetUserId as string);
 
   let chartData: any[] = [];
@@ -113,33 +114,45 @@ export default function StatsDetailScreen() {
         </View>
 
         <View style={styles.statDetailBox}>
-          {/* Hide this entire section if mode is Weight */}
-          {!isWeight && (
+          {isConsistency ? (
             <>
               <View style={styles.statItem}>
-                <Text style={styles.detailLabel}>
-                  {isConsistency ? "DAYS COMPLETED" : "ALL TIME PEAK"}
-                </Text>
+                <Text style={styles.detailLabel}>TOTAL DAYS</Text>
                 <Text style={[styles.detailValue, { color }]}>
-                  {chartData.length > 0
-                    ? isConsistency
-                      ? completedDays
-                      : allTimePeak.toFixed(1)
-                    : "-"}
+                  {completedDays}
+                  <Text style={styles.unitText}> days</Text>
+                </Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text style={styles.detailLabel}>TOTAL WORKOUTS</Text>
+                <Text style={styles.detailValue}>
+                  {sessions.length}
+                  <Text style={styles.unitText}> sessions</Text>
+                </Text>
+              </View>
+            </>
+          ) : !isWeight ? (
+            <>
+              <View style={styles.statItem}>
+                <Text style={styles.detailLabel}>ALL TIME PEAK</Text>
+                <Text style={[styles.detailValue, { color }]}>
+                  {chartData.length > 0 ? allTimePeak.toFixed(1) : "-"}
                   <Text style={styles.unitText}> {unit}</Text>
                 </Text>
               </View>
-
               <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text style={styles.detailLabel}>RECORDED ENTRIES</Text>
+                <Text style={styles.detailValue}>{chartData.length}</Text>
+              </View>
             </>
+          ) : (
+            <View style={styles.statItem}>
+              <Text style={styles.detailLabel}>TOTAL LOGS</Text>
+              <Text style={styles.detailValue}>{chartData.length}</Text>
+            </View>
           )}
-
-          <View style={styles.statItem}>
-            <Text style={styles.detailLabel}>
-              {isWeight ? "TOTAL LOGS" : "RECORDED ENTRIES"}
-            </Text>
-            <Text style={styles.detailValue}>{chartData.length}</Text>
-          </View>
         </View>
 
         <View style={styles.insightCard}>
