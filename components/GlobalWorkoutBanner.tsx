@@ -18,9 +18,15 @@ export default function GlobalWorkoutBanner() {
     isPaused,
     restTimer,
     maximizeRestTimer,
+    isCardioActive,
+    activeCardio,
   } = useWorkoutContext();
 
   const elapsedSeconds = useWorkoutTimer(isActive ? startTime : null, isPaused);
+  const cardioElapsed = useWorkoutTimer(
+    isCardioActive ? (activeCardio?.startTime ?? null) : null,
+    activeCardio?.isPaused ?? false,
+  );
   const [restSecondsLeft, setRestSecondsLeft] = useState(0);
 
   // LOGGING STATE CHANGES
@@ -54,7 +60,10 @@ export default function GlobalWorkoutBanner() {
   const showSessionBanner =
     isActive && sessionId && pathname !== "/record-workout" && !showRestBanner;
 
-  if (!showRestBanner && !showSessionBanner) return null;
+  const showCardioBanner =
+    isCardioActive && pathname !== "/record-cardio" && !showRestBanner && !showSessionBanner;
+
+  if (!showRestBanner && !showSessionBanner && !showCardioBanner) return null;
 
   const handlePress = () => {
     if (showRestBanner) {
@@ -62,6 +71,8 @@ export default function GlobalWorkoutBanner() {
       if (pathname !== "/record-workout") {
         router.push("/record-workout");
       }
+    } else if (showCardioBanner) {
+      router.push("/record-cardio");
     } else {
       router.push("/record-workout");
     }
@@ -80,6 +91,18 @@ export default function GlobalWorkoutBanner() {
   let labelText = "LIVE SESSION";
   let titleText = sessionName || "Workout";
   let timeText = formatTime(elapsedSeconds);
+
+  if (showCardioBanner) {
+    const activityType = activeCardio?.activityType ?? "run";
+    const activityLabel = activityType === "run" ? "RUN" : activityType === "walk" ? "WALK" : "CYCLE";
+    const activityIcon = activityType === "run" ? "run-fast" : activityType === "walk" ? "walk" : "bike";
+    backgroundColor = activityType === "run" ? Colors.error : activityType === "walk" ? Colors.info : Colors.warning;
+    borderColor = activityType === "run" ? "#a62626" : activityType === "walk" ? "#1a6b99" : "#cc7a00";
+    iconName = activityIcon;
+    labelText = "LIVE " + activityLabel;
+    titleText = activityLabel + " IN PROGRESS";
+    timeText = formatTime(cardioElapsed);
+  }
 
   if (showRestBanner) {
     if (isRestFinished) {

@@ -400,9 +400,12 @@ export const WorkoutRepository = {
     const user = auth.currentUser;
     if (user) {
       try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const isEncrypted =
+          userDoc.data()?.privacySettings?.encryptWorkouts ?? false;
         await setDoc(
           doc(db, "users", user.uid, "cardio_sessions", session.id),
-          session,
+          { ...session, isEncrypted },
         );
       } catch (e) {
         console.error("Failed to upload cardio session", e);
@@ -429,9 +432,11 @@ export const WorkoutRepository = {
   async getRemoteCardioSessions(userId: string): Promise<CardioSession[]> {
     if (!auth.currentUser) return [];
     try {
-      const snapshot = await getDocs(
+      const q = query(
         collection(db, "users", userId, "cardio_sessions"),
+        where("isEncrypted", "==", false),
       );
+      const snapshot = await getDocs(q);
       const sessions: CardioSession[] = [];
       snapshot.forEach((doc) => sessions.push(doc.data() as CardioSession));
       return sessions.sort(
@@ -850,9 +855,10 @@ export const WorkoutRepository = {
         message: post.message,
         createdAt: post.createdAt, // You can use serverTimestamp() here if preferred
 
-        // Workout Summary & Session ID
-        workoutSummary: post.workoutSummary || null,
-        sessionId: post.sessionId || null,
+        // Session summaries & ID
+        workoutSummary: post.workoutSummary ?? null,
+        cardioSummary: post.cardioSummary ?? null,
+        sessionId: post.sessionId ?? null,
 
         // Initialize empty containers
         reactions: {}, // Map as requested

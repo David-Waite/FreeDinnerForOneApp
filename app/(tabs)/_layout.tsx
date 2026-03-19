@@ -4,9 +4,11 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import { StyleSheet, View, Platform, Text } from "react-native";
 import DuoTouch from "../../components/ui/DuoTouch";
+import { useWorkoutContext } from "../../context/WorkoutContext";
 
 export default function TabLayout() {
   const router = useRouter();
+  const { hideTabBar } = useWorkoutContext();
 
   return (
     <Tabs
@@ -15,7 +17,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors.tabIconDefault,
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: hideTabBar ? { display: "none" } : styles.tabBar,
         // Apply light haptic and squish to every tab
         tabBarButton: (props) => (
           <DuoTouch

@@ -29,10 +29,10 @@ function formatDuration(seconds: number): string {
 }
 
 function formatPace(secondsPerKm: number): string {
-  if (!secondsPerKm || !isFinite(secondsPerKm)) return "--:--";
+  if (!secondsPerKm || !isFinite(secondsPerKm)) return "--:--/km";
   const m = Math.floor(secondsPerKm / 60);
   const s = Math.round(secondsPerKm % 60);
-  return `${m}:${String(s).padStart(2, "0")} /km`;
+  return `${m}:${String(s).padStart(2, "0")}/km`;
 }
 
 export default function CardioHistoryCard({ session, onDeleted }: Props) {

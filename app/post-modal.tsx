@@ -19,11 +19,22 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { WorkoutRepository } from "../services/WorkoutRepository";
-import { WorkoutPost, WorkoutSession } from "../constants/types";
+import { WorkoutPost, WorkoutSession, CardioSession } from "../constants/types";
 import { useWorkoutContext } from "../context/WorkoutContext";
 import DuoTouch from "../components/ui/DuoTouch";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
+
+const CARDIO_CONFIG = {
+  run:   { label: "RUN",   icon: "run-fast" as const, color: Colors.error,   borderColor: "#a62626", bgColor: Colors.errorBackground },
+  walk:  { label: "WALK",  icon: "walk"     as const, color: Colors.info,    borderColor: "#1a6b99", bgColor: "#1a3a4d" },
+  cycle: { label: "CYCLE", icon: "bike"     as const, color: Colors.warning, borderColor: "#cc7a00", bgColor: "#4d3a00" },
+};
+
+type SessionPickerItem =
+  | { kind: "workout"; data: WorkoutSession }
+  | { kind: "cardio";  data: CardioSession }
+  | { kind: "header";  title: string };
 
 export default function PostModal() {
   const router = useRouter();
@@ -55,16 +66,16 @@ export default function PostModal() {
   const [message, setMessage] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(
-    null,
-  );
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSession | null>(null);
+  const [selectedCardio, setSelectedCardio] = useState<CardioSession | null>(null);
   const [todaysWorkouts, setTodaysWorkouts] = useState<WorkoutSession[]>([]);
+  const [todaysCardioSessions, setTodaysCardioSessions] = useState<CardioSession[]>([]);
   const [workoutPickerVisible, setWorkoutPickerVisible] = useState(false);
 
   useEffect(() => {
-    loadTodaysWorkouts();
+    loadTodaysSessions();
     refreshGameStatus();
-    checkUserStatus(); // <-- ADD THIS
+    checkUserStatus();
   }, []);
 
   const checkUserStatus = async () => {
@@ -77,18 +88,19 @@ export default function PostModal() {
     }
   };
 
-  const loadTodaysWorkouts = async () => {
-    const all = await WorkoutRepository.getWorkouts();
+  const loadTodaysSessions = async () => {
     const today = new Date().toDateString();
-    const filtered = all.filter(
-      (w) => new Date(w.date).toDateString() === today,
-    );
-    setTodaysWorkouts(filtered);
+    const [allWorkouts, allCardio] = await Promise.all([
+      WorkoutRepository.getWorkouts(),
+      WorkoutRepository.getCardioSessions(),
+    ]);
+    setTodaysWorkouts(allWorkouts.filter((w) => new Date(w.date).toDateString() === today));
+    setTodaysCardioSessions(allCardio.filter((c) => new Date(c.date).toDateString() === today));
   };
 
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images",
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.5,
@@ -130,13 +142,22 @@ export default function PostModal() {
         createdAt: new Date().toISOString(),
         comments: [],
         reactions: {},
-        sessionId: selectedWorkout?.id,
+        sessionId: selectedWorkout?.id ?? selectedCardio?.id,
         workoutSummary: selectedWorkout
           ? {
               id: selectedWorkout.id,
               name: selectedWorkout.name,
               duration: selectedWorkout.duration,
               exerciseCount: selectedWorkout.exercises.length,
+            }
+          : undefined,
+        cardioSummary: selectedCardio
+          ? {
+              id: selectedCardio.id,
+              activityType: selectedCardio.activityType,
+              duration: selectedCardio.duration,
+              distance: selectedCardio.distance,
+              pace: selectedCardio.pace,
             }
           : undefined,
       };
@@ -227,29 +248,39 @@ export default function PostModal() {
           {selectedWorkout && (
             <View style={styles.attachedWorkoutCard}>
               <View style={styles.workoutIcon}>
-                <MaterialCommunityIcons
-                  name="dumbbell"
-                  size={24}
-                  color={Colors.white}
-                />
+                <MaterialCommunityIcons name="dumbbell" size={24} color={Colors.white} />
               </View>
               <View style={styles.workoutInfo}>
-                <Text style={styles.workoutTitle}>
-                  {selectedWorkout.name.toUpperCase()}
-                </Text>
+                <Text style={styles.workoutTitle}>{selectedWorkout.name.toUpperCase()}</Text>
                 <Text style={styles.workoutSub}>
-                  {Math.floor(selectedWorkout.duration / 60)}m •{" "}
-                  {selectedWorkout.exercises.length} Exercises
+                  {Math.floor(selectedWorkout.duration / 60)}m • {selectedWorkout.exercises.length} Exercises
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setSelectedWorkout(null)}
-                style={styles.removeWorkoutBtn}
-              >
+              <TouchableOpacity onPress={() => setSelectedWorkout(null)} style={styles.removeWorkoutBtn}>
                 <Ionicons name="close-circle" size={24} color={Colors.white} />
               </TouchableOpacity>
             </View>
           )}
+
+          {selectedCardio && (() => {
+            const cfg = CARDIO_CONFIG[selectedCardio.activityType];
+            return (
+              <View style={[styles.attachedWorkoutCard, { backgroundColor: cfg.color, borderBottomColor: cfg.borderColor }]}>
+                <View style={styles.workoutIcon}>
+                  <MaterialCommunityIcons name={cfg.icon} size={24} color={Colors.white} />
+                </View>
+                <View style={styles.workoutInfo}>
+                  <Text style={styles.workoutTitle}>{cfg.label} SESSION</Text>
+                  <Text style={styles.workoutSub}>
+                    {selectedCardio.distance.toFixed(2)}km • {Math.floor(selectedCardio.duration / 60)}m
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedCardio(null)} style={styles.removeWorkoutBtn}>
+                  <Ionicons name="close-circle" size={24} color={Colors.white} />
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
 
           {/* IMAGE PREVIEW */}
           {image && (
@@ -306,12 +337,12 @@ export default function PostModal() {
             onPress={() => setWorkoutPickerVisible(true)}
           >
             <MaterialCommunityIcons
-              name="dumbbell"
+              name={selectedCardio ? CARDIO_CONFIG[selectedCardio.activityType].icon : "dumbbell"}
               size={24}
               color={Colors.primary}
             />
             <Text style={styles.addWorkoutFooterText}>
-              {selectedWorkout ? "CHANGE WORKOUT" : "ATTACH TODAY'S WORKOUT"}
+              {selectedWorkout || selectedCardio ? "CHANGE ACTIVITY" : "ATTACH TODAY'S ACTIVITY"}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -325,58 +356,79 @@ export default function PostModal() {
         <View style={styles.pickerWrapper}>
           <View style={styles.pickerContainer}>
             <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>SELECT WORKOUT</Text>
+              <Text style={styles.pickerTitle}>SELECT ACTIVITY</Text>
               <TouchableOpacity onPress={() => setWorkoutPickerVisible(false)}>
                 <Ionicons name="close" size={28} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
             <FlatList
-              data={todaysWorkouts}
-              keyExtractor={(item) => item.id}
+              data={((): SessionPickerItem[] => [
+                ...(todaysWorkouts.length > 0 ? [{ kind: "header" as const, title: "STRENGTH" }] : []),
+                ...todaysWorkouts.map((w) => ({ kind: "workout" as const, data: w })),
+                ...(todaysCardioSessions.length > 0 ? [{ kind: "header" as const, title: "CARDIO" }] : []),
+                ...todaysCardioSessions.map((c) => ({ kind: "cardio" as const, data: c })),
+              ])()}
+              keyExtractor={(item) =>
+                item.kind === "header" ? item.title : item.data.id
+              }
               contentContainerStyle={{ padding: 16 }}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <MaterialCommunityIcons
-                    name="dumbbell"
-                    size={60}
-                    color={Colors.border}
-                  />
-                  <Text style={styles.emptyListText}>
-                    No workouts recorded today!
-                  </Text>
+                  <MaterialCommunityIcons name="dumbbell" size={60} color={Colors.border} />
+                  <Text style={styles.emptyListText}>No activities recorded today!</Text>
                 </View>
               }
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.workoutItem}
-                  onPress={() => {
-                    setSelectedWorkout(item);
-                    setWorkoutPickerVisible(false);
-                  }}
-                >
-                  <View style={styles.workoutItemIcon}>
-                    <MaterialCommunityIcons
-                      name="lightning-bolt"
-                      size={20}
-                      color={Colors.gold}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.workoutItemTitle}>
-                      {item.name.toUpperCase()}
-                    </Text>
-                    <Text style={styles.workoutItemSub}>
-                      {Math.floor(item.duration / 60)}m •{" "}
-                      {item.exercises.length} Exercises
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name="add-circle"
-                    size={30}
-                    color={Colors.primary}
-                  />
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                if (item.kind === "header") {
+                  return <Text style={styles.pickerSectionHeader}>{item.title}</Text>;
+                }
+                if (item.kind === "workout") {
+                  return (
+                    <TouchableOpacity
+                      style={styles.workoutItem}
+                      onPress={() => {
+                        setSelectedWorkout(item.data);
+                        setSelectedCardio(null);
+                        setWorkoutPickerVisible(false);
+                      }}
+                    >
+                      <View style={styles.workoutItemIcon}>
+                        <MaterialCommunityIcons name="lightning-bolt" size={20} color={Colors.gold} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.workoutItemTitle}>{item.data.name.toUpperCase()}</Text>
+                        <Text style={styles.workoutItemSub}>
+                          {Math.floor(item.data.duration / 60)}m • {item.data.exercises.length} Exercises
+                        </Text>
+                      </View>
+                      <Ionicons name="add-circle" size={30} color={Colors.primary} />
+                    </TouchableOpacity>
+                  );
+                }
+                // cardio
+                const cfg = CARDIO_CONFIG[item.data.activityType];
+                return (
+                  <TouchableOpacity
+                    style={styles.workoutItem}
+                    onPress={() => {
+                      setSelectedCardio(item.data);
+                      setSelectedWorkout(null);
+                      setWorkoutPickerVisible(false);
+                    }}
+                  >
+                    <View style={[styles.workoutItemIcon, { backgroundColor: cfg.bgColor, borderColor: cfg.borderColor }]}>
+                      <MaterialCommunityIcons name={cfg.icon} size={20} color={cfg.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.workoutItemTitle}>{cfg.label} SESSION</Text>
+                      <Text style={styles.workoutItemSub}>
+                        {item.data.distance.toFixed(2)}km • {Math.floor(item.data.duration / 60)}m
+                      </Text>
+                    </View>
+                    <Ionicons name="add-circle" size={30} color={cfg.color} />
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
         </View>
@@ -562,6 +614,14 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: Colors.text,
     letterSpacing: 1,
+  },
+  pickerSectionHeader: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    marginTop: 4,
   },
   workoutItem: {
     flexDirection: "row",

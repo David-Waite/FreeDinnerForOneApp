@@ -32,7 +32,8 @@ import DuoTouch from "../../../components/ui/DuoTouch";
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isActive } = useWorkoutContext(); // Get Active State
+  const { isActive, isCardioActive, activeCardio } = useWorkoutContext(); // Get Active State
+  const anyActive = isActive || isCardioActive;
 
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [cardioHistory, setCardioHistory] = useState<CardioSession[]>([]);
@@ -167,7 +168,7 @@ export default function WorkoutHistoryScreen() {
 
   return (
     // FIX: Conditional Padding
-    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
+    <View style={[styles.container, { paddingTop: anyActive ? 0 : insets.top }]}>
       <FlatList
         data={dayItems}
         keyExtractor={(item) => item.id}
@@ -183,12 +184,12 @@ export default function WorkoutHistoryScreen() {
             ) : (
               <HistoryWorkoutCard
                 workout={item as WorkoutSession}
-                defaultExpanded={dayItems.length === 1}
                 allNotes={allNotes}
                 onViewNotes={(notes) => {
                   setViewingNotes(notes);
                   setNotesModalVisible(true);
                 }}
+                onDeleted={loadData}
               />
             )}
           </View>
@@ -211,25 +212,25 @@ export default function WorkoutHistoryScreen() {
       <DuoTouch
         style={[
           styles.fab,
-          isActive && {
+          anyActive && {
             backgroundColor: Colors.success,
             borderBottomColor: "#46a302",
           },
         ]}
-        hapticStyle={isActive ? "heavy" : "medium"} // "Heavy" slam for resuming, "Medium" for new
-        onPress={() =>
-          isActive
-            ? router.push("/record-workout")
-            : router.push("/activity-picker")
-        }
+        hapticStyle={anyActive ? "heavy" : "medium"}
+        onPress={() => {
+          if (isActive) router.push("/record-workout");
+          else if (isCardioActive) router.push({ pathname: "/record-cardio", params: { activityType: activeCardio?.activityType ?? "run" } });
+          else router.push("/activity-picker");
+        }}
       >
         <Ionicons
-          name={isActive ? "play" : "add"}
+          name={anyActive ? "play" : "add"}
           size={26}
           color={Colors.white}
         />
         <Text style={styles.fabText}>
-          {isActive ? "CONTINUE" : "NEW SESSION"}
+          {anyActive ? "CONTINUE" : "NEW SESSION"}
         </Text>
       </DuoTouch>
 

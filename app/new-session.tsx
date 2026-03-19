@@ -11,13 +11,13 @@ import {
 import { Image } from "expo-image";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WorkoutRepository } from "../../../services/WorkoutRepository";
-import { WorkoutTemplate, UserProfile } from "../../../constants/types";
-import Colors from "../../../constants/Colors";
+import { WorkoutRepository } from "../services/WorkoutRepository";
+import { WorkoutTemplate, UserProfile } from "../constants/types";
+import Colors from "../constants/Colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useWorkoutContext } from "../../../context/WorkoutContext";
-import { auth } from "../../../config/firebase";
-import DuoTouch from "../../../components/ui/DuoTouch";
+import { useWorkoutContext } from "../context/WorkoutContext";
+import { auth } from "../config/firebase";
+import DuoTouch from "../components/ui/DuoTouch";
 
 const CARDIO_ACTIVITIES = [
   {
@@ -40,7 +40,7 @@ const CARDIO_ACTIVITIES = [
   },
 ];
 
-export default function WorkoutDashboard() {
+export default function NewSessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isActive, isCardioActive } = useWorkoutContext();
@@ -217,7 +217,7 @@ export default function WorkoutDashboard() {
 
                 <DuoTouch
                   onPress={() => deleteTemplate(item.id)}
-                  hapticStyle="medium" // Or use "error" for a distinct double-pulse
+                  hapticStyle="medium"
                 >
                   <Ionicons
                     name="trash-outline"
@@ -261,7 +261,7 @@ export default function WorkoutDashboard() {
         {isMine ? (
           <DuoTouch
             style={styles.startBtn}
-            hapticStyle="heavy" // Heavy slam for starting the mission
+            hapticStyle="heavy"
             onPress={() =>
               router.push({
                 pathname: "/record-workout",
@@ -274,7 +274,7 @@ export default function WorkoutDashboard() {
         ) : (
           <DuoTouch
             style={styles.downloadBtn}
-            hapticStyle="medium" // Medium click for adding to library
+            hapticStyle="medium"
             onPress={() => stealRoutine(item)}
           >
             <Ionicons name="add" size={20} color={Colors.primary} />
@@ -337,8 +337,10 @@ export default function WorkoutDashboard() {
       </View>
 
       {/* User selector — greyed out in cardio mode */}
-      <View style={isCardioMode ? styles.disabledSection : undefined}
-            pointerEvents={isCardioMode ? "none" : "auto"}>
+      <View
+        style={isCardioMode ? styles.disabledSection : undefined}
+        pointerEvents={isCardioMode ? "none" : "auto"}
+      >
         {renderUserSelector()}
       </View>
 
@@ -427,7 +429,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 32, fontWeight: "900", color: Colors.text },
 
-  // User Selector Styles
   selectorContainer: { height: 60, marginBottom: 10 },
   selectorContent: { paddingHorizontal: 16, alignItems: "center", gap: 10 },
   userPill: {
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
   userPillSelected: {
     backgroundColor: Colors.background,
     borderColor: Colors.primary,
-    borderBottomWidth: 4, // Duo depth
+    borderBottomWidth: 4,
   },
   pillAvatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
   pillAvatarPlaceholder: {
@@ -460,7 +461,6 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 13, fontWeight: "800", color: Colors.textMuted },
   pillTextSelected: { color: Colors.text },
 
-  // Card Styles
   listContent: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 10 },
   card: {
     backgroundColor: Colors.surface,
@@ -511,7 +511,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-
   exercisePreview: {
     marginBottom: 20,
     backgroundColor: Colors.background,
@@ -536,7 +535,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
   },
-
   startBtn: {
     backgroundColor: Colors.primary,
     padding: 14,
@@ -569,7 +567,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.5,
   },
-
   loader: { marginTop: 50 },
   disabledSection: { opacity: 0.35 },
   newRoutineBtn: {

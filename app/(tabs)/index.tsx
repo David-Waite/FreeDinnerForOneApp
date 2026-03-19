@@ -24,7 +24,7 @@ import DuoTouch from "../../components/ui/DuoTouch";
 export default function FeedScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isActive } = useWorkoutContext(); // GET ACTIVE STATE
+  const { isActive, isCardioActive } = useWorkoutContext(); // GET ACTIVE STATE
 
   const [posts, setPosts] = useState<WorkoutPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +85,7 @@ export default function FeedScreen() {
 
   return (
     // FIX: If active, padding is 0 (Banner handles it). If not, use inset.
-    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
+    <View style={[styles.container, { paddingTop: (isActive || isCardioActive) ? 0 : insets.top }]}>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}

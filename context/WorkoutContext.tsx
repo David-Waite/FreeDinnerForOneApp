@@ -9,11 +9,13 @@ import React, {
 } from "react";
 import { AppState } from "react-native";
 import { useWorkoutSession } from "../hooks/useWorkoutSession";
+import { useCardioSession, ActiveCardioSession } from "../hooks/useCardioSession";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { auth } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { SyncService } from "../services/SyncService";
 import { NotificationService } from "../services/NotificationService";
+import { CardioActivityType } from "../constants/types";
 
 type GameStatus = {
   score: number;
@@ -57,6 +59,19 @@ type WorkoutContextType = ReturnType<typeof useWorkoutSession> & {
   minimizeRestTimer: () => void;
   maximizeRestTimer: () => void;
   addRestTime: (seconds: number) => void;
+
+  // Cardio Session
+  isCardioActive: boolean;
+  activeCardio: ActiveCardioSession | null;
+  startCardioSession: (activityType: CardioActivityType, gpsEnabled: boolean) => Promise<void>;
+  toggleCardioPause: () => void;
+  updateCardioDistance: (distance: number) => void;
+  endCardioSession: () => Promise<void>;
+  abandonCardioSession: () => Promise<void>;
+
+  // UI State
+  hideTabBar: boolean;
+  setHideTabBar: (v: boolean) => void;
 };
 
 const WorkoutContext = createContext<WorkoutContextType | null>(null);
@@ -64,6 +79,7 @@ const WorkoutContext = createContext<WorkoutContextType | null>(null);
 export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
   const workoutLogic = useWorkoutSession();
   const { markSetComplete } = workoutLogic;
+  const cardioLogic = useCardioSession();
 
   const [gameStatus, setGameStatus] = useState<GameStatus>(defaultGameStatus);
   const [isLoadingGameStatus, setIsLoadingGameStatus] = useState(true);
@@ -72,6 +88,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
   // --- REST TIMER STATE ---
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const [isRestTimerMinimized, setIsRestTimerMinimized] = useState(false);
+  const [hideTabBar, setHideTabBar] = useState(false);
 
   // Refs for stability
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -249,6 +266,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
 
   const contextValue: WorkoutContextType = {
     ...workoutLogic,
+    ...cardioLogic,
     gameStatus,
     isLoadingGameStatus,
     refreshGameStatus,
@@ -260,6 +278,8 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     minimizeRestTimer,
     maximizeRestTimer,
     addRestTime,
+    hideTabBar,
+    setHideTabBar,
   };
 
   return (

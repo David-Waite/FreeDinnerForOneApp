@@ -9,9 +9,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Image,
   Modal,
 } from "react-native";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -89,7 +89,7 @@ export default function SettingsScreen() {
       }
 
       result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: "images",
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
@@ -180,6 +180,8 @@ export default function SettingsScreen() {
                   <Image
                     source={{ uri: userData.photoURL }}
                     style={styles.avatarImage}
+                    cachePolicy="memory-disk"
+                    contentFit="cover"
                   />
                 ) : (
                   <View style={styles.placeholderAvatar}>

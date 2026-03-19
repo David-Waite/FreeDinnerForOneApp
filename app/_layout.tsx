@@ -53,9 +53,17 @@ function AppContent() {
         <Stack.Screen
           name="activity-picker"
           options={{
-            presentation: "modal",
+            presentation: "transparentModal",
             headerShown: false,
-            animation: "slide_from_bottom",
+            animation: "none",
+          }}
+        />
+
+        <Stack.Screen
+          name="new-session"
+          options={{
+            headerShown: false,
+            animation: "slide_from_right",
           }}
         />
 
@@ -115,7 +123,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (initializing) return;
 
-    const inAuthGroup = segments[0] === "(tabs)";
     const inPublicGroup = segments[0] === "login" || segments[0] === "signup";
 
     if (user && inPublicGroup) {

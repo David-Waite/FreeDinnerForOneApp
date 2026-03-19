@@ -12,7 +12,8 @@ export type ChartDataPoint = {
 
 export const useExerciseStats = (
   exerciseName: string | null = null,
-  userId?: string, // <--- NEW: Optional User ID for remote fetching
+  userId?: string,
+  skipCardio = false,
 ) => {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [weightHistory, setWeightHistory] = useState<BodyWeightLog[]>([]);
@@ -67,9 +68,11 @@ export const useExerciseStats = (
       const targetId = userId || auth.currentUser?.uid || "";
       const [postDates, cardioSessions] = await Promise.all([
         targetId ? WorkoutRepository.getPostDatesForUser(targetId) : Promise.resolve([]),
-        userId
-          ? WorkoutRepository.getRemoteCardioSessions(userId)
-          : WorkoutRepository.getCardioSessions(),
+        skipCardio
+          ? Promise.resolve([])
+          : userId
+            ? WorkoutRepository.getRemoteCardioSessions(userId)
+            : WorkoutRepository.getCardioSessions(),
       ]);
       const cardioDates = cardioSessions.map((s) => s.date.split("T")[0]);
 

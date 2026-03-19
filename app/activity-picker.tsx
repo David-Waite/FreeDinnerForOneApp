@@ -1,128 +1,221 @@
-import React, { useState } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Pressable,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from "react-native";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 import { useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
-import { CardioActivityType } from "../constants/types";
+
+const DISMISS_THRESHOLD = 80;
+const DISMISS_VELOCITY = 0.5;
 
 export default function ActivityPickerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [cardioExpanded, setCardioExpanded] = useState(false);
 
-  const handleCardio = (activityType: CardioActivityType) => {
-    router.replace({
-      pathname: "/record-cardio",
-      params: { activityType },
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+  const sheetAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(backdropAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.spring(sheetAnim, {
+        toValue: 0,
+        damping: 22,
+        stiffness: 220,
+        overshootClamping: true,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const dismiss = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => router.back());
+  }, []);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, { dy }) => dy > 5,
+      onPanResponderMove: (_, { dy }) => {
+        if (dy > 0) sheetAnim.setValue(dy);
+      },
+      onPanResponderRelease: (_, { dy, vy }) => {
+        if (dy > DISMISS_THRESHOLD || vy > DISMISS_VELOCITY) {
+          Animated.parallel([
+            Animated.timing(backdropAnim, {
+              toValue: 0,
+              duration: 180,
+              useNativeDriver: true,
+            }),
+            Animated.timing(sheetAnim, {
+              toValue: SCREEN_HEIGHT,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => router.back());
+        } else {
+          Animated.spring(sheetAnim, {
+            toValue: 0,
+            damping: 20,
+            stiffness: 200,
+            overshootClamping: true,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const navigate = useCallback((mode: "hypertrophy" | "cardio") => {
+    Animated.parallel([
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      router.replace({
+        pathname: "/new-session",
+        params: { mode },
+      });
     });
-  };
+  }, []);
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
-      {/* Handle bar */}
-      <View style={styles.handle} />
+    <View style={styles.overlay}>
+      {/* Fading dark backdrop */}
+      <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]} />
+      {/* Tap anywhere above the sheet to dismiss */}
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={dismiss} />
 
-      <Text style={styles.title}>WHAT ARE WE DOING?</Text>
-      <Text style={styles.subtitle}>Choose your session type</Text>
-
-      {/* Hypertrophy Card */}
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.85}
-        onPress={() => router.replace("/workouts/new")}
+      {/* Sheet slides on/off — no fade */}
+      <Animated.View
+        style={[
+          styles.sheet,
+          { paddingBottom: insets.bottom + 16, transform: [{ translateY: sheetAnim }] },
+        ]}
       >
-        <View style={[styles.iconCircle, { backgroundColor: Colors.successBackground }]}>
-          <MaterialCommunityIcons name="dumbbell" size={28} color={Colors.primary} />
+        {/* Draggable handle */}
+        <View style={styles.handleArea} {...panResponder.panHandlers}>
+          <View style={styles.handle} />
         </View>
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>HYPERTROPHY</Text>
-          <Text style={styles.cardSubtitle}>Weight training & strength</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-      </TouchableOpacity>
 
-      {/* Cardio Card */}
-      <TouchableOpacity
-        style={[styles.card, cardioExpanded && styles.cardActive]}
-        activeOpacity={0.85}
-        onPress={() => setCardioExpanded((v) => !v)}
-      >
-        <View style={[styles.iconCircle, { backgroundColor: Colors.errorBackground }]}>
-          <MaterialCommunityIcons name="run-fast" size={28} color={Colors.error} />
-        </View>
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>CARDIO</Text>
-          <Text style={styles.cardSubtitle}>Run, walk & more</Text>
-        </View>
-        <Ionicons
-          name={cardioExpanded ? "chevron-down" : "chevron-forward"}
-          size={20}
-          color={Colors.textMuted}
-        />
-      </TouchableOpacity>
+        <Text style={styles.title}>WHAT ARE WE DOING?</Text>
+        <Text style={styles.subtitle}>Choose your session type</Text>
 
-      {/* Cardio Sub-options */}
-      {cardioExpanded && (
-        <View style={styles.subOptions}>
-          <TouchableOpacity
-            style={styles.subCard}
-            activeOpacity={0.85}
-            onPress={() => handleCardio("run")}
-          >
-            <Text style={styles.subIcon}>🏃</Text>
-            <View style={styles.cardText}>
-              <Text style={styles.subTitle}>RUN</Text>
-              <Text style={styles.subSubtitle}>Outdoor or treadmill</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </TouchableOpacity>
+        {/* Hypertrophy */}
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.85}
+          onPress={() => navigate("hypertrophy")}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: Colors.successBackground }]}>
+            <MaterialCommunityIcons name="dumbbell" size={26} color={Colors.primary} />
+          </View>
+          <View style={styles.cardText}>
+            <Text style={styles.cardTitle}>HYPERTROPHY</Text>
+            <Text style={styles.cardSubtitle}>Weight training & strength</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.subCard}
-            activeOpacity={0.85}
-            onPress={() => handleCardio("walk")}
-          >
-            <Text style={styles.subIcon}>🚶</Text>
-            <View style={styles.cardText}>
-              <Text style={styles.subTitle}>WALK</Text>
-              <Text style={styles.subSubtitle}>Casual or power walk</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </TouchableOpacity>
+        {/* Cardio */}
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.85}
+          onPress={() => navigate("cardio")}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: Colors.errorBackground }]}>
+            <MaterialCommunityIcons name="run-fast" size={26} color={Colors.error} />
+          </View>
+          <View style={styles.cardText}>
+            <Text style={styles.cardTitle}>CARDIO</Text>
+            <Text style={styles.cardSubtitle}>Run, walk & more</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        </TouchableOpacity>
+
+        {/* Custom — greyed out / coming soon */}
+        <View style={[styles.card, styles.cardDisabled]}>
+          <View style={[styles.iconCircle, { backgroundColor: Colors.surface }]}>
+            <Ionicons name="construct-outline" size={24} color={Colors.border} />
+          </View>
+          <View style={styles.cardText}>
+            <Text style={[styles.cardTitle, styles.textDisabled]}>CUSTOM</Text>
+            <Text style={[styles.cardSubtitle, styles.textDisabled]}>Build your own session</Text>
+          </View>
+          <View style={styles.comingSoonBadge}>
+            <Text style={styles.comingSoonText}>SOON</Text>
+          </View>
         </View>
-      )}
-
-      <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
-        <Text style={styles.cancelText}>CANCEL</Text>
-      </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  sheet: {
     backgroundColor: Colors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.border,
+  },
+  handleArea: {
+    alignItems: "center",
+    paddingVertical: 14,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: Colors.border,
-    alignSelf: "center",
-    marginBottom: 24,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "900",
     color: Colors.text,
     letterSpacing: 1,
@@ -132,7 +225,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: Colors.textMuted,
-    marginBottom: 28,
+    marginBottom: 20,
   },
   card: {
     flexDirection: "row",
@@ -145,14 +238,13 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderBottomWidth: 5,
   },
-  cardActive: {
-    borderColor: Colors.error,
-    borderBottomColor: Colors.error,
+  cardDisabled: {
+    opacity: 0.45,
   },
   iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
@@ -170,46 +262,19 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
   },
-  subOptions: {
-    marginLeft: 16,
-    marginBottom: 4,
-    gap: 8,
-  },
-  subCard: {
-    flexDirection: "row",
-    alignItems: "center",
+  textDisabled: { color: Colors.textMuted },
+  comingSoonBadge: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 14,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderBottomWidth: 4,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  subIcon: { fontSize: 24, marginRight: 14 },
-  subTitle: {
-    fontSize: 14,
+  comingSoonText: {
+    fontSize: 9,
     fontWeight: "900",
-    color: Colors.text,
-    letterSpacing: 0.5,
-  },
-  subSubtitle: {
-    fontSize: 11,
-    fontWeight: "600",
     color: Colors.textMuted,
-    marginTop: 2,
-  },
-  cancelBtn: {
-    marginTop: "auto",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    alignItems: "center",
-  },
-  cancelText: {
-    color: Colors.textMuted,
-    fontWeight: "900",
-    fontSize: 14,
     letterSpacing: 1,
   },
 });

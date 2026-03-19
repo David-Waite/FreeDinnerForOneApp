@@ -94,7 +94,7 @@ const SkeletonCard = () => {
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const { isActive } = useWorkoutContext();
+  const { isActive, isCardioActive } = useWorkoutContext();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -312,7 +312,7 @@ export default function LeaderboardScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
+    <View style={[styles.container, { paddingTop: (isActive || isCardioActive) ? 0 : insets.top }]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSubtitle}>DINNER COMP</Text>

@@ -155,11 +155,7 @@ export default function PostCard({
             activeOpacity={0.8}
           >
             <View style={styles.workoutIcon}>
-              <MaterialCommunityIcons
-                name="dumbbell"
-                size={20}
-                color={Colors.white}
-              />
+              <MaterialCommunityIcons name="dumbbell" size={20} color={Colors.white} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.workoutTitle}>
@@ -174,6 +170,42 @@ export default function PostCard({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* CARDIO BANNER */}
+      {post.cardioSummary && (() => {
+        const activityType = post.cardioSummary.activityType ?? "run";
+        const iconName =
+          activityType === "run" ? "run-fast" :
+          activityType === "walk" ? "walk" : "bike";
+        const accentColor =
+          activityType === "run" ? Colors.error :
+          activityType === "walk" ? Colors.info : Colors.warning;
+        const label =
+          activityType === "run" ? "RUN" :
+          activityType === "walk" ? "WALK" : "CYCLE";
+        const paceMin = Math.floor(post.cardioSummary.pace / 60);
+        const paceSec = Math.round(post.cardioSummary.pace % 60);
+        const paceStr = post.cardioSummary.pace > 0
+          ? `${paceMin}:${String(paceSec).padStart(2, "0")}/km`
+          : null;
+        return (
+          <View style={styles.workoutContainer}>
+            <View style={[styles.workoutBanner, { borderColor: accentColor }]}>
+              <View style={[styles.workoutIcon, { backgroundColor: accentColor }]}>
+                <MaterialCommunityIcons name={iconName} size={20} color={Colors.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.workoutTitle}>{label} SESSION</Text>
+                <Text style={styles.workoutSub}>
+                  {post.cardioSummary.distance.toFixed(2)}km
+                  {" • "}{Math.floor(post.cardioSummary.duration / 60)}m
+                  {paceStr ? ` • ${paceStr}` : ""}
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* CONTENT & CAPTION */}
       <View style={styles.content}>

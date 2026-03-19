@@ -19,11 +19,12 @@ import { auth } from "../../config/firebase";
 import Colors from "../../constants/Colors";
 import { useWorkoutContext } from "../../context/WorkoutContext";
 import AnalyticsMiniCard from "../../components/stats/AnalyticsMiniCard";
+import { Image } from "expo-image";
 
 export default function StatsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isActive } = useWorkoutContext();
+  const { isActive, isCardioActive } = useWorkoutContext();
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -37,6 +38,9 @@ export default function StatsScreen() {
   const targetUserId =
     currentUser?.uid === auth.currentUser?.uid ? undefined : currentUser?.uid;
 
+  const showWorkouts = !targetUserId || !currentUser?.privacySettings?.encryptWorkouts;
+  const showWeight = !targetUserId || !currentUser?.privacySettings?.encryptBodyWeight;
+
   const {
     volumeData,
     oneRMData,
@@ -45,7 +49,7 @@ export default function StatsScreen() {
     consistencyData,
     bodyWeightData,
     refreshStats,
-  } = useExerciseStats(selectedExercise?.name || null, targetUserId);
+  } = useExerciseStats(selectedExercise?.name || null, targetUserId, !showWorkouts);
 
   useEffect(() => {
     loadInitData();
@@ -59,7 +63,7 @@ export default function StatsScreen() {
       WorkoutRepository.getFavoriteStatExercise(),
     ]);
 
-    setAllUsers(users);
+    setAllUsers(users.filter((u) => u.isCompActive !== false));
     setExerciseList(exercises);
     setFavoriteId(favId); // Set initial favorite state
 
@@ -83,10 +87,6 @@ export default function StatsScreen() {
     setFavoriteId(id);
     await WorkoutRepository.setFavoriteStatExercise(id);
   };
-  const isMe = !targetUserId;
-  const showWorkouts = isMe || !currentUser?.privacySettings?.encryptWorkouts;
-  const showWeight = isMe || !currentUser?.privacySettings?.encryptBodyWeight;
-
   const navigateToDetail = (mode: string) => {
     router.push({
       pathname: "/stats-detail",
@@ -99,7 +99,7 @@ export default function StatsScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: isActive ? 0 : insets.top }]}>
+    <View style={[styles.container, { paddingTop: (isActive || isCardioActive) ? 0 : insets.top }]}>
       {/* 1. HEADER */}
       <View style={styles.header}>
         <View>
@@ -111,9 +111,18 @@ export default function StatsScreen() {
           onPress={() => setUserModalVisible(true)}
         >
           <View style={styles.smallAvatar}>
-            <Text style={styles.smallAvatarText}>
-              {currentUser?.displayName?.[0]}
-            </Text>
+            {currentUser?.photoURL ? (
+              <Image
+                source={{ uri: currentUser.photoURL }}
+                style={{ width: 24, height: 24, borderRadius: 6 }}
+                cachePolicy="memory-disk"
+                contentFit="cover"
+              />
+            ) : (
+              <Text style={styles.smallAvatarText}>
+                {currentUser?.displayName?.[0]}
+              </Text>
+            )}
           </View>
           <Ionicons name="chevron-down" size={16} color={Colors.primary} />
         </TouchableOpacity>
@@ -265,9 +274,18 @@ export default function StatsScreen() {
                   }}
                 >
                   <View style={styles.pickerAvatar}>
-                    <Text style={styles.pickerAvatarText}>
-                      {item.displayName[0]}
-                    </Text>
+                    {item.photoURL ? (
+                      <Image
+                        source={{ uri: item.photoURL }}
+                        style={{ width: 40, height: 40, borderRadius: 10 }}
+                        cachePolicy="memory-disk"
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <Text style={styles.pickerAvatarText}>
+                        {item.displayName[0]}
+                      </Text>
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.pickerItemText}>

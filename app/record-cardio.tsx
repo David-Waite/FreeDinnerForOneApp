@@ -15,8 +15,11 @@ import * as Location from "expo-location";
 import Colors from "../constants/Colors";
 import { CardioActivityType, CardioSession } from "../constants/types";
 import { WorkoutRepository } from "../services/WorkoutRepository";
+import { useWorkoutContext } from "../context/WorkoutContext";
+import ActiveWorkoutControls from "../components/workout/ActiveWorkoutControls";
+import { useWorkoutTimer } from "../hooks/useWorkoutTimer";
 
-type Mode = "manual" | "live";
+type Mode = "live" | "manual";
 
 const ACTIVITY_CONFIG: Record<
   CardioActivityType,
@@ -36,60 +39,76 @@ function formatDuration(seconds: number): string {
 }
 
 function formatPace(secondsPerKm: number): string {
-  if (!secondsPerKm || !isFinite(secondsPerKm)) return "--:--";
+  if (!secondsPerKm || !isFinite(secondsPerKm)) return "--:--/km";
   const m = Math.floor(secondsPerKm / 60);
   const s = Math.round(secondsPerKm % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}/km`;
 }
 
 export default function RecordCardioScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activityType } = useLocalSearchParams<{ activityType: CardioActivityType }>();
-  const config = ACTIVITY_CONFIG[activityType ?? "run"];
+  const { activityType: paramActivityType } = useLocalSearchParams<{ activityType: CardioActivityType }>();
 
-  const [mode, setMode] = useState<Mode>("manual");
+  const {
+    isCardioActive,
+    activeCardio,
+    startCardioSession,
+    toggleCardioPause,
+    updateCardioDistance,
+    endCardioSession,
+    abandonCardioSession,
+  } = useWorkoutContext();
 
-  // --- Manual mode state ---
+  const activityType = (activeCardio?.activityType ?? paramActivityType ?? "run") as CardioActivityType;
+  const config = ACTIVITY_CONFIG[activityType];
+
+  // LIVE is the first tab
+  const [mode, setMode] = useState<Mode>("live");
+
+  // --- Manual state ---
   const [manualHours, setManualHours] = useState("0");
   const [manualMinutes, setManualMinutes] = useState("");
   const [manualSeconds, setManualSeconds] = useState("");
   const [manualDistance, setManualDistance] = useState("");
 
-  // --- Live mode state ---
-  const [isRunning, setIsRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
+  // --- Live state ---
   const [liveDistance, setLiveDistance] = useState(0);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const lastLocationRef = useRef<Location.LocationObject | null>(null);
+  const accumulatedDistanceRef = useRef(0);
 
-  // --- Request location permission on mount ---
+  // Live elapsed timer (for display in stat cards above the controls)
+  const liveElapsed = useWorkoutTimer(
+    isCardioActive ? (activeCardio?.startTime ?? null) : null,
+    activeCardio?.isPaused ?? false,
+  );
+
+  // --- Permission on mount ---
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      setHasLocationPermission(status === "granted");
+      const granted = status === "granted";
+      setHasLocationPermission(granted);
+      if (granted) setLocationEnabled(true);
     })();
-    return () => stopLive();
+    return () => stopLocationTracking();
   }, []);
 
-  // --- Live timer ---
+  // --- Restore distance on resume ---
   useEffect(() => {
-    if (isRunning) {
-      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (activeCardio && activeCardio.distance > 0) {
+      accumulatedDistanceRef.current = activeCardio.distance;
+      setLiveDistance(activeCardio.distance);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRunning]);
+  }, [activeCardio?.distance]);
 
+  // --- GPS management ---
   const startLocationTracking = useCallback(async () => {
-    if (!hasLocationPermission) return;
+    if (!hasLocationPermission || locationSubRef.current) return;
     locationSubRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, distanceInterval: 5 },
       (loc) => {
@@ -100,93 +119,130 @@ export default function RecordCardioScreen() {
             loc.coords.latitude,
             loc.coords.longitude,
           );
-          setLiveDistance((d) => d + dist);
+          accumulatedDistanceRef.current += dist;
+          const total = accumulatedDistanceRef.current;
+          setLiveDistance(total);
+          updateCardioDistance(total);
         }
         lastLocationRef.current = loc;
       },
     );
-  }, [hasLocationPermission]);
+  }, [hasLocationPermission, updateCardioDistance]);
 
-  const stopLive = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (locationSubRef.current) locationSubRef.current.remove();
+  const stopLocationTracking = useCallback(() => {
+    locationSubRef.current?.remove();
+    locationSubRef.current = null;
     lastLocationRef.current = null;
-  };
+  }, []);
 
-  const handleLiveToggle = async () => {
-    if (!isRunning) {
-      setIsRunning(true);
-      if (locationEnabled) await startLocationTracking();
-    } else {
-      setIsRunning(false);
-      stopLive();
+  useEffect(() => {
+    if (isCardioActive && activeCardio && !activeCardio.isPaused && activeCardio.gpsEnabled) {
+      startLocationTracking();
     }
+    if (activeCardio?.isPaused) stopLocationTracking();
+  }, [isCardioActive, activeCardio?.isPaused, hasLocationPermission]);
+
+  // --- Actions ---
+  const handleStartLive = async () => {
+    await startCardioSession(activityType, locationEnabled);
+    if (locationEnabled) await startLocationTracking();
   };
 
-  const handleResetLive = () => {
-    setIsRunning(false);
-    stopLive();
-    setElapsed(0);
-    setLiveDistance(0);
+  const handleMinimize = () => {
+    stopLocationTracking();
+    router.replace("/(tabs)");
+  };
+
+  const handleEndSession = () => {
+    const elapsed = activeCardio
+      ? Math.floor((Date.now() - activeCardio.startTime) / 1000)
+      : 0;
+    const distance = parseFloat(liveDistance.toFixed(2));
+    const pace = elapsed > 0 && distance > 0 ? elapsed / distance : 0;
+
+    Alert.alert("END SESSION", "Save this session?", [
+      { text: "CANCEL", style: "cancel" },
+      {
+        text: "SAVE",
+        onPress: async () => {
+          const session: CardioSession = {
+            id: Date.now().toString(),
+            sessionType: "cardio",
+            activityType,
+            date: new Date().toISOString(),
+            duration: elapsed,
+            distance,
+            pace: parseFloat(pace.toFixed(1)),
+            mode: "live",
+          };
+          await WorkoutRepository.saveCardioSession(session);
+          await endCardioSession();
+          stopLocationTracking();
+          router.replace("/(tabs)/workouts");
+        },
+      },
+    ]);
+  };
+
+  const handleAbandonSession = () => {
+    Alert.alert("ABANDON SESSION", "Discard this cardio session?", [
+      { text: "CANCEL", style: "cancel" },
+      {
+        text: "DISCARD",
+        style: "destructive",
+        onPress: async () => {
+          await abandonCardioSession();
+          stopLocationTracking();
+          router.back();
+        },
+      },
+    ]);
   };
 
   // --- Derived values ---
+  const livePace =
+    liveElapsed > 0 && liveDistance >= 0.05 ? liveElapsed / liveDistance : 0;
+
   const manualDurationSecs =
     parseInt(manualHours || "0") * 3600 +
     parseInt(manualMinutes || "0") * 60 +
     parseInt(manualSeconds || "0");
-
   const manualPace =
     manualDurationSecs > 0 && parseFloat(manualDistance) > 0
       ? manualDurationSecs / parseFloat(manualDistance)
       : 0;
 
-  const livePace =
-    elapsed > 0 && liveDistance > 0 ? elapsed / liveDistance : 0;
-
-  // --- Save ---
-  const handleSave = async () => {
-    const duration = mode === "manual" ? manualDurationSecs : elapsed;
-    const distance =
-      mode === "manual" ? parseFloat(manualDistance) || 0 : liveDistance;
-    const pace = mode === "manual" ? manualPace : livePace;
-
-    if (duration <= 0) {
-      Alert.alert("MISSING INFO", "Please enter a duration.");
-      return;
-    }
-    if (distance <= 0) {
-      Alert.alert("MISSING INFO", "Please enter a distance.");
-      return;
-    }
-
+  const handleSaveManual = async () => {
+    const distance = parseFloat(manualDistance) || 0;
+    if (manualDurationSecs <= 0) { Alert.alert("MISSING INFO", "Please enter a duration."); return; }
+    if (distance <= 0) { Alert.alert("MISSING INFO", "Please enter a distance."); return; }
     const session: CardioSession = {
       id: Date.now().toString(),
       sessionType: "cardio",
-      activityType: activityType ?? "run",
+      activityType,
       date: new Date().toISOString(),
-      duration,
+      duration: manualDurationSecs,
       distance: parseFloat(distance.toFixed(2)),
-      pace: parseFloat(pace.toFixed(1)),
-      mode,
+      pace: parseFloat(manualPace.toFixed(1)),
+      mode: "manual",
     };
-
     await WorkoutRepository.saveCardioSession(session);
     router.replace("/(tabs)/workouts");
   };
 
-  const canSave =
-    mode === "manual"
-      ? manualDurationSecs > 0 && parseFloat(manualDistance) > 0
-      : elapsed > 0;
+  const canSaveManual = manualDurationSecs > 0 && parseFloat(manualDistance) > 0;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={26} color={Colors.text} />
-        </TouchableOpacity>
+        {isCardioActive && mode === "live" ? (
+          <View style={{ width: 44 }} />
+        ) : (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={26} color={Colors.text} />
+          </TouchableOpacity>
+        )}
         <View style={styles.headerCenter}>
           <Text style={styles.headerIcon}>{config.icon}</Text>
           <Text style={styles.headerTitle}>{config.label}</Text>
@@ -194,19 +250,11 @@ export default function RecordCardioScreen() {
         <View style={{ width: 44 }} />
       </View>
 
-      {/* Mode toggle */}
+      {/* Mode toggle — locked to LIVE when session is active */}
       <View style={styles.modeToggle}>
         <TouchableOpacity
-          style={[styles.modeBtn, mode === "manual" && styles.modeBtnActive]}
-          onPress={() => { if (isRunning) return; setMode("manual"); }}
-        >
-          <Text style={[styles.modeBtnText, mode === "manual" && styles.modeBtnTextActive]}>
-            MANUAL
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
           style={[styles.modeBtn, mode === "live" && styles.modeBtnActive]}
-          onPress={() => { if (isRunning) return; setMode("live"); }}
+          onPress={() => { if (!isCardioActive) setMode("live"); }}
         >
           <Ionicons
             name="radio-button-on"
@@ -218,12 +266,107 @@ export default function RecordCardioScreen() {
             LIVE
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.modeBtn,
+            mode === "manual" && styles.modeBtnActive,
+            isCardioActive && styles.modeBtnDisabled,
+          ]}
+          onPress={() => { if (!isCardioActive) setMode("manual"); }}
+        >
+          <Text style={[
+            styles.modeBtnText,
+            mode === "manual" && styles.modeBtnTextActive,
+            isCardioActive && styles.modeBtnTextDisabled,
+          ]}>
+            MANUAL
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {mode === "manual" ? (
-          <>
-            {/* Duration input */}
+      {mode === "live" ? (
+        <>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Distance stat card */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>DISTANCE</Text>
+              <View style={styles.bigDisplayRow}>
+                <Text style={[styles.bigDisplayValue, { color: isCardioActive ? config.color : Colors.text }]}>
+                  {liveDistance.toFixed(2)}
+                </Text>
+                <Text style={styles.bigDisplayUnit}>KM</Text>
+              </View>
+            </View>
+
+            {/* Pace + Duration stat card */}
+            <View style={styles.statCard}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {isCardioActive ? formatPace(livePace) : "--:--"}
+                </Text>
+                <Text style={styles.statLabel}>PACE</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {isCardioActive ? formatDuration(liveElapsed) : "--:--"}
+                </Text>
+                <Text style={styles.statLabel}>DURATION</Text>
+              </View>
+            </View>
+
+            {/* GPS toggle — only shown pre-start */}
+            {!isCardioActive && (
+              <TouchableOpacity
+                style={[styles.gpsToggle, locationEnabled && styles.gpsToggleActive]}
+                onPress={() => { if (hasLocationPermission) setLocationEnabled((v) => !v); }}
+                disabled={!hasLocationPermission}
+              >
+                <Ionicons
+                  name={locationEnabled ? "location" : "location-outline"}
+                  size={18}
+                  color={locationEnabled ? Colors.primary : Colors.textMuted}
+                />
+                <Text style={[styles.gpsText, locationEnabled && { color: Colors.primary }]}>
+                  {hasLocationPermission
+                    ? locationEnabled ? "GPS TRACKING ON" : "GPS TRACKING OFF"
+                    : "GPS UNAVAILABLE"}
+                </Text>
+                {locationEnabled && <View style={styles.gpsDot} />}
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+
+          {/* START button — only shown pre-start */}
+          {!isCardioActive && (
+            <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: Colors.success }]}
+                onPress={handleStartLive}
+              >
+                <Ionicons name="play" size={20} color={Colors.white} />
+                <Text style={styles.saveBtnText}>START SESSION</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ActiveWorkoutControls — slides up when session is active */}
+          {isCardioActive && (
+            <ActiveWorkoutControls
+              elapsedSeconds={liveElapsed}
+              startTime={activeCardio?.startTime ?? null}
+              isPaused={activeCardio?.isPaused ?? false}
+              onPauseToggle={toggleCardioPause}
+              onFinish={handleEndSession}
+              onCancel={handleAbandonSession}
+              onMinimize={handleMinimize}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Duration inputs */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>DURATION</Text>
               <View style={styles.durationRow}>
@@ -288,7 +431,7 @@ export default function RecordCardioScreen() {
             <View style={styles.statCard}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{formatPace(manualPace)}</Text>
-                <Text style={styles.statLabel}>PACE / KM</Text>
+                <Text style={styles.statLabel}>PACE</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
@@ -298,99 +441,25 @@ export default function RecordCardioScreen() {
                 <Text style={styles.statLabel}>DURATION</Text>
               </View>
             </View>
-          </>
-        ) : (
-          <>
-            {/* Live timer display */}
-            <View style={styles.liveTimerCard}>
-              <Text style={[styles.liveTimer, { color: config.color }]}>
-                {formatDuration(elapsed)}
-              </Text>
-              <Text style={styles.liveTimerLabel}>
-                {isRunning ? "IN PROGRESS" : elapsed > 0 ? "PAUSED" : "READY"}
-              </Text>
-            </View>
+          </ScrollView>
 
-            {/* Live stats */}
-            <View style={styles.statCard}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {liveDistance > 0 ? liveDistance.toFixed(2) : "0.00"}
-                </Text>
-                <Text style={styles.statLabel}>KM</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{formatPace(livePace)}</Text>
-                <Text style={styles.statLabel}>PACE / KM</Text>
-              </View>
-            </View>
-
-            {/* GPS toggle */}
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
             <TouchableOpacity
-              style={[styles.gpsToggle, locationEnabled && styles.gpsToggleActive]}
-              onPress={() => {
-                if (isRunning) return;
-                setLocationEnabled((v) => !v);
-              }}
-              disabled={!hasLocationPermission}
+              style={[styles.saveBtn, !canSaveManual && styles.saveBtnDisabled]}
+              onPress={handleSaveManual}
+              disabled={!canSaveManual}
             >
-              <Ionicons
-                name={locationEnabled ? "location" : "location-outline"}
-                size={18}
-                color={locationEnabled ? Colors.primary : Colors.textMuted}
-              />
-              <Text style={[styles.gpsText, locationEnabled && { color: Colors.primary }]}>
-                {hasLocationPermission ? "GPS TRACKING" : "GPS UNAVAILABLE"}
-              </Text>
-              {locationEnabled && (
-                <View style={styles.gpsDot} />
-              )}
+              <MaterialCommunityIcons name="check-bold" size={20} color={Colors.white} />
+              <Text style={styles.saveBtnText}>SAVE SESSION</Text>
             </TouchableOpacity>
-
-            {/* Start / Stop */}
-            <TouchableOpacity
-              style={[styles.liveBtn, { backgroundColor: isRunning ? Colors.error : config.color }]}
-              onPress={handleLiveToggle}
-            >
-              <Ionicons
-                name={isRunning ? "stop" : "play"}
-                size={24}
-                color={Colors.white}
-              />
-              <Text style={styles.liveBtnText}>
-                {isRunning ? "STOP" : elapsed > 0 ? "RESUME" : "START"}
-              </Text>
-            </TouchableOpacity>
-
-            {elapsed > 0 && !isRunning && (
-              <TouchableOpacity style={styles.resetBtn} onPress={handleResetLive}>
-                <Text style={styles.resetBtnText}>RESET</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </ScrollView>
-
-      {/* Save button */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: config.color }, !canSave && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          disabled={!canSave}
-        >
-          <MaterialCommunityIcons name="check-bold" size={20} color={Colors.white} />
-          <Text style={styles.saveBtnText}>SAVE SESSION</Text>
-        </TouchableOpacity>
-      </View>
+          </View>
+        </>
+      )}
     </View>
   );
 }
 
-// Haversine formula — distance between two GPS coords in km
-function getDistanceKm(
-  lat1: number, lon1: number, lat2: number, lon2: number,
-): number {
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -404,6 +473,7 @@ function getDistanceKm(
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -417,6 +487,7 @@ const styles = StyleSheet.create({
   headerCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerIcon: { fontSize: 22 },
   headerTitle: { fontSize: 20, fontWeight: "900", color: Colors.text, letterSpacing: 1 },
+
   modeToggle: {
     flexDirection: "row",
     margin: 16,
@@ -435,9 +506,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modeBtnActive: { backgroundColor: Colors.primary },
+  modeBtnDisabled: { opacity: 0.4 },
   modeBtnText: { fontSize: 13, fontWeight: "900", color: Colors.textMuted, letterSpacing: 1 },
   modeBtnTextActive: { color: Colors.white },
+  modeBtnTextDisabled: { color: Colors.textMuted },
+
   content: { padding: 16, gap: 16, paddingBottom: 32 },
+
   section: {
     backgroundColor: Colors.surface,
     borderRadius: 20,
@@ -453,6 +528,43 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 16,
   },
+
+  // Live display
+  bigDisplayRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  bigDisplayValue: { fontSize: 56, fontWeight: "900", letterSpacing: -1 },
+  bigDisplayUnit: { fontSize: 20, fontWeight: "900", color: Colors.textMuted },
+
+  // Stat card (shared live + manual)
+  statCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 5,
+  },
+  statItem: { flex: 1, alignItems: "center" },
+  statValue: { fontSize: 28, fontWeight: "900", color: Colors.text },
+  statLabel: { fontSize: 10, fontWeight: "900", color: Colors.textMuted, letterSpacing: 1, marginTop: 4 },
+  statDivider: { width: 2, backgroundColor: Colors.border, marginHorizontal: 8 },
+
+  // GPS toggle
+  gpsToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  gpsToggleActive: { borderColor: Colors.primary },
+  gpsText: { flex: 1, fontSize: 13, fontWeight: "800", color: Colors.textMuted },
+  gpsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
+
+  // Manual inputs
   durationRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   durationField: { flex: 1, flexDirection: "row", alignItems: "baseline" },
   durationInput: {
@@ -484,77 +596,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   distanceUnit: { fontSize: 18, fontWeight: "900", color: Colors.textMuted },
-  statCard: {
-    flexDirection: "row",
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    borderBottomWidth: 5,
-  },
-  statItem: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 28, fontWeight: "900", color: Colors.text },
-  statLabel: { fontSize: 10, fontWeight: "900", color: Colors.textMuted, letterSpacing: 1, marginTop: 4 },
-  statDivider: { width: 2, backgroundColor: Colors.border, marginHorizontal: 8 },
-  liveTimerCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 24,
-    padding: 32,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: Colors.border,
-    borderBottomWidth: 6,
-  },
-  liveTimer: { fontSize: 64, fontWeight: "900", letterSpacing: 2 },
-  liveTimerLabel: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: Colors.textMuted,
-    letterSpacing: 2,
-    marginTop: 8,
-  },
-  gpsToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: Colors.border,
-  },
-  gpsToggleActive: { borderColor: Colors.primary },
-  gpsText: { flex: 1, fontSize: 13, fontWeight: "800", color: Colors.textMuted },
-  gpsDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
-  },
-  liveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    padding: 18,
-    borderRadius: 20,
-    borderBottomWidth: 5,
-    borderBottomColor: "rgba(0,0,0,0.2)",
-  },
-  liveBtnText: { fontSize: 18, fontWeight: "900", color: Colors.white, letterSpacing: 1 },
-  resetBtn: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    alignItems: "center",
-  },
-  resetBtnText: { fontSize: 13, fontWeight: "900", color: Colors.textMuted, letterSpacing: 1 },
-  footer: {
-    padding: 16,
-    borderTopWidth: 2,
-    borderTopColor: Colors.border,
-  },
+
+  footer: { padding: 16, borderTopWidth: 2, borderTopColor: Colors.border },
   saveBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -562,6 +605,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 18,
     borderRadius: 20,
+    backgroundColor: Colors.success,
     borderBottomWidth: 5,
     borderBottomColor: "rgba(0,0,0,0.2)",
   },
