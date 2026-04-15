@@ -18,9 +18,12 @@
       "bundleIdentifier": "com.david.freeDinnerForOneApp",
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
+      "backgroundModes": ["location"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CADisableMinimumFrameDurationOnPhone": true
+        "CADisableMinimumFrameDurationOnPhone": true,
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Thecomp uses your location to track workout distance while your screen is off.",
+        "NSLocationWhenInUseUsageDescription": "Thecomp uses your location to track your workout route and distance."
       }
     },
     "android": {
@@ -36,12 +39,20 @@
     },
     "plugins": [
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Thecomp to use your location to track workout distance even when the screen is off.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
             "useFrameworks": "static",
             "buildReactNativeFromSource": true,
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "16.1"
           }
         }
       ],
@@ -52,6 +63,7 @@
           "color": "#ffffff"
         }
       ],
+      "voltra",
       "./plugins/withIosRelaxedIncludes.js",
       "expo-router",
       "expo-secure-store",
