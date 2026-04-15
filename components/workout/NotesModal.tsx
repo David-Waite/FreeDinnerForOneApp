@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,15 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../../constants/Colors";
 import { ExerciseNote } from "../../constants/types";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 type Props = {
   visible: boolean;
@@ -36,6 +40,28 @@ export default function NotesModal({
 }: Props) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState("");
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(SCREEN_HEIGHT);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        damping: 22,
+        stiffness: 220,
+        overshootClamping: true,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  const dismiss = useCallback(() => {
+    Animated.timing(slideAnim, {
+      toValue: SCREEN_HEIGHT,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => onClose());
+  }, [onClose]);
 
   const handleSave = () => {
     if (text.trim()) {
@@ -46,128 +72,153 @@ export default function NotesModal({
 
   return (
     <Modal
-      animationType="slide"
-      presentationStyle="pageSheet"
+      animationType="none"
+      presentationStyle="overFullScreen"
       visible={visible}
-      onRequestClose={onClose}
+      onRequestClose={dismiss}
+      transparent
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        // Increase this value to account for the header + status bar
-        keyboardVerticalOffset={Platform.OS === "ios" ? 110 : 0}
-      >
-        <View style={styles.container}>
-          {/* 3D DUO HEADER */}
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.subtitle}>EXERCISE INTEL</Text>
-              <Text style={styles.title}>{exerciseName.toUpperCase()}</Text>
+      {/* Transparent overlay — underlying record-workout screen shows through */}
+      <View style={styles.overlay}>
+        <Animated.View
+          style={[
+            styles.sheet,
+            { top: insets.top + 8, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 110 : 0}
+          >
+            {/* HEADER */}
+            <View style={styles.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subtitle}>EXERCISE INTEL</Text>
+                <Text style={styles.title}>{exerciseName.toUpperCase()}</Text>
+              </View>
+              <TouchableOpacity onPress={dismiss} style={styles.closeCircle}>
+                <Ionicons name="close" size={24} color={Colors.textMuted} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeCircle}>
-              <Ionicons name="close" size={24} color={Colors.textMuted} />
-            </TouchableOpacity>
-          </View>
 
-          <FlatList
-            data={notes}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            keyboardDismissMode="interactive" // iOS only: follows the finger
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <View
-                style={[styles.noteItem, item.isPinned && styles.pinnedNote]}
-              >
-                <View style={styles.noteContent}>
-                  <Text style={styles.noteText}>{item.text}</Text>
-                  <View style={styles.dateRow}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={10}
-                      color={Colors.placeholder}
-                    />
-                    <Text style={styles.noteDate}>
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </Text>
+            <FlatList
+              data={notes}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View
+                  style={[styles.noteItem, item.isPinned && styles.pinnedNote]}
+                >
+                  <View style={styles.noteContent}>
+                    <Text style={styles.noteText}>{item.text}</Text>
+                    <View style={styles.dateRow}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={10}
+                        color={Colors.placeholder}
+                      />
+                      <Text style={styles.noteDate}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.actions}>
+                    <TouchableOpacity
+                      onPress={() => onTogglePin(item.id)}
+                      style={styles.actionBtn}
+                    >
+                      <Ionicons
+                        name={item.isPinned ? "pin" : "pin-outline"}
+                        size={18}
+                        color={
+                          item.isPinned ? Colors.gold : Colors.placeholder
+                        }
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => onDeleteNote(item.id)}
+                      style={styles.actionBtn}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color={Colors.error}
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    onPress={() => onTogglePin(item.id)}
-                    style={styles.actionBtn}
-                  >
-                    <Ionicons
-                      name={item.isPinned ? "pin" : "pin-outline"}
-                      size={18}
-                      color={item.isPinned ? Colors.gold : Colors.placeholder}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => onDeleteNote(item.id)}
-                    style={styles.actionBtn}
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={18}
-                      color={Colors.error}
-                    />
-                  </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <MaterialCommunityIcons
+                    name="notebook-edit"
+                    size={60}
+                    color={Colors.border}
+                  />
+                  <Text style={styles.emptyText}>NO NOTES YET</Text>
+                  <Text style={styles.emptySubText}>
+                    Add tips or cues for your future self!
+                  </Text>
                 </View>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons
-                  name="notebook-edit"
-                  size={60}
-                  color={Colors.border}
-                />
-                <Text style={styles.emptyText}>NO NOTES YET</Text>
-                <Text style={styles.emptySubText}>
-                  Add tips or cues for your future self!
-                </Text>
-              </View>
-            }
-          />
+              }
+            />
 
-          {/* CHUNKY INPUT AREA */}
-          <View
-            style={[
-              styles.inputContainer,
-              { paddingBottom: Math.max(insets.bottom, 20) },
-            ]}
-          >
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Type a cue..."
-                placeholderTextColor={Colors.placeholder}
-                value={text}
-                onChangeText={setText}
-                multiline
-              />
-            </View>
-            <TouchableOpacity
+            {/* INPUT AREA */}
+            <View
               style={[
-                styles.sendButton,
-                !text.trim() && styles.sendButtonDisabled,
+                styles.inputContainer,
+                { paddingBottom: Math.max(insets.bottom, 20) },
               ]}
-              disabled={!text.trim()}
-              onPress={handleSave}
             >
-              <Ionicons name="arrow-up" size={24} color={Colors.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Type a cue..."
+                  placeholderTextColor={Colors.placeholder}
+                  value={text}
+                  onChangeText={setText}
+                  multiline
+                />
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  !text.trim() && styles.sendButtonDisabled,
+                ]}
+                disabled={!text.trim()}
+                onPress={handleSave}
+              >
+                <Ionicons name="arrow-up" size={24} color={Colors.white} />
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  overlay: {
+    flex: 1,
+  },
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.background,
+    borderTopWidth: 3,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
   header: {
     backgroundColor: Colors.surface,
     padding: 20,
@@ -175,6 +226,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   title: {
     fontSize: 18,
@@ -207,7 +260,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 12,
-    // Ensure the container itself has a solid base
     minHeight: 80,
   },
   listContent: { padding: 16 },
@@ -220,7 +272,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     borderWidth: 2,
     borderColor: Colors.border,
-    borderBottomWidth: 4, // Duo depth
+    borderBottomWidth: 4,
   },
   pinnedNote: {
     borderColor: Colors.gold,
@@ -275,7 +327,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
   },
-
   inputWrapper: {
     flex: 1,
     backgroundColor: Colors.background,

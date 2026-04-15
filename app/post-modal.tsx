@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   View,
   Text,
@@ -11,7 +12,7 @@ import {
   ScrollView,
   Modal,
   FlatList,
-  InteractionManager, // <--- 1. IMPORT THIS
+  InteractionManager,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -38,7 +39,7 @@ type SessionPickerItem =
 
 export default function PostModal() {
   const router = useRouter();
-
+  const insets = useSafeAreaInsets();
   // 1. Get Game Status from Context
   const { gameStatus, refreshGameStatus } = useWorkoutContext();
   const [isDeactivated, setIsDeactivated] = useState(false);
@@ -170,8 +171,6 @@ export default function PostModal() {
       router.back();
 
       // 3. DEFER THE HEAVY GLOBAL UPDATE
-      // InteractionManager waits until the close animation is fully complete
-      // before firing the global context update.
       InteractionManager.runAfterInteractions(() => {
         refreshGameStatus();
       });
@@ -182,7 +181,7 @@ export default function PostModal() {
   };
 
   return (
-    <View style={styles.modalWrapper}>
+    <View style={[styles.modalWrapper, { marginTop: insets.top + 8 }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
@@ -438,16 +437,18 @@ export default function PostModal() {
 }
 
 const styles = StyleSheet.create({
-  modalWrapper: { flex: 1, backgroundColor: Colors.background, paddingTop: 10 },
-  container: {
+  modalWrapper: {
     flex: 1,
     backgroundColor: Colors.background,
     borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderRightWidth: 3,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+  },
+  container: {
+    flex: 1,
   },
   header: {
     flexDirection: "row",
@@ -457,8 +458,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: 21,
-    borderTopRightRadius: 21,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   headerTitle: {
     fontSize: 16,

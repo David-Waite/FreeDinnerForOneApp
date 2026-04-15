@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
 import Colors from "../constants/Colors";
@@ -24,6 +24,7 @@ import DuoTouch from "../components/ui/DuoTouch";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
@@ -154,7 +155,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <View style={[styles.safeArea, { marginTop: insets.top + 8 }]}>
       <View style={styles.customHeader}>
         <TouchableOpacity
           style={styles.backButton}
@@ -304,12 +305,21 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderTopWidth: 3,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
   container: { flex: 1, padding: 16 },
   loadingContainer: {
     flex: 1,
@@ -326,6 +336,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   headerTitle: {
     fontSize: 16,

@@ -36,7 +36,11 @@ function AppContent() {
 
         <Stack.Screen
           name="post-modal"
-          options={{ presentation: "modal", headerShown: false }}
+          options={{
+            presentation: "transparentModal",
+            headerShown: false,
+            animation: "slide_from_bottom",
+          }}
         />
 
         <Stack.Screen
@@ -80,7 +84,11 @@ function AppContent() {
 
         <Stack.Screen
           name="settings"
-          options={{ presentation: "modal", headerShown: false }}
+          options={{
+            presentation: "transparentModal",
+            headerShown: false,
+            animation: "slide_from_bottom",
+          }}
         />
 
         <Stack.Screen name="login" options={{ headerShown: false }} />

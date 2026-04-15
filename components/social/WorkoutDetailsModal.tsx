@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WorkoutRepository } from "../../services/WorkoutRepository";
 import { WorkoutSession } from "../../constants/types";
 import Colors from "../../constants/Colors";
@@ -26,6 +27,7 @@ export default function WorkoutDetailsModal({
   authorId,
   onClose,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const [workout, setWorkout] = useState<WorkoutSession | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,10 +61,10 @@ export default function WorkoutDetailsModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="overFullScreen"
       onRequestClose={onClose}
     >
-      <View style={styles.modalWrapper}>
+      <View style={[styles.modalWrapper, { marginTop: insets.top + 8 }]}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
@@ -191,18 +193,15 @@ const styles = StyleSheet.create({
   modalWrapper: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingTop: 10,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
     borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderRightWidth: 3,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
     borderColor: Colors.border,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    // REMOVED overflow: 'hidden'
+  },
+  container: {
+    flex: 1,
   },
   header: {
     padding: 16,
@@ -212,9 +211,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 3,
     borderBottomColor: Colors.border,
-    // ADDED manual radii (24px - 3px border = 21px)
-    borderTopLeftRadius: 21,
-    borderTopRightRadius: 21,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   headerTitle: {
     fontSize: 16,
