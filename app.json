@@ -52,7 +52,7 @@
           "ios": {
             "useFrameworks": "static",
             "buildReactNativeFromSource": true,
-            "deploymentTarget": "16.1"
+            "deploymentTarget": "16.2"
           }
         }
       ],
