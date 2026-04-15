@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Voltra } from "voltra";
-import { useLiveActivity } from "voltra/client";
+import { useLiveActivity, endAllLiveActivities } from "voltra/client";
 import { CardioActivityType } from "../../constants/types";
 
 type Props = {
@@ -216,6 +216,13 @@ export function WorkoutLiveActivity({
       deepLinkUrl: "/record-cardio",
     },
   );
+
+  // End the Live Activity when the session ends or is abandoned (component unmounts).
+  useEffect(() => {
+    return () => {
+      endAllLiveActivities();
+    };
+  }, []);
 
   // This component renders nothing visible — it just manages the Live Activity lifecycle.
   return null;
