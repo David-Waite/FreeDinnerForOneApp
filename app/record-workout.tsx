@@ -11,7 +11,6 @@ import {
   StyleSheet,
   ScrollView,
   LayoutAnimation,
-  Alert,
   Platform,
   UIManager,
   InteractionManager,
@@ -25,6 +24,7 @@ import {
   useFocusEffect,
 } from "expo-router";
 import Colors from "../constants/Colors";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { ExerciseNote, WorkoutSet } from "../constants/types";
 import { useWorkoutContext } from "../context/WorkoutContext";
@@ -85,6 +85,7 @@ export default function RecordWorkoutScreen() {
 
   const [isExiting, setIsExiting] = useState(false);
   const isExitingRef = useRef(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   const [highlightedSets, setHighlightedSets] = useState<Set<string>>(
     new Set(),
@@ -149,7 +150,7 @@ export default function RecordWorkoutScreen() {
 
   const handleConfirmAddExercise = async () => {
     if (!newExName.trim()) {
-      Alert.alert("MISSING NAME", "Please choose an exercise.");
+      setAlertConfig({ title: "MISSING NAME", message: "Please choose an exercise." });
       return;
     }
 
@@ -261,11 +262,10 @@ export default function RecordWorkoutScreen() {
     const removeListener = navigation.addListener("beforeRemove", (e) => {
       if (isExitingRef.current) return;
       e.preventDefault();
-      Alert.alert(
-        "MISSION IN PROGRESS",
-        "Don't quit now! Use the End Workout button to save your gains.",
-        [{ text: "RESUME" }],
-      );
+      setAlertConfig({
+        title: "MISSION IN PROGRESS",
+        message: "Don't quit now! Use the End Workout button to save your gains.",
+      });
     });
     return removeListener;
   }, [navigation]);
@@ -424,24 +424,24 @@ export default function RecordWorkoutScreen() {
 
     if (invalidIds.size > 0) {
       setHighlightedSets(invalidIds);
-      Alert.alert(
-        "INCOMPLETE REPS",
-        "Some sets are missing reps. Finish the mission anyway?",
-        [
+      setAlertConfig({
+        title: "INCOMPLETE REPS",
+        message: "Some sets are missing reps. Finish the mission anyway?",
+        buttons: [
           { text: "STAY", style: "cancel" },
           { text: "FINISH", style: "default", onPress: performSave },
         ],
-      );
+      });
     } else {
       performSave();
     }
   }, [exercises, performSave]);
 
   const handleCancel = useCallback(() => {
-    Alert.alert(
-      "ABANDON MISSION?",
-      "All progress in this session will be lost forever!",
-      [
+    setAlertConfig({
+      title: "ABANDON MISSION?",
+      message: "All progress in this session will be lost forever!",
+      buttons: [
         { text: "RESUME", style: "cancel" },
         {
           text: "ABANDON",
@@ -461,7 +461,7 @@ export default function RecordWorkoutScreen() {
           },
         },
       ],
-    );
+    });
   }, [cancelSession, router, cancelRestTimer]);
 
   const handleMinimize = useCallback(() => {
@@ -678,6 +678,14 @@ export default function RecordWorkoutScreen() {
           }
         />
       )}
+
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

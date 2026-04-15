@@ -5,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { useRouter, Link } from "expo-router";
@@ -21,20 +21,20 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (!email || !password)
-      return Alert.alert(
-        "MISSING INFO",
-        "Please enter your email and password to continue.",
-      );
+    if (!email || !password) {
+      setAlertConfig({ title: "MISSING INFO", message: "Please enter your email and password to continue." });
+      return;
+    }
 
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      Alert.alert("LOGIN FAILED", error.message);
+      setAlertConfig({ title: "LOGIN FAILED", message: error.message });
     } finally {
       setLoading(false);
     }
@@ -102,6 +102,12 @@ export default function LoginScreen() {
           </Link>
         </View>
       </View>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        onClose={() => setAlertConfig(null)}
+      />
     </KeyboardAvoidingView>
   );
 }

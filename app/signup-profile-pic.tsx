@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Colors from "../constants/Colors";
@@ -18,6 +18,7 @@ export default function SignupProfilePicScreen() {
   const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -32,10 +33,7 @@ export default function SignupProfilePicScreen() {
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
-        "PERMISSION REQUIRED",
-        "Camera access is needed to capture your gains!",
-      );
+      setAlertConfig({ title: "PERMISSION REQUIRED", message: "Camera access is needed to capture your gains!" });
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -58,7 +56,7 @@ export default function SignupProfilePicScreen() {
       router.replace("/(tabs)");
     } catch (error: any) {
       console.error(error);
-      Alert.alert("UPLOAD FAILED", error.message);
+      setAlertConfig({ title: "UPLOAD FAILED", message: error.message });
     } finally {
       setUploading(false);
     }
@@ -124,6 +122,12 @@ export default function SignupProfilePicScreen() {
           <Text style={styles.skipText}>SKIP FOR NOW</Text>
         </TouchableOpacity>
       </View>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

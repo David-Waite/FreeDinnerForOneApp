@@ -61,7 +61,7 @@ export default function WorkoutDetailsModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="overFullScreen"
+      transparent
       onRequestClose={onClose}
     >
       <View style={[styles.modalWrapper, { marginTop: insets.top + 8 }]}>

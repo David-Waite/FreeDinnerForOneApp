@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import AppAlert, { AppAlertButton } from "../ui/AppAlert";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import { CardioSession, CardioActivityType } from "../../constants/types";
@@ -37,19 +38,24 @@ function formatPace(secondsPerKm: number): string {
 
 export default function CardioHistoryCard({ session, onDeleted }: Props) {
   const config = ACTIVITY_CONFIG[session.activityType];
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   const handleDelete = () => {
-    Alert.alert("DELETE SESSION", "Remove this cardio session?", [
-      { text: "CANCEL", style: "cancel" },
-      {
-        text: "DELETE",
-        style: "destructive",
-        onPress: async () => {
-          await WorkoutRepository.deleteCardioSession(session.id);
-          onDeleted();
+    setAlertConfig({
+      title: "DELETE SESSION",
+      message: "Remove this cardio session?",
+      buttons: [
+        { text: "CANCEL", style: "cancel" },
+        {
+          text: "DELETE",
+          style: "destructive",
+          onPress: async () => {
+            await WorkoutRepository.deleteCardioSession(session.id);
+            onDeleted();
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   return (
@@ -87,6 +93,13 @@ export default function CardioHistoryCard({ session, onDeleted }: Props) {
           <Text style={styles.statLabel}>PACE</Text>
         </View>
       </View>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

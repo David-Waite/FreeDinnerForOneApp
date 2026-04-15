@@ -1,11 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../ui/AppAlert";
 import {
   WorkoutSession,
   NotesStorage,
@@ -28,6 +28,8 @@ export default function HistoryWorkoutCard({
   onViewNotes,
   onDeleted,
 }: Props) {
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
+
   const sessionNotes = useMemo(() => {
     const relevantNotes: ExerciseNote[] = [];
     workout.exercises.forEach((ex) => {
@@ -45,17 +47,21 @@ export default function HistoryWorkoutCard({
   }, [workout, allNotes]);
 
   const handleDelete = () => {
-    Alert.alert("DELETE SESSION", "Remove this workout session?", [
-      { text: "CANCEL", style: "cancel" },
-      {
-        text: "DELETE",
-        style: "destructive",
-        onPress: async () => {
-          await WorkoutRepository.deleteWorkout(workout.id);
-          onDeleted();
+    setAlertConfig({
+      title: "DELETE SESSION",
+      message: "Remove this workout session?",
+      buttons: [
+        { text: "CANCEL", style: "cancel" },
+        {
+          text: "DELETE",
+          style: "destructive",
+          onPress: async () => {
+            await WorkoutRepository.deleteWorkout(workout.id);
+            onDeleted();
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   return (
@@ -126,6 +132,13 @@ export default function HistoryWorkoutCard({
           );
         })}
       </View>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

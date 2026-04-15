@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,6 +13,7 @@ import {
   FlatList,
   InteractionManager,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -72,6 +72,7 @@ export default function PostModal() {
   const [todaysWorkouts, setTodaysWorkouts] = useState<WorkoutSession[]>([]);
   const [todaysCardioSessions, setTodaysCardioSessions] = useState<CardioSession[]>([]);
   const [workoutPickerVisible, setWorkoutPickerVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   useEffect(() => {
     loadTodaysSessions();
@@ -120,15 +121,12 @@ export default function PostModal() {
 
   const handlePost = async () => {
     if (!canPost) {
-      Alert.alert("Limit Reached", statusMsg);
+      setAlertConfig({ title: "LIMIT REACHED", message: statusMsg });
       return;
     }
 
     if (!image) {
-      Alert.alert(
-        "MISSING PHOTO",
-        "Every legend needs a photo to prove the grind!",
-      );
+      setAlertConfig({ title: "MISSING PHOTO", message: "Every legend needs a photo to prove the grind!" });
       return;
     }
 
@@ -175,7 +173,7 @@ export default function PostModal() {
         refreshGameStatus();
       });
     } catch (error: any) {
-      Alert.alert("POST FAILED", error.message);
+      setAlertConfig({ title: "POST FAILED", message: error.message });
       setUploading(false); // Only stop loading if we failed and stayed on screen
     }
   };
@@ -432,6 +430,12 @@ export default function PostModal() {
           </View>
         </View>
       </Modal>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

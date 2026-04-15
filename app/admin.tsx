@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -25,6 +24,7 @@ import Colors from "../constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { UserProfile } from "../constants/types";
 import { WorkoutRepository } from "../services/WorkoutRepository";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 
 export default function AdminScreen() {
   const router = useRouter();
@@ -35,6 +35,7 @@ export default function AdminScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
   const [userPostedDates, setUserPostedDates] = useState<string[]>([]);
 
   // Form State
@@ -118,10 +119,7 @@ export default function AdminScreen() {
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        "PERMISSION DENIED",
-        "We need camera access to take a photo!",
-      );
+      setAlertConfig({ title: "PERMISSION DENIED", message: "We need camera access to take a photo!" });
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -134,16 +132,13 @@ export default function AdminScreen() {
 
   const handleCreateBacklogPost = async () => {
     if (!selectedUser || !postImage || !postMessage || !postDate) {
-      Alert.alert(
-        "MISSING INFO",
-        "Please fill out all fields and select an image.",
-      );
+      setAlertConfig({ title: "MISSING INFO", message: "Please fill out all fields and select an image." });
       return;
     }
 
     // Double check they didn't manually type/select a disabled date
     if (userPostedDates.includes(postDate)) {
-      Alert.alert("INVALID DATE", "This user already has a post on this date.");
+      setAlertConfig({ title: "INVALID DATE", message: "This user already has a post on this date." });
       return;
     }
 
@@ -155,13 +150,10 @@ export default function AdminScreen() {
         postMessage,
         postImage,
       );
-      Alert.alert(
-        "SUCCESS",
-        `Backlog post created for ${selectedUser.displayName}!`,
-      );
+      setAlertConfig({ title: "SUCCESS", message: `Backlog post created for ${selectedUser.displayName}!` });
       setModalVisible(false);
     } catch (error: any) {
-      Alert.alert("ERROR", error.message);
+      setAlertConfig({ title: "ERROR", message: error.message });
     } finally {
       setUploading(false);
     }
@@ -300,10 +292,7 @@ export default function AdminScreen() {
                   onDayPress={(day: any) => {
                     // Prevent selecting disabled days manually
                     if (userPostedDates.includes(day.dateString)) {
-                      Alert.alert(
-                        "UNAVAILABLE",
-                        "User already posted on this date.",
-                      );
+                      setAlertConfig({ title: "UNAVAILABLE", message: "User already posted on this date." });
                       return;
                     }
                     setPostDate(day.dateString);

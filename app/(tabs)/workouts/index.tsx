@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../../../components/ui/AppAlert";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Calendar, DateData } from "react-native-calendars";
@@ -46,6 +46,7 @@ export default function WorkoutHistoryScreen() {
   const [viewingNotes, setViewingNotes] = useState<ExerciseNote[]>([]);
   const [weightModalVisible, setWeightModalVisible] = useState(false);
   const [currentWeight, setCurrentWeight] = useState("");
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   const rowRefs = useRef<{ [key: string]: Swipeable | null }>({});
 
@@ -73,13 +74,15 @@ export default function WorkoutHistoryScreen() {
   const handleSaveWeight = async () => {
     if (!currentWeight) return;
     const weightVal = parseFloat(currentWeight);
-    if (isNaN(weightVal))
-      return Alert.alert("INVALID INPUT", "Enter a valid number.");
+    if (isNaN(weightVal)) {
+      setAlertConfig({ title: "INVALID INPUT", message: "Enter a valid number." });
+      return;
+    }
 
     await WorkoutRepository.saveBodyWeight(weightVal, selectedDate);
     setWeightModalVisible(false);
     setCurrentWeight("");
-    Alert.alert("LOGGED", `Body weight saved for ${selectedDate}`);
+    setAlertConfig({ title: "LOGGED", message: `Body weight saved for ${selectedDate}` });
   };
 
   const markedDates = useMemo(() => {
@@ -233,6 +236,13 @@ export default function WorkoutHistoryScreen() {
           {anyActive ? "CONTINUE" : "NEW SESSION"}
         </Text>
       </DuoTouch>
+
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        onClose={() => setAlertConfig(null)}
+      />
 
       {/* Weight Modal */}
       <Modal animationType="fade" transparent visible={weightModalVisible}>

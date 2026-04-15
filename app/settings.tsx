@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Switch,
   ActivityIndicator,
-  Alert,
   ScrollView,
   TouchableOpacity,
   Platform,
@@ -21,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import * as ImagePicker from "expo-image-picker";
 import DuoTouch from "../components/ui/DuoTouch";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
   const [settings, setSettings] = useState({
     encryptWorkouts: true,
     encryptBodyWeight: true,
@@ -53,7 +54,7 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       console.error("Failed to load settings:", error);
-      Alert.alert("Error", "Could not load settings.");
+      setAlertConfig({ title: "Error", message: "Could not load settings." });
     } finally {
       setLoading(false);
     }
@@ -66,10 +67,7 @@ export default function SettingsScreen() {
     if (useCamera) {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          "PERMISSION DENIED",
-          "We need camera access to take your athlete photo!",
-        );
+        setAlertConfig({ title: "PERMISSION DENIED", message: "We need camera access to take your athlete photo!" });
         return;
       }
       result = await ImagePicker.launchCameraAsync({
@@ -82,10 +80,7 @@ export default function SettingsScreen() {
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          "PERMISSION DENIED",
-          "We need access to your gallery to choose a photo!",
-        );
+        setAlertConfig({ title: "PERMISSION DENIED", message: "We need access to your gallery to choose a photo!" });
         return;
       }
 
@@ -104,9 +99,9 @@ export default function SettingsScreen() {
           result.assets[0].uri,
         );
         setUserData({ ...userData, photoURL: newUrl });
-        Alert.alert("SUCCESS", "Looking sharp! Profile picture updated.");
+        setAlertConfig({ title: "SUCCESS", message: "Looking sharp! Profile picture updated." });
       } catch (e: any) {
-        Alert.alert("UPLOAD FAILED", e.message);
+        setAlertConfig({ title: "UPLOAD FAILED", message: e.message });
       } finally {
         setLoading(false);
       }
@@ -267,6 +262,14 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>LOG OUT</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        onClose={() => setAlertConfig(null)}
+      />
 
       {/* PHOTO SOURCE PICKER MODAL */}
       <Modal visible={pickerModalVisible} transparent animationType="fade">

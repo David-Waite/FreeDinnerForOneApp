@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +17,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "../constants/Colors";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { CardioActivityType, CardioSession } from "../constants/types";
 import { WorkoutRepository } from "../services/WorkoutRepository";
 import { useWorkoutContext } from "../context/WorkoutContext";
@@ -90,6 +90,7 @@ export default function RecordCardioScreen() {
   );
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   // Live elapsed timer
   const liveElapsed = useWorkoutTimer(
@@ -146,11 +147,14 @@ export default function RecordCardioScreen() {
       ? Math.floor((Date.now() - activeCardio.startTime) / 1000)
       : 0;
 
-    Alert.alert("END SESSION", "Save this session?", [
-      { text: "CANCEL", style: "cancel" },
-      {
-        text: "SAVE",
-        onPress: async () => {
+    setAlertConfig({
+      title: "END SESSION",
+      message: "Save this session?",
+      buttons: [
+        { text: "CANCEL", style: "cancel" },
+        {
+          text: "SAVE",
+          onPress: async () => {
           // Read the definitive distance straight from AsyncStorage — the task may have
           // written updates after the Alert opened.
           const json = await AsyncStorage.getItem(ACTIVE_CARDIO_KEY);
@@ -174,23 +178,28 @@ export default function RecordCardioScreen() {
           await WorkoutRepository.saveCardioSession(session);
           await endCardioSession();
           router.replace("/(tabs)/workouts");
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const handleAbandonSession = () => {
-    Alert.alert("ABANDON SESSION", "Discard this cardio session?", [
-      { text: "CANCEL", style: "cancel" },
-      {
-        text: "DISCARD",
-        style: "destructive",
-        onPress: async () => {
-          await abandonCardioSession();
-          router.back();
+    setAlertConfig({
+      title: "ABANDON SESSION",
+      message: "Discard this cardio session?",
+      buttons: [
+        { text: "CANCEL", style: "cancel" },
+        {
+          text: "DISCARD",
+          style: "destructive",
+          onPress: async () => {
+            await abandonCardioSession();
+            router.back();
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   // --- Derived values ---
@@ -209,11 +218,11 @@ export default function RecordCardioScreen() {
   const handleSaveManual = async () => {
     const distance = parseFloat(manualDistance) || 0;
     if (manualDurationSecs <= 0) {
-      Alert.alert("MISSING INFO", "Please enter a duration.");
+      setAlertConfig({ title: "MISSING INFO", message: "Please enter a duration." });
       return;
     }
     if (distance <= 0) {
-      Alert.alert("MISSING INFO", "Please enter a distance.");
+      setAlertConfig({ title: "MISSING INFO", message: "Please enter a distance." });
       return;
     }
     const session: CardioSession = {
@@ -507,6 +516,14 @@ export default function RecordCardioScreen() {
           isPaused={activeCardio.isPaused}
         />
       )}
+
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

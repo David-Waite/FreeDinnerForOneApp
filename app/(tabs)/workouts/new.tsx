@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Alert,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../../../components/ui/AppAlert";
 import { Image } from "expo-image";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -56,6 +56,7 @@ export default function WorkoutDashboard() {
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -86,38 +87,39 @@ export default function WorkoutDashboard() {
   };
 
   const deleteTemplate = async (id: string) => {
-    Alert.alert("DELETE ROUTINE", "Ready to drop this training path?", [
-      { text: "CANCEL", style: "cancel" },
-      {
-        text: "DELETE",
-        style: "destructive",
-        onPress: async () => {
-          await WorkoutRepository.deleteTemplate(id);
-          loadData();
+    setAlertConfig({
+      title: "DELETE ROUTINE",
+      message: "Ready to drop this training path?",
+      buttons: [
+        { text: "CANCEL", style: "cancel" },
+        {
+          text: "DELETE",
+          style: "destructive",
+          onPress: async () => {
+            await WorkoutRepository.deleteTemplate(id);
+            loadData();
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const stealRoutine = async (template: WorkoutTemplate) => {
-    Alert.alert("STEAL ROUTINE", `Add "${template.name}" to your library?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Add to Library",
-        onPress: async () => {
-          const newRoutine = {
-            ...template,
-            id: Date.now().toString(),
-            isPublic: false,
-          };
-          await WorkoutRepository.saveTemplate(newRoutine);
-          Alert.alert(
-            "Success",
-            "Routine added! Switch to 'My Library' to see it.",
-          );
+    setAlertConfig({
+      title: "STEAL ROUTINE",
+      message: `Add "${template.name}" to your library?`,
+      buttons: [
+        { text: "CANCEL", style: "cancel" },
+        {
+          text: "ADD TO LIBRARY",
+          onPress: async () => {
+            const newRoutine = { ...template, id: Date.now().toString(), isPublic: false };
+            await WorkoutRepository.saveTemplate(newRoutine);
+            setAlertConfig({ title: "SUCCESS", message: "Routine added! Switch to 'My Library' to see it." });
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const renderUserSelector = () => {
@@ -412,6 +414,13 @@ export default function WorkoutDashboard() {
           }
         />
       )}
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

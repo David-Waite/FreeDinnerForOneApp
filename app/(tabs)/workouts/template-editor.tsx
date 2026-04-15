@@ -6,11 +6,11 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Switch,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../../../components/ui/AppAlert";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { WorkoutRepository } from "../../../services/WorkoutRepository";
 import { TemplateExercise, WorkoutTemplate } from "../../../constants/types";
@@ -30,6 +30,7 @@ export default function TemplateEditor() {
   const [name, setName] = useState("");
   const [exercises, setExercises] = useState<TemplateExercise[]>([]);
   const [isPublic, setIsPublic] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
 
   // --- REFS FOR SCROLLING ---
   const scrollViewRef = useRef<ScrollView>(null);
@@ -114,10 +115,14 @@ export default function TemplateEditor() {
   };
 
   const save = async () => {
-    if (!name.trim())
-      return Alert.alert("MISSING NAME", "Please name your routine.");
-    if (exercises.length === 0)
-      return Alert.alert("EMPTY ROUTINE", "Add at least one exercise.");
+    if (!name.trim()) {
+      setAlertConfig({ title: "MISSING NAME", message: "Please name your routine." });
+      return;
+    }
+    if (exercises.length === 0) {
+      setAlertConfig({ title: "EMPTY ROUTINE", message: "Add at least one exercise." });
+      return;
+    }
 
     const template: WorkoutTemplate = {
       id: (id as string) || Date.now().toString(),
@@ -347,6 +352,12 @@ export default function TemplateEditor() {
           <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        onClose={() => setAlertConfig(null)}
+      />
     </View>
   );
 }

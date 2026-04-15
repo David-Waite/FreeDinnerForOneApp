@@ -5,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
@@ -22,14 +22,14 @@ export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message?: string; buttons?: AppAlertButton[] } | null>(null);
   const router = useRouter();
 
   const handleSignup = async () => {
-    if (!username || !email || !password)
-      return Alert.alert(
-        "MISSING INFO",
-        "Please fill in all fields to start your journey.",
-      );
+    if (!username || !email || !password) {
+      setAlertConfig({ title: "MISSING INFO", message: "Please fill in all fields to start your journey." });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -57,7 +57,7 @@ export default function SignupScreen() {
 
       router.replace("/signup-profile-pic");
     } catch (error: any) {
-      Alert.alert("SIGNUP FAILED", error.message);
+      setAlertConfig({ title: "SIGNUP FAILED", message: error.message });
     } finally {
       setLoading(false);
     }
@@ -135,6 +135,12 @@ export default function SignupScreen() {
           </Link>
         </View>
       </View>
+      <AppAlert
+        visible={!!alertConfig}
+        title={alertConfig?.title ?? ""}
+        message={alertConfig?.message}
+        onClose={() => setAlertConfig(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
