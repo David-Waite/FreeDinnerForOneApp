@@ -19,7 +19,7 @@ export const useWorkoutSession = () => {
   }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (startTime && !isPaused && sessionId) {
       interval = setInterval(() => {
         const now = Date.now();

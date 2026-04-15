@@ -91,7 +91,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
   const [hideTabBar, setHideTabBar] = useState(false);
 
   // Refs for stability
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appState = useRef(AppState.currentState);
 
   // NEW: Ref to hold the latest callback logic

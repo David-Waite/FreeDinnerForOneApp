@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thecomp — Style Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <style>
+    /* ─── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Tokens ─────────────────────────────────────────────── */
+    :root {
+      /* Colors */
+      --color-primary:            #58cc02;
+      --color-secondary:          #46d3ff;
+      --color-background:         #131f24;
+      --color-surface:            #1f2f38;
+      --color-border:             #37464f;
+      --color-text:               #ffffff;
+      --color-text-muted:         #afafaf;
+      --color-placeholder:        #777777;
+      --color-error:              #ff4b4b;
+      --color-warning:            #ff9600;
+      --color-info:               #1cb0f6;
+      --color-gold:               #ffc800;
+      --color-purple:             #ce82ff;
+      --color-primary-bg:         #283e4a;
+      --color-success-bg:         #233610;
+      --color-error-bg:           #331b1b;
+      --color-tab-default:        #4b4b4b;
+
+      /* Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+
+      /* Border radius */
+      --radius-sm:   8px;
+      --radius-md:   12px;
+      --radius-lg:   16px;
+      --radius-xl:   20px;
+      --radius-2xl:  24px;
+      --radius-3xl:  28px;
+
+      /* Typography */
+      --font: 'Nunito', system-ui, sans-serif;
+    }
+
+    /* ─── Base ───────────────────────────────────────────────── */
+    body {
+      background: var(--color-background);
+      color: var(--color-text);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.5;
+      padding: 40px 24px 80px;
+    }
+
+    a { color: var(--color-primary); text-decoration: none; }
+
+    /* ─── Layout ─────────────────────────────────────────────── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+    .page-header h1 {
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: var(--color-primary);
+    }
+    .page-header p {
+      margin-top: 8px;
+      color: var(--color-text-muted);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 64px;
+    }
+    .toc a {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 4px;
+      border-radius: var(--radius-md);
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--color-text-muted);
+      transition: color .15s, border-color .15s;
+    }
+    .toc a:hover { color: var(--color-primary); border-color: var(--color-primary); }
+
+    .section {
+      max-width: 960px;
+      margin: 0 auto 72px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-primary);
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+    /* ─── Color Swatches ─────────────────────────────────────── */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .swatch {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 2px solid var(--color-border);
+    }
+    .swatch-color {
+      height: 72px;
+    }
+    .swatch-info {
+      background: var(--color-surface);
+      padding: 8px 10px;
+    }
+    .swatch-name {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      color: var(--color-text);
+    }
+    .swatch-hex {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── Typography ─────────────────────────────────────────── */
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-meta {
+      min-width: 180px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--color-text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .type-label {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── Cards ──────────────────────────────────────────────── */
+    .card {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 5px;
+      border-radius: var(--radius-2xl);
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .card-body {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
+
+    .card-exercise {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 6px;
+      border-radius: var(--radius-2xl);
+      padding: 16px;
+    }
+    .card-exercise-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .exercise-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: var(--color-background);
+      border: 2px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .exercise-name {
+      font-size: 16px;
+      font-weight: 900;
+    }
+    .exercise-meta {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    .card-empty {
+      background: var(--color-surface);
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-2xl);
+      padding: 40px;
+      text-align: center;
+    }
+    .card-empty-icon {
+      font-size: 32px;
+      color: var(--color-border);
+      margin-bottom: 12px;
+    }
+    .card-empty-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--color-text-muted);
+    }
+    .card-empty-sub {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-placeholder);
+      margin-top: 4px;
+    }
+
+    .card-active {
+      background: var(--color-surface);
+      border: 2px solid var(--color-primary);
+      border-bottom-width: 5px;
+      border-bottom-color: #46a302;
+      border-radius: var(--radius-2xl);
+      padding: 20px;
+    }
+    .card-error {
+      background: var(--color-error-bg);
+      border: 2px solid var(--color-error);
+      border-bottom-width: 5px;
+      border-bottom-color: #a62626;
+      border-radius: var(--radius-2xl);
+      padding: 20px;
+    }
+
+    /* ─── Buttons ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: var(--font);
+      font-weight: 900;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: transform .1s, box-shadow .1s, border-bottom-width .1s;
+      user-select: none;
+      text-decoration: none;
+    }
+    .btn:active { transform: translateY(2px); }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+      border-radius: var(--radius-xl);
+      padding: 18px 28px;
+      border-bottom: 5px solid rgba(0,0,0,0.25);
+    }
+    .btn-primary:active { border-bottom-width: 2px; }
+
+    .btn-secondary {
+      background: var(--color-surface);
+      color: var(--color-text);
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      border: 2px solid var(--color-border);
+      border-bottom-width: 4px;
+    }
+    .btn-secondary:active { border-bottom-width: 2px; }
+
+    .btn-danger {
+      background: var(--color-error);
+      color: #fff;
+      border-radius: var(--radius-xl);
+      padding: 14px 24px;
+      border-bottom: 4px solid #a62626;
+    }
+    .btn-danger:active { border-bottom-width: 2px; }
+
+    .btn-warning {
+      background: var(--color-warning);
+      color: #fff;
+      border-radius: var(--radius-xl);
+      padding: 14px 24px;
+      border-bottom: 4px solid #cc7a00;
+    }
+    .btn-warning:active { border-bottom-width: 2px; }
+
+    .btn-info {
+      background: var(--color-info);
+      color: #fff;
+      border-radius: var(--radius-xl);
+      padding: 14px 24px;
+      border-bottom: 4px solid #1a6b99;
+    }
+    .btn-info:active { border-bottom-width: 2px; }
+
+    .btn-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      transition: transform .1s, border-bottom-width .1s;
+    }
+    .btn-icon:active { transform: translateY(2px); border-bottom-width: 2px; }
+
+    .btn-disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* ─── Inputs ─────────────────────────────────────────────── */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-label {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+    .input {
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-family: var(--font);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--color-text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .input::placeholder { color: var(--color-placeholder); }
+    .input:focus { border-color: var(--color-primary); }
+
+    .input-inline {
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      font-family: var(--font);
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--color-text);
+      text-align: center;
+      width: 70px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .input-inline:focus { border-color: var(--color-primary); }
+
+    /* ─── Set Row ─────────────────────────────────────────────── */
+    .set-row {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 4px;
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .set-number {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+    .set-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      justify-content: center;
+    }
+    .set-unit {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+    .set-check {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      border-bottom: 3px solid rgba(0,0,0,0.25);
+    }
+
+    /* ─── Badges & Tags ──────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+    .badge-primary { background: var(--color-success-bg); color: var(--color-primary); border: 1px solid var(--color-primary); }
+    .badge-error   { background: var(--color-error-bg);   color: var(--color-error);   border: 1px solid var(--color-error); }
+    .badge-info    { background: #0d2e3d;                 color: var(--color-info);    border: 1px solid var(--color-info); }
+    .badge-warning { background: #2e1f00;                 color: var(--color-warning); border: 1px solid var(--color-warning); }
+    .badge-gold    { background: #2e2200;                 color: var(--color-gold);    border: 1px solid var(--color-gold); }
+    .badge-purple  { background: #1e1230;                 color: var(--color-purple);  border: 1px solid var(--color-purple); }
+    .badge-muted   { background: var(--color-background); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
+    /* ─── Banner ─────────────────────────────────────────────── */
+    .banner {
+      border-radius: 15px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-width: 2px;
+      border-style: solid;
+      box-shadow: 0 4px 4px rgba(0,0,0,0.3);
+    }
+    .banner-primary { background: var(--color-primary); border-color: #46a302; color: #fff; }
+    .banner-error   { background: var(--color-error);   border-color: #a62626; color: #fff; }
+    .banner-warning { background: var(--color-warning); border-color: #cc7a00; color: #fff; }
+    .banner-info    { background: var(--color-info);    border-color: #1a6b99; color: #fff; }
+    .banner-icon    { font-size: 22px; }
+    .banner-text    { font-size: 13px; font-weight: 900; }
+
+    /* ─── Header ─────────────────────────────────────────────── */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--color-background);
+      border-bottom: 3px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 8px;
+    }
+    .app-header-title {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    /* ─── Stats display ──────────────────────────────────────── */
+    .stat-card {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 5px;
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 900;
+    }
+    .stat-label {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    /* ─── Mode Toggle ─────────────────────────────────────────── */
+    .mode-toggle {
+      display: flex;
+      background: var(--color-background);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      transition: background .2s, color .2s;
+    }
+    .mode-btn.active { background: var(--color-primary); color: #fff; }
+    .mode-btn:not(.active) { background: transparent; color: var(--color-text-muted); }
+
+    /* ─── Profile Card ────────────────────────────────────────── */
+    .profile-card {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 5px;
+      border-radius: var(--radius-2xl);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 22px;
+      background: var(--color-primary-bg);
+      border: 3px solid var(--color-border);
+      border-bottom-width: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: var(--color-primary);
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .profile-name {
+      font-size: 16px;
+      font-weight: 900;
+    }
+    .profile-handle {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── Spacing scale ──────────────────────────────────────── */
+    .space-demo {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .space-demo:last-child { border-bottom: none; }
+    .space-bar {
+      background: var(--color-primary);
+      height: 20px;
+      border-radius: 4px;
+      opacity: 0.7;
+    }
+    .space-meta {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--color-text-muted);
+      min-width: 100px;
+    }
+
+    /* ─── Radius scale ───────────────────────────────────────── */
+    .radius-demo {
+      width: 72px;
+      height: 72px;
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .radius-name {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: var(--color-text-muted);
+    }
+    .radius-value {
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--color-primary);
+    }
+
+    /* ─── Icon grid ──────────────────────────────────────────── */
+    .icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 16px 8px;
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-bottom-width: 4px;
+      border-radius: var(--radius-md);
+    }
+    .icon-item .material-icons { font-size: 24px; }
+    .icon-label {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      text-align: center;
+    }
+
+    /* ─── Divider ─────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 2px solid var(--color-border);
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Header ─────────────────────────────────────────────── -->
+  <header class="page-header">
+    <h1>Thecomp</h1>
+    <p>Design System &amp; Style Guide</p>
+  </header>
+
+  <!-- ─── Table of Contents ──────────────────────────────────── -->
+  <nav class="toc">
+    <a href="#colors">Colors</a>
+    <a href="#typography">Typography</a>
+    <a href="#spacing">Spacing</a>
+    <a href="#radius">Border Radius</a>
+    <a href="#buttons">Buttons</a>
+    <a href="#cards">Cards</a>
+    <a href="#inputs">Inputs</a>
+    <a href="#set-row">Set Row</a>
+    <a href="#badges">Badges</a>
+    <a href="#banners">Banners</a>
+    <a href="#headers">Headers</a>
+    <a href="#stats">Stats</a>
+    <a href="#toggles">Toggles</a>
+    <a href="#profile">Profile</a>
+    <a href="#icons">Icons</a>
+  </nav>
+
+
+  <!-- ─── Colors ─────────────────────────────────────────────── -->
+  <section class="section" id="colors">
+    <h2 class="section-title">Colors</h2>
+
+    <p style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:16px;">Core Palette</p>
+    <div class="swatch-grid" style="margin-bottom:32px;">
+      <div class="swatch"><div class="swatch-color" style="background:#58cc02;"></div><div class="swatch-info"><div class="swatch-name">Primary</div><div class="swatch-hex">#58cc02</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#46d3ff;"></div><div class="swatch-info"><div class="swatch-name">Secondary</div><div class="swatch-hex">#46d3ff</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#131f24;border-bottom:1px solid #37464f;"></div><div class="swatch-info"><div class="swatch-name">Background</div><div class="swatch-hex">#131f24</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#1f2f38;"></div><div class="swatch-info"><div class="swatch-name">Surface</div><div class="swatch-hex">#1f2f38</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#37464f;"></div><div class="swatch-info"><div class="swatch-name">Border</div><div class="swatch-hex">#37464f</div></div></div>
+    </div>
+
+    <p style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:16px;">Semantic</p>
+    <div class="swatch-grid" style="margin-bottom:32px;">
+      <div class="swatch"><div class="swatch-color" style="background:#ff4b4b;"></div><div class="swatch-info"><div class="swatch-name">Error</div><div class="swatch-hex">#ff4b4b</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#ff9600;"></div><div class="swatch-info"><div class="swatch-name">Warning</div><div class="swatch-hex">#ff9600</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#1cb0f6;"></div><div class="swatch-info"><div class="swatch-name">Info</div><div class="swatch-hex">#1cb0f6</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#ffc800;"></div><div class="swatch-info"><div class="swatch-name">Gold</div><div class="swatch-hex">#ffc800</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#ce82ff;"></div><div class="swatch-info"><div class="swatch-name">Purple</div><div class="swatch-hex">#ce82ff</div></div></div>
+    </div>
+
+    <p style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:16px;">Text</p>
+    <div class="swatch-grid" style="margin-bottom:32px;">
+      <div class="swatch"><div class="swatch-color" style="background:#ffffff;"></div><div class="swatch-info"><div class="swatch-name">Text</div><div class="swatch-hex">#ffffff</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#afafaf;"></div><div class="swatch-info"><div class="swatch-name">Text Muted</div><div class="swatch-hex">#afafaf</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#777777;"></div><div class="swatch-info"><div class="swatch-name">Placeholder</div><div class="swatch-hex">#777777</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#4b4b4b;"></div><div class="swatch-info"><div class="swatch-name">Tab Default</div><div class="swatch-hex">#4b4b4b</div></div></div>
+    </div>
+
+    <p style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:16px;">Tinted Backgrounds</p>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#283e4a;"></div><div class="swatch-info"><div class="swatch-name">Primary BG</div><div class="swatch-hex">#283e4a</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#233610;"></div><div class="swatch-info"><div class="swatch-name">Success BG</div><div class="swatch-hex">#233610</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#331b1b;"></div><div class="swatch-info"><div class="swatch-name">Error BG</div><div class="swatch-hex">#331b1b</div></div></div>
+    </div>
+  </section>
+
+
+  <!-- ─── Typography ─────────────────────────────────────────── -->
+  <section class="section" id="typography">
+    <h2 class="section-title">Typography</h2>
+    <p style="font-size:12px;font-weight:800;color:var(--color-text-muted);margin-bottom:24px;letter-spacing:0.5px;">Font: <strong style="color:var(--color-text);">Nunito</strong> · Weights 600 – 900</p>
+
+    <div class="type-row">
+      <div class="type-meta">56px / 900<br><span class="type-label">Display Value</span></div>
+      <div style="font-size:56px;font-weight:900;letter-spacing:-1px;color:var(--color-primary);">12.4</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">42px / 900<br><span class="type-label">Screen Title</span></div>
+      <div style="font-size:42px;font-weight:900;letter-spacing:-1px;">Workouts</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">36px / 900<br><span class="type-label">Duration Display</span></div>
+      <div style="font-size:36px;font-weight:900;">00:42:15</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">32px / 900<br><span class="type-label">Feed Header</span></div>
+      <div style="font-size:32px;font-weight:900;">Feed</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">28px / 900<br><span class="type-label">Stat Value</span></div>
+      <div style="font-size:28px;font-weight:900;">247 kg</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">20px / 900<br><span class="type-label">Section Header</span></div>
+      <div style="font-size:20px;font-weight:900;">This Week</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">18px / 900<br><span class="type-label">Card Title</span></div>
+      <div style="font-size:18px;font-weight:900;">Bench Press</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">16px / 900<br><span class="type-label">Body / Button</span></div>
+      <div style="font-size:16px;font-weight:900;">Save Workout</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">14px / 800<br><span class="type-label">Input / Secondary</span></div>
+      <div style="font-size:14px;font-weight:800;color:var(--color-text-muted);">3 sets · 8 reps</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">13px / 900<br><span class="type-label">Banner Text</span></div>
+      <div style="font-size:13px;font-weight:900;">Workout in progress</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">12px / 800<br><span class="type-label">Meta / Helper</span></div>
+      <div style="font-size:12px;font-weight:800;color:var(--color-text-muted);">Last session: 80 kg × 5</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">10px / 900 · 1.5px<br><span class="type-label">Label / Uppercase</span></div>
+      <div style="font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:var(--color-text-muted);">Weight (kg)</div>
+    </div>
+  </section>
+
+
+  <!-- ─── Spacing ─────────────────────────────────────────────── -->
+  <section class="section" id="spacing">
+    <h2 class="section-title">Spacing Scale</h2>
+    <div>
+      <div class="space-demo"><div class="space-meta">4px — space-1</div><div class="space-bar" style="width:4px;"></div></div>
+      <div class="space-demo"><div class="space-meta">8px — space-2</div><div class="space-bar" style="width:8px;"></div></div>
+      <div class="space-demo"><div class="space-meta">12px — space-3</div><div class="space-bar" style="width:12px;"></div></div>
+      <div class="space-demo"><div class="space-meta">16px — space-4</div><div class="space-bar" style="width:16px;"></div></div>
+      <div class="space-demo"><div class="space-meta">20px — space-5</div><div class="space-bar" style="width:20px;"></div></div>
+      <div class="space-demo"><div class="space-meta">24px — space-6</div><div class="space-bar" style="width:24px;"></div></div>
+      <div class="space-demo"><div class="space-meta">32px — space-8</div><div class="space-bar" style="width:32px;"></div></div>
+      <div class="space-demo"><div class="space-meta">40px — space-10</div><div class="space-bar" style="width:40px;"></div></div>
+      <div class="space-demo"><div class="space-meta">48px — space-12</div><div class="space-bar" style="width:48px;"></div></div>
+    </div>
+  </section>
+
+
+  <!-- ─── Border Radius ──────────────────────────────────────── -->
+  <section class="section" id="radius">
+    <h2 class="section-title">Border Radius</h2>
+    <div class="grid">
+      <div class="radius-demo" style="border-radius:8px;"><span class="radius-name">SM</span><span class="radius-value">8px</span></div>
+      <div class="radius-demo" style="border-radius:12px;"><span class="radius-name">MD</span><span class="radius-value">12px</span></div>
+      <div class="radius-demo" style="border-radius:16px;"><span class="radius-name">LG</span><span class="radius-value">16px</span></div>
+      <div class="radius-demo" style="border-radius:20px;"><span class="radius-name">XL</span><span class="radius-value">20px</span></div>
+      <div class="radius-demo" style="border-radius:24px;"><span class="radius-name">2XL</span><span class="radius-value">24px</span></div>
+      <div class="radius-demo" style="border-radius:28px;"><span class="radius-name">3XL</span><span class="radius-value">28px</span></div>
+    </div>
+  </section>
+
+
+  <!-- ─── Buttons ─────────────────────────────────────────────── -->
+  <section class="section" id="buttons">
+    <h2 class="section-title">Buttons</h2>
+    <p style="font-size:12px;font-weight:700;color:var(--color-text-muted);margin-bottom:20px;">All buttons use <code style="background:var(--color-surface);padding:2px 6px;border-radius:4px;font-size:11px;">border-bottom</code> for the Duolingo 3D "shelf" effect. Click to see the press state.</p>
+
+    <div class="grid" style="margin-bottom:32px;align-items:flex-start;">
+      <button class="btn btn-primary">Save Workout</button>
+      <button class="btn btn-secondary">Cancel</button>
+      <button class="btn btn-danger">Delete</button>
+      <button class="btn btn-warning">⏱ Rest Timer</button>
+      <button class="btn btn-info">Live Track</button>
+    </div>
+
+    <p style="font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:12px;">Icon Button (settingsButton pattern)</p>
+    <div class="grid" style="margin-bottom:32px;">
+      <button class="btn-icon">⚙️</button>
+      <button class="btn-icon" style="color:var(--color-error);">🗑</button>
+      <button class="btn-icon" style="color:var(--color-primary);">✓</button>
+      <button class="btn-icon" style="color:var(--color-info);">📝</button>
+    </div>
+
+    <p style="font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:12px;">Disabled State</p>
+    <div class="grid">
+      <button class="btn btn-primary btn-disabled">Save Workout</button>
+      <button class="btn btn-secondary btn-disabled">Cancel</button>
+    </div>
+  </section>
+
+
+  <!-- ─── Cards ───────────────────────────────────────────────── -->
+  <section class="section" id="cards">
+    <h2 class="section-title">Cards</h2>
+    <div class="grid-3">
+
+      <div>
+        <p class="type-label" style="margin-bottom:8px;">Standard Card</p>
+        <div class="card">
+          <div class="card-title">Push Day A</div>
+          <div class="card-body">4 exercises · 32 min</div>
+        </div>
+      </div>
+
+      <div>
+        <p class="type-label" style="margin-bottom:8px;">Active / Selected</p>
+        <div class="card-active">
+          <div class="card-title" style="color:var(--color-primary);">Bench Press</div>
+          <div class="card-body">Set 3 of 5 · In progress</div>
+        </div>
+      </div>
+
+      <div>
+        <p class="type-label" style="margin-bottom:8px;">Error State</p>
+        <div class="card-error">
+          <div class="card-title" style="color:var(--color-error);">Missed Set</div>
+          <div class="card-body" style="color:#e07070;">No weight recorded</div>
+        </div>
+      </div>
+
+      <div>
+        <p class="type-label" style="margin-bottom:8px;">Exercise Card</p>
+        <div class="card-exercise">
+          <div class="card-exercise-header">
+            <div class="exercise-icon">🏋️</div>
+            <div>
+              <div class="exercise-name">Squat</div>
+              <div class="exercise-meta">Legs · 3 sets</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="grid-column: span 2;">
+        <p class="type-label" style="margin-bottom:8px;">Empty State (dashed border)</p>
+        <div class="card-empty">
+          <div class="card-empty-icon">🏋️</div>
+          <div class="card-empty-title">No workouts yet</div>
+          <div class="card-empty-sub">Start your first session to see it here</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ─── Inputs ──────────────────────────────────────────────── -->
+  <section class="section" id="inputs">
+    <h2 class="section-title">Inputs</h2>
+    <div class="grid-3">
+      <div class="input-group">
+        <label class="input-label">Display Name</label>
+        <input class="input" type="text" placeholder="e.g. David" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Email</label>
+        <input class="input" type="email" placeholder="you@example.com" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Body Weight (kg)</label>
+        <input class="input" type="number" placeholder="75" />
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <p class="type-label" style="margin-bottom:12px;">Inline Numeric Input (Set Row)</p>
+    <div class="grid" style="align-items:center;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <input class="input-inline" type="number" value="80" />
+        <span class="set-unit">KG</span>
+      </div>
+      <div style="font-size:22px;font-weight:900;color:var(--color-border);">×</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <input class="input-inline" type="number" value="8" />
+        <span class="set-unit">REPS</span>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── Set Row ─────────────────────────────────────────────── -->
+  <section class="section" id="set-row">
+    <h2 class="section-title">Set Row</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:500px;">
+
+      <div class="set-row">
+        <div class="set-number">1</div>
+        <div class="set-input-group">
+          <input class="input-inline" type="number" value="80" style="width:60px;" />
+          <span class="set-unit">KG</span>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:var(--color-border);">×</div>
+        <div class="set-input-group">
+          <input class="input-inline" type="number" value="8" style="width:60px;" />
+          <span class="set-unit">REPS</span>
+        </div>
+        <div class="set-check">✓</div>
+      </div>
+
+      <div class="set-row" style="border-color:var(--color-primary);border-bottom-color:#46a302;">
+        <div class="set-number" style="border-color:var(--color-primary);color:var(--color-primary);">2</div>
+        <div class="set-input-group">
+          <input class="input-inline" type="number" value="82.5" style="width:60px;" />
+          <span class="set-unit">KG</span>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:var(--color-border);">×</div>
+        <div class="set-input-group">
+          <input class="input-inline" type="number" value="6" style="width:60px;" />
+          <span class="set-unit">REPS</span>
+        </div>
+        <div class="set-check">✓</div>
+      </div>
+
+      <div class="set-row" style="opacity:0.5;">
+        <div class="set-number">3</div>
+        <div class="set-input-group">
+          <input class="input-inline" type="number" value="85" style="width:60px;" />
+          <span class="set-unit">KG</span>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:var(--color-border);">×</div>
+        <div class="set-input-group">
+          <input class="input-inline" type="number" value="5" style="width:60px;" />
+          <span class="set-unit">REPS</span>
+        </div>
+        <div class="set-check" style="background:var(--color-border);">✓</div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ─── Badges ──────────────────────────────────────────────── -->
+  <section class="section" id="badges">
+    <h2 class="section-title">Badges &amp; Tags</h2>
+    <div class="grid">
+      <span class="badge badge-primary">✓ Active</span>
+      <span class="badge badge-error">✕ Missed</span>
+      <span class="badge badge-info">ℹ Live</span>
+      <span class="badge badge-warning">⚡ Rest</span>
+      <span class="badge badge-gold">★ Top</span>
+      <span class="badge badge-purple">✦ PR</span>
+      <span class="badge badge-muted">Strength</span>
+      <span class="badge badge-muted">Cardio</span>
+    </div>
+  </section>
+
+
+  <!-- ─── Banners ─────────────────────────────────────────────── -->
+  <section class="section" id="banners">
+    <h2 class="section-title">Banners</h2>
+    <p style="font-size:12px;font-weight:700;color:var(--color-text-muted);margin-bottom:16px;">Global workout / activity status banners (GlobalWorkoutBanner). Each activity type has its own colour.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="banner banner-primary"><span class="banner-icon">🏋️</span><span class="banner-text">Strength session in progress · Tap to return</span></div>
+      <div class="banner banner-error"><span class="banner-icon">🏃</span><span class="banner-text">Running · 2.4 km · 00:14:22</span></div>
+      <div class="banner banner-info"><span class="banner-icon">🚶</span><span class="banner-text">Walking · 1.1 km · 00:09:05</span></div>
+      <div class="banner banner-warning"><span class="banner-icon">🚴</span><span class="banner-text">Cycling · 8.3 km · 00:22:10</span></div>
+      <div class="banner banner-warning"><span class="banner-icon">⏱</span><span class="banner-text">Rest Timer · 00:45 remaining</span></div>
+    </div>
+  </section>
+
+
+  <!-- ─── App Header ──────────────────────────────────────────── -->
+  <section class="section" id="headers">
+    <h2 class="section-title">App Header</h2>
+    <div class="app-header">
+      <span style="font-size:20px;font-weight:900;">Feed</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-icon">⚙️</button>
+      </div>
+    </div>
+    <br />
+    <div class="app-header">
+      <button class="btn-icon" style="width:36px;height:36px;font-size:16px;">←</button>
+      <span style="font-size:20px;font-weight:900;">Record Workout</span>
+      <button class="btn-icon" style="width:36px;height:36px;font-size:16px;">✕</button>
+    </div>
+  </section>
+
+
+  <!-- ─── Stats ───────────────────────────────────────────────── -->
+  <section class="section" id="stats">
+    <h2 class="section-title">Stats Display</h2>
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--color-primary);">4/4</div>
+        <div class="stat-label">Workouts This Week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">247 kg</div>
+        <div class="stat-label">Total Volume</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--color-gold);">🏆 #2</div>
+        <div class="stat-label">Leaderboard Rank</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size:56px;font-weight:900;letter-spacing:-1px;color:var(--color-secondary);">12.4</div>
+        <div class="stat-label">Distance (km)</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size:36px;font-weight:900;">00:42</div>
+        <div class="stat-label">Duration</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── Mode Toggle ─────────────────────────────────────────── -->
+  <section class="section" id="toggles">
+    <h2 class="section-title">Mode Toggle</h2>
+    <p style="font-size:12px;font-weight:700;color:var(--color-text-muted);margin-bottom:16px;">Used for Cardio manual vs. live GPS mode switching.</p>
+    <div style="max-width:320px;">
+      <div class="mode-toggle">
+        <button class="mode-btn active">Manual</button>
+        <button class="mode-btn">Live GPS</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── Profile Card ────────────────────────────────────────── -->
+  <section class="section" id="profile">
+    <h2 class="section-title">Profile Card</h2>
+    <div style="max-width:400px;">
+      <div class="profile-card">
+        <div class="avatar">DW</div>
+        <div>
+          <div class="profile-name">David Waite</div>
+          <div class="profile-handle">@davidwaite</div>
+        </div>
+        <button class="btn-icon" style="margin-left:auto;">✏️</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── Icons ───────────────────────────────────────────────── -->
+  <section class="section" id="icons">
+    <h2 class="section-title">Icon Usage</h2>
+    <p style="font-size:12px;font-weight:700;color:var(--color-text-muted);margin-bottom:4px;">Libraries: <strong style="color:var(--color-text);">Ionicons</strong> &amp; <strong style="color:var(--color-text);">MaterialCommunityIcons</strong> from <code style="background:var(--color-surface);padding:2px 6px;border-radius:4px;font-size:11px;">@expo/vector-icons</code></p>
+    <p style="font-size:12px;font-weight:700;color:var(--color-text-muted);margin-bottom:20px;">Common sizes: 12 · 14 · 16 · 18 · 20 · 22 · 24px</p>
+
+    <p class="type-label" style="margin-bottom:12px;">Icon Colors</p>
+    <div class="grid" style="margin-bottom:28px;align-items:center;">
+      <span style="font-size:24px;color:var(--color-primary);" title="Primary">✓</span>
+      <span style="font-size:24px;color:var(--color-text);" title="Default white">⚙</span>
+      <span style="font-size:24px;color:var(--color-text-muted);" title="Muted">⋯</span>
+      <span style="font-size:24px;color:var(--color-error);" title="Error">🗑</span>
+      <span style="font-size:24px;color:var(--color-info);" title="Info">ℹ</span>
+      <span style="font-size:24px;color:var(--color-warning);" title="Warning">⚡</span>
+      <span style="font-size:24px;color:var(--color-gold);" title="Gold">★</span>
+    </div>
+
+    <p class="type-label" style="margin-bottom:12px;">Common Icons (Ionicons / MaterialCommunityIcons)</p>
+    <div class="swatch-grid">
+      <div class="icon-item"><span style="font-size:24px;">⚙️</span><span class="icon-label">settings-sharp</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🗑️</span><span class="icon-label">trash-outline</span></div>
+      <div class="icon-item"><span style="font-size:24px;">✅</span><span class="icon-label">checkmark-sharp</span></div>
+      <div class="icon-item"><span style="font-size:24px;">📝</span><span class="icon-label">document-text</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🏋️</span><span class="icon-label">dumbbell</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🏃</span><span class="icon-label">run-fast</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🚶</span><span class="icon-label">walk</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🚴</span><span class="icon-label">bike</span></div>
+      <div class="icon-item"><span style="font-size:24px;">⏱️</span><span class="icon-label">timer-sand</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🔔</span><span class="icon-label">bell-ring</span></div>
+      <div class="icon-item"><span style="font-size:24px;">⚡</span><span class="icon-label">lightning-bolt</span></div>
+      <div class="icon-item"><span style="font-size:24px;">🏠</span><span class="icon-label">home</span></div>
+      <div class="icon-item"><span style="font-size:24px;">➕</span><span class="icon-label">add</span></div>
+      <div class="icon-item"><span style="font-size:24px;">▶️</span><span class="icon-label">play</span></div>
+      <div class="icon-item"><span style="font-size:24px;">⏸️</span><span class="icon-label">pause</span></div>
+      <div class="icon-item"><span style="font-size:24px;">✨</span><span class="icon-label">flash</span></div>
+    </div>
+  </section>
+
+</body>
+</html>

@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thecomp — Database Schema</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #131f24;
+      --surface:      #1f2f38;
+      --surface-2:    #243642;
+      --border:       #37464f;
+      --primary:      #58cc02;
+      --secondary:    #46d3ff;
+      --error:        #ff4b4b;
+      --warning:      #ff9600;
+      --info:         #1cb0f6;
+      --gold:         #ffc800;
+      --purple:       #ce82ff;
+      --text:         #ffffff;
+      --text-muted:   #afafaf;
+      --placeholder:  #777777;
+      --font:         'Nunito', system-ui, sans-serif;
+      --mono:         'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.6;
+      padding: 40px 24px 100px;
+    }
+
+    /* ── Page header ───────────────────────────────────── */
+    .page-header { text-align: center; margin-bottom: 56px; }
+    .page-header h1 { font-size: 38px; font-weight: 900; color: var(--primary); letter-spacing: -1px; }
+    .page-header p  { margin-top: 6px; color: var(--text-muted); font-size: 15px; font-weight: 600; }
+
+    /* ── TOC ────────────────────────────────────────────── */
+    .toc {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center; margin-bottom: 56px;
+    }
+    .toc a {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-bottom-width: 4px;
+      border-radius: 10px;
+      padding: 5px 14px;
+      font-size: 12px; font-weight: 800;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .15s, border-color .15s;
+    }
+    .toc a:hover { color: var(--primary); border-color: var(--primary); }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .section { max-width: 1000px; margin: 0 auto 72px; }
+    .section-title {
+      font-size: 12px; font-weight: 900;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 24px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* ── Collection card ─────────────────────────────────── */
+    .collection {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-bottom-width: 5px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .collection-header {
+      padding: 16px 20px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .collection-path {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--secondary);
+      flex: 1;
+    }
+    .collection-body { padding: 20px; }
+
+    /* ── Table ───────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.025); }
+
+    /* ── Field type pills ────────────────────────────────── */
+    .type {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .type-string  { background: #1e2e1a; color: #7edb4c; }
+    .type-number  { background: #1a1e2e; color: #7cb8ff; }
+    .type-boolean { background: #1e1a2e; color: var(--purple); }
+    .type-array   { background: #2e1e1a; color: #ffb17a; }
+    .type-object  { background: #1e2a2e; color: var(--secondary); }
+    .type-enum    { background: #2e2218; color: var(--gold); }
+    .type-map     { background: #221e2e; color: var(--purple); }
+
+    /* ── Required / Optional pills ──────────────────────── */
+    .req {
+      font-size: 10px; font-weight: 900;
+      padding: 2px 7px; border-radius: 5px;
+    }
+    .req-yes { background: #233610; color: var(--primary); }
+    .req-no  { background: #243038; color: var(--text-muted); }
+
+    /* ── Access pills ────────────────────────────────────── */
+    .access {
+      font-size: 10px; font-weight: 900;
+      padding: 2px 7px; border-radius: 5px;
+    }
+    .access-public  { background: #1a2e1a; color: var(--primary); }
+    .access-private { background: #2e1a1a; color: var(--error); }
+    .access-partial { background: #2a2210; color: var(--warning); }
+
+    /* ── Code block ──────────────────────────────────────── */
+    pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+    .kw  { color: var(--purple); }
+    .str { color: #7edb4c; }
+    .num { color: #7cb8ff; }
+    .key { color: var(--secondary); }
+    .cmt { color: var(--placeholder); font-style: italic; }
+
+    /* ── Info boxes ──────────────────────────────────────── */
+    .info-box {
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 12px;
+      border: 1px solid;
+    }
+    .info-box-info    { background: #0d2030; border-color: var(--info);    color: var(--info); }
+    .info-box-warning { background: #241800; border-color: var(--warning); color: var(--warning); }
+    .info-box-success { background: #0d1a06; border-color: var(--primary); color: var(--primary); }
+
+    /* ── Sub-section label ───────────────────────────────── */
+    .sub-label {
+      font-size: 11px; font-weight: 900;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 20px 0 10px;
+    }
+
+    /* ── Summary table ───────────────────────────────────── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-bottom-width: 4px;
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .summary-path {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 8px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text-muted);
+      padding: 3px 0;
+    }
+    .summary-val { color: var(--text); }
+
+    /* ── Divider ─────────────────────────────────────────── */
+    .divider { border: none; border-top: 2px solid var(--border); margin: 20px 0; }
+
+    fieldset {
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 16px;
+    }
+    legend {
+      font-size: 11px; font-weight: 900;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="page-header">
+    <h1>Thecomp — Database Schema</h1>
+    <p>Firebase Firestore collections, document shapes, and AsyncStorage keys</p>
+  </header>
+
+  <nav class="toc">
+    <a href="#overview">Overview</a>
+    <a href="#users">users</a>
+    <a href="#sessions">sessions</a>
+    <a href="#cardio">cardio_sessions</a>
+    <a href="#weight">weight_logs</a>
+    <a href="#routines">routines</a>
+    <a href="#posts">posts</a>
+    <a href="#global-exercises">global_exercises</a>
+    <a href="#game-state">game_state</a>
+    <a href="#asyncstorage">AsyncStorage</a>
+    <a href="#encryption">Encryption</a>
+    <a href="#indexes">Indexes</a>
+  </nav>
+
+
+  <!-- ── Overview ───────────────────────────────────────── -->
+  <section class="section" id="overview">
+    <h2 class="section-title">Overview</h2>
+    <div class="summary-grid">
+
+      <div class="summary-card">
+        <div class="summary-path">users/{userId}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">Firebase Auth UID</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-partial">Partial</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">No</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">users/{uid}/sessions/{id}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">Timestamp string</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-partial">Filtered</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">Optional (default on)</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">users/{uid}/cardio_sessions/{id}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">Timestamp string</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-partial">Filtered</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">Optional</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">users/{uid}/weight_logs/{date}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">YYYY-MM-DD date</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-partial">Filtered</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">Optional (default on)</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">users/{uid}/routines/{id}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">Custom ID</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-partial">Filtered</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">Optional</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">posts/{postId}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">Timestamp string</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-public">Public</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">No</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">global_exercises/{normalizedId}</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">Normalized name</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-public">Public</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">No</span></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-path">game_state/weekly_config</div>
+        <div class="summary-row"><span>Doc ID</span><span class="summary-val">"weekly_config" (singleton)</span></div>
+        <div class="summary-row"><span>Access</span><span><span class="access access-public">Public</span></span></div>
+        <div class="summary-row"><span>Encrypted</span><span class="summary-val">No</span></div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ── users ─────────────────────────────────────────── -->
+  <section class="section" id="users">
+    <h2 class="section-title">users/{userId}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">users / {userId}</span>
+        <span class="access access-partial">Partial public</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>uid</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Matches Firebase Auth UID</td></tr>
+            <tr><td><code>displayName</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>User's display name</td></tr>
+            <tr><td><code>username</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>Set at signup</td></tr>
+            <tr><td><code>photoURL</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>Firebase Storage download URL</td></tr>
+            <tr><td><code>status</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>e.g. "active"</td></tr>
+            <tr><td><code>isAdmin</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-no">Optional</span></td><td>Admin privilege flag</td></tr>
+            <tr><td><code>isCompActive</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-no">Optional</span></td><td>Whether user participates in leaderboard competition</td></tr>
+            <tr><td><code>privacySettings</code></td><td><span class="type type-object">object</span></td><td><span class="req req-no">Optional</span></td><td>See sub-object below</td></tr>
+            <tr><td><code>pushTokens</code></td><td><span class="type type-array">string[]</span></td><td><span class="req req-no">Optional</span></td><td>Expo push tokens — appended via <code>arrayUnion()</code></td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">privacySettings object</div>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Default</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>encryptWorkouts</code></td><td><span class="type type-boolean">boolean</span></td><td><code>true</code></td><td>Encrypts sessions & routines</td></tr>
+            <tr><td><code>encryptBodyWeight</code></td><td><span class="type type-boolean">boolean</span></td><td><code>true</code></td><td>Encrypts weight_logs</td></tr>
+            <tr><td><code>shareExercisesToGlobal</code></td><td><span class="type type-boolean">boolean</span></td><td><code>false</code></td><td>Contributes exercise names to global_exercises</td></tr>
+          </tbody>
+        </table>
+
+        <div class="info-box info-box-info" style="margin-top:16px;">
+          ℹ Write pattern: <code>setDoc()</code> on signup · <code>updateDoc()</code> for settings · <code>setDoc({merge:true})</code> for profile picture · <code>arrayUnion()</code> for push tokens
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── sessions ──────────────────────────────────────── -->
+  <section class="section" id="sessions">
+    <h2 class="section-title">users/{userId}/sessions/{sessionId}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">users / {userId} / sessions / {sessionId}</span>
+        <span class="access access-partial">Filtered (isEncrypted==false for others)</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Session ID, typically <code>Date.now().toString()</code></td></tr>
+            <tr><td><code>name</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Workout name (e.g. "Push Day A")</td></tr>
+            <tr><td><code>date</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>ISO 8601 timestamp (Melbourne timezone)</td></tr>
+            <tr><td><code>duration</code></td><td><span class="type type-number">number</span></td><td><span class="req req-yes">Required</span></td><td>Duration in seconds</td></tr>
+            <tr><td><code>isEncrypted</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-yes">Required</span></td><td>Encryption flag — always present</td></tr>
+            <tr><td><code>exercises</code></td><td><span class="type type-array">Exercise[]</span></td><td><span class="req req-no">Conditional</span></td><td>Present only when <code>isEncrypted = false</code></td></tr>
+            <tr><td><code>data</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Conditional</span></td><td>AES ciphertext — present only when <code>isEncrypted = true</code></td></tr>
+            <tr><td><code>sessionType</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>e.g. "hypertrophy"</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">Exercise object (inside exercises[])</div>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>UUID</td></tr>
+            <tr><td><code>name</code></td><td><span class="type type-string">string</span></td><td>Exercise display name</td></tr>
+            <tr><td><code>restTime</code></td><td><span class="type type-number">number</span></td><td>Rest duration in seconds</td></tr>
+            <tr><td><code>sets</code></td><td><span class="type type-array">Set[]</span></td><td>See Set object below</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">Set object (inside Exercise.sets[])</div>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>UUID</td></tr>
+            <tr><td><code>weight</code></td><td><span class="type type-string">string</span></td><td>Weight as string (e.g. "82.5")</td></tr>
+            <tr><td><code>reps</code></td><td><span class="type type-string">string</span></td><td>Rep count as string (e.g. "8")</td></tr>
+            <tr><td><code>completed</code></td><td><span class="type type-boolean">boolean</span></td><td>Whether set was marked done</td></tr>
+            <tr><td><code>previousReps</code></td><td><span class="type type-string">string</span></td><td>Pre-filled from last session</td></tr>
+          </tbody>
+        </table>
+
+        <div class="info-box info-box-warning">
+          ⚠ <code>exercises</code> and <code>data</code> are mutually exclusive. When switching encryption state, the opposite field is removed with <code>deleteField()</code>.
+        </div>
+        <div class="info-box info-box-info" style="margin-top:8px;">
+          ℹ Write pattern: <code>setDoc({merge:true})</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── cardio_sessions ───────────────────────────────── -->
+  <section class="section" id="cardio">
+    <h2 class="section-title">users/{userId}/cardio_sessions/{sessionId}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">users / {userId} / cardio_sessions / {sessionId}</span>
+        <span class="access access-partial">Filtered (isEncrypted==false for others)</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Session ID</td></tr>
+            <tr><td><code>sessionType</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Always <code>"cardio"</code></td></tr>
+            <tr><td><code>activityType</code></td><td><span class="type type-enum">enum</span></td><td><span class="req req-yes">Required</span></td><td><code>"run"</code> | <code>"walk"</code> | <code>"cycle"</code></td></tr>
+            <tr><td><code>date</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>ISO 8601 timestamp</td></tr>
+            <tr><td><code>duration</code></td><td><span class="type type-number">number</span></td><td><span class="req req-yes">Required</span></td><td>Seconds</td></tr>
+            <tr><td><code>distance</code></td><td><span class="type type-number">number</span></td><td><span class="req req-yes">Required</span></td><td>Kilometres</td></tr>
+            <tr><td><code>pace</code></td><td><span class="type type-number">number</span></td><td><span class="req req-yes">Required</span></td><td>Seconds per km</td></tr>
+            <tr><td><code>calories</code></td><td><span class="type type-number">number</span></td><td><span class="req req-no">Optional</span></td><td>Calories burned</td></tr>
+            <tr><td><code>mode</code></td><td><span class="type type-enum">enum</span></td><td><span class="req req-yes">Required</span></td><td><code>"manual"</code> | <code>"live"</code></td></tr>
+            <tr><td><code>isEncrypted</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-yes">Required</span></td><td>Encryption flag</td></tr>
+          </tbody>
+        </table>
+        <div class="info-box info-box-info">ℹ Write pattern: <code>setDoc()</code></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── weight_logs ───────────────────────────────────── -->
+  <section class="section" id="weight">
+    <h2 class="section-title">users/{userId}/weight_logs/{date}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">users / {userId} / weight_logs / {YYYY-MM-DD}</span>
+        <span class="access access-partial">Filtered (isEncrypted==false for others)</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>date</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>YYYY-MM-DD — also used as the document ID</td></tr>
+            <tr><td><code>isEncrypted</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-yes">Required</span></td><td>Default: <code>true</code></td></tr>
+            <tr><td><code>weight</code></td><td><span class="type type-number">number</span></td><td><span class="req req-no">Conditional</span></td><td>kg — present only when <code>isEncrypted = false</code></td></tr>
+            <tr><td><code>data</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Conditional</span></td><td>AES ciphertext of weight — present only when <code>isEncrypted = true</code></td></tr>
+          </tbody>
+        </table>
+        <div class="info-box info-box-success" style="margin-top:12px;">
+          ✓ Document ID = date string (YYYY-MM-DD) — enables O(1) date-based lookup with no query needed.
+        </div>
+        <div class="info-box info-box-info" style="margin-top:8px;">
+          ℹ Write pattern: <code>setDoc({merge:true})</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── routines ──────────────────────────────────────── -->
+  <section class="section" id="routines">
+    <h2 class="section-title">users/{userId}/routines/{routineId}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">users / {userId} / routines / {routineId}</span>
+        <span class="access access-partial">Filtered (isPublic==true for others)</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Routine ID</td></tr>
+            <tr><td><code>name</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Template name</td></tr>
+            <tr><td><code>isPublic</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-yes">Required</span></td><td>Visible to other users when <code>true</code></td></tr>
+            <tr><td><code>isEncrypted</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-yes">Required</span></td><td>Encryption flag</td></tr>
+            <tr><td><code>lastPerformed</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>ISO date of last use</td></tr>
+            <tr><td><code>exercises</code></td><td><span class="type type-array">TemplateExercise[]</span></td><td><span class="req req-no">Conditional</span></td><td>Present only when <code>isEncrypted = false</code></td></tr>
+            <tr><td><code>data</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Conditional</span></td><td>AES ciphertext — present only when <code>isEncrypted = true</code></td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">TemplateExercise object (inside exercises[])</div>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>UUID</td></tr>
+            <tr><td><code>name</code></td><td><span class="type type-string">string</span></td><td>Exercise name</td></tr>
+            <tr><td><code>targetSets</code></td><td><span class="type type-string">string</span></td><td>e.g. <code>"3"</code></td></tr>
+            <tr><td><code>targetReps</code></td><td><span class="type type-string">string</span></td><td>e.g. <code>"8-10"</code></td></tr>
+            <tr><td><code>restTime</code></td><td><span class="type type-string">string</span></td><td>Seconds as string, e.g. <code>"90"</code></td></tr>
+            <tr><td><code>notes</code></td><td><span class="type type-string">string</span></td><td>Free-text notes</td></tr>
+          </tbody>
+        </table>
+        <div class="info-box info-box-info">ℹ Write pattern: <code>setDoc()</code> and <code>setDoc({merge:true})</code></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── posts ─────────────────────────────────────────── -->
+  <section class="section" id="posts">
+    <h2 class="section-title">posts/{postId}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">posts / {postId}</span>
+        <span class="access access-public">Public (global feed)</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Timestamp string</td></tr>
+            <tr><td><code>authorId</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Firebase Auth UID</td></tr>
+            <tr><td><code>authorName</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Denormalized display name at post time</td></tr>
+            <tr><td><code>authorAvatar</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>Denormalized profile photo URL</td></tr>
+            <tr><td><code>message</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Post caption</td></tr>
+            <tr><td><code>imageUri</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Firebase Storage download URL at <code>posts/{postId}/image.jpg</code></td></tr>
+            <tr><td><code>createdAt</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>ISO 8601 timestamp</td></tr>
+            <tr><td><code>isBacklog</code></td><td><span class="type type-boolean">boolean</span></td><td><span class="req req-no">Optional</span></td><td>Admin-created backlog posts</td></tr>
+            <tr><td><code>comments</code></td><td><span class="type type-array">Comment[]</span></td><td><span class="req req-yes">Required</span></td><td>Starts as <code>[]</code> — embedded in document (not subcollection)</td></tr>
+            <tr><td><code>reactions</code></td><td><span class="type type-map">{uid: emoji}</span></td><td><span class="req req-yes">Required</span></td><td>Starts as <code>{}</code> — one emoji per user</td></tr>
+            <tr><td><code>reactionData</code></td><td><span class="type type-map">{uid: ReactionDetail}</span></td><td><span class="req req-no">Optional</span></td><td>Extended reaction info (name, avatar)</td></tr>
+            <tr><td><code>workoutSummary</code></td><td><span class="type type-object">object</span></td><td><span class="req req-no">Optional</span></td><td>Present if post is linked to a strength session</td></tr>
+            <tr><td><code>cardioSummary</code></td><td><span class="type type-object">object</span></td><td><span class="req req-no">Optional</span></td><td>Present if post is linked to a cardio session</td></tr>
+            <tr><td><code>sessionId</code></td><td><span class="type type-string">string</span></td><td><span class="req req-no">Optional</span></td><td>Reference to source session ID</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">Comment object (inside comments[])</div>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>Timestamp string</td></tr>
+            <tr><td><code>userId</code></td><td><span class="type type-string">string</span></td><td>UID</td></tr>
+            <tr><td><code>userName</code></td><td><span class="type type-string">string</span></td><td>Display name (denormalized)</td></tr>
+            <tr><td><code>userPhotoURL</code></td><td><span class="type type-string">string</span></td><td>Profile photo (denormalized)</td></tr>
+            <tr><td><code>text</code></td><td><span class="type type-string">string</span></td><td>Comment content</td></tr>
+            <tr><td><code>createdAt</code></td><td><span class="type type-string">string</span></td><td>ISO 8601 timestamp</td></tr>
+            <tr><td><code>replies</code></td><td><span class="type type-array">Comment[]</span></td><td>Nested replies (recursive structure)</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">workoutSummary object</div>
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>Session ID</td></tr>
+            <tr><td><code>name</code></td><td><span class="type type-string">string</span></td><td>Workout name</td></tr>
+            <tr><td><code>duration</code></td><td><span class="type type-number">number</span></td><td>Seconds</td></tr>
+            <tr><td><code>exerciseCount</code></td><td><span class="type type-number">number</span></td><td>Number of exercises</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">cardioSummary object</div>
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>Session ID</td></tr>
+            <tr><td><code>activityType</code></td><td><span class="type type-enum">enum</span></td><td><code>"run"</code> | <code>"walk"</code> | <code>"cycle"</code></td></tr>
+            <tr><td><code>duration</code></td><td><span class="type type-number">number</span></td><td>Seconds</td></tr>
+            <tr><td><code>distance</code></td><td><span class="type type-number">number</span></td><td>Kilometres</td></tr>
+            <tr><td><code>pace</code></td><td><span class="type type-number">number</span></td><td>Seconds per km</td></tr>
+          </tbody>
+        </table>
+
+        <div class="info-box info-box-warning" style="margin-top:12px;">
+          ⚠ Comments and reactions are embedded in the post document (not subcollections). This is efficient for reads but means large posts with many comments grow the document size.
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── global_exercises ──────────────────────────────── -->
+  <section class="section" id="global-exercises">
+    <h2 class="section-title">global_exercises/{normalizedId}</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">global_exercises / {normalizedId}</span>
+        <span class="access access-public">Public</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>_id</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Normalized: lowercase, spaces → underscores</td></tr>
+            <tr><td><code>displayName</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Human-readable exercise name</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">ID normalization</div>
+        <pre><span class="cmt">// Document ID format</span>
+<span class="key">normalizeId</span>(<span class="str">"Bench Press"</span>) <span class="cmt">→</span> <span class="str">"bench_press"</span>
+<span class="key">normalizeId</span>(<span class="str">"Lat Pulldown"</span>) <span class="cmt">→</span> <span class="str">"lat_pulldown"</span>
+
+name.<span class="key">trim</span>().<span class="key">toLowerCase</span>().<span class="key">replace</span>(<span class="str">/\s+/g</span>, <span class="str">"_"</span>)</pre>
+
+        <div class="info-box info-box-info" style="margin-top:12px;">
+          ℹ Only written when user has <code>privacySettings.shareExercisesToGlobal = true</code>. Write pattern: <code>setDoc({merge:true})</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── game_state ────────────────────────────────────── -->
+  <section class="section" id="game-state">
+    <h2 class="section-title">game_state/weekly_config</h2>
+
+    <div class="collection">
+      <div class="collection-header">
+        <span class="collection-path">game_state / weekly_config</span>
+        <span class="access access-public">Public (singleton)</span>
+      </div>
+      <div class="collection-body">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>weekId</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>Monday date in YYYY-MM-DD (Melbourne timezone)</td></tr>
+            <tr><td><code>cap</code></td><td><span class="type type-number">number</span></td><td><span class="req req-yes">Required</span></td><td>Max posts allowed this week. Formula: <code>maxUserScore + 4</code></td></tr>
+            <tr><td><code>calculatedAt</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>ISO timestamp of last calculation</td></tr>
+            <tr><td><code>updatedBy</code></td><td><span class="type type-string">string</span></td><td><span class="req req-yes">Required</span></td><td>UID of user who triggered the recalculation</td></tr>
+          </tbody>
+        </table>
+        <div class="info-box info-box-info" style="margin-top:12px;">
+          ℹ Recalculated every Monday (Melbourne time). Write pattern: <code>setDoc()</code> (overwrites entire document).
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── AsyncStorage ───────────────────────────────────── -->
+  <section class="section" id="asyncstorage">
+    <h2 class="section-title">AsyncStorage Keys</h2>
+    <p style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:20px;">All values are JSON-stringified. These mirror Firestore structures for offline-first support and are hydrated from Firestore on login, wiped on logout.</p>
+
+    <div class="collection">
+      <div class="collection-body" style="padding:0;">
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Value Type</th><th>Wiped on Logout</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>workout_sessions</code></td><td><span class="type type-array">WorkoutSession[]</span></td><td>✓</td><td>Mirror of Firestore sessions</td></tr>
+            <tr><td><code>cardio_sessions</code></td><td><span class="type type-array">CardioSession[]</span></td><td>✓</td><td>Mirror of Firestore cardio_sessions</td></tr>
+            <tr><td><code>workout_templates</code></td><td><span class="type type-array">WorkoutTemplate[]</span></td><td>✓</td><td>Mirror of Firestore routines</td></tr>
+            <tr><td><code>body_weight_logs</code></td><td><span class="type type-array">BodyWeightLog[]</span></td><td>✓</td><td>Mirror of Firestore weight_logs</td></tr>
+            <tr><td><code>exercise_notes</code></td><td><span class="type type-map">Record&lt;name, Note[]&gt;</span></td><td>✓</td><td>Keyed by exercise name</td></tr>
+            <tr><td><code>master_exercises</code></td><td><span class="type type-array">MasterExercise[]</span></td><td>✓</td><td>Local copy of global_exercises</td></tr>
+            <tr><td><code>fav_stat_exercise</code></td><td><span class="type type-string">string</span></td><td>No</td><td>Selected exercise for stats screen</td></tr>
+            <tr><td><code>current_workout_session</code></td><td><span class="type type-object">WorkoutSession</span></td><td>✓</td><td>Active in-progress workout. <code>null</code> when idle</td></tr>
+            <tr><td><code>workout_timer_start</code></td><td><span class="type type-string">string (ms)</span></td><td>✓</td><td>Timestamp for elapsed timer recovery after backgrounding</td></tr>
+            <tr><td><code>active_cardio_session</code></td><td><span class="type type-object">ActiveCardioSession</span></td><td>No</td><td>Active in-progress cardio. <code>null</code> when idle</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <fieldset style="margin-top:20px;">
+      <legend>ExerciseNote object</legend>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td><span class="type type-string">string</span></td><td>Timestamp string</td></tr>
+          <tr><td><code>text</code></td><td><span class="type type-string">string</span></td><td>Note content</td></tr>
+          <tr><td><code>createdAt</code></td><td><span class="type type-string">string</span></td><td>ISO timestamp</td></tr>
+          <tr><td><code>isPinned</code></td><td><span class="type type-boolean">boolean</span></td><td>Pin to top of list</td></tr>
+          <tr><td><code>sessionId</code></td><td><span class="type type-string">string?</span></td><td>Optional session reference</td></tr>
+          <tr><td><code>exerciseName</code></td><td><span class="type type-string">string</span></td><td>Exercise name</td></tr>
+        </tbody>
+      </table>
+    </fieldset>
+
+    <fieldset style="margin-top:16px;">
+      <legend>ActiveCardioSession object</legend>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>activityType</code></td><td><span class="type type-enum">enum</span></td><td><code>"run"</code> | <code>"walk"</code> | <code>"cycle"</code></td></tr>
+          <tr><td><code>startTime</code></td><td><span class="type type-number">number</span></td><td><code>Date.now()</code> in ms</td></tr>
+          <tr><td><code>isPaused</code></td><td><span class="type type-boolean">boolean</span></td><td>Current pause state</td></tr>
+          <tr><td><code>distance</code></td><td><span class="type type-number">number</span></td><td>km accumulated so far</td></tr>
+          <tr><td><code>gpsEnabled</code></td><td><span class="type type-boolean">boolean</span></td><td>Whether live GPS tracking is active</td></tr>
+        </tbody>
+      </table>
+    </fieldset>
+  </section>
+
+
+  <!-- ── Encryption ────────────────────────────────────── -->
+  <section class="section" id="encryption">
+    <h2 class="section-title">Encryption Pattern</h2>
+
+    <div class="collection">
+      <div class="collection-body">
+        <table>
+          <thead><tr><th>Property</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Algorithm</td><td>AES via CryptoJS</td></tr>
+            <tr><td>Key derivation</td><td><code>{userId}-{EXPO_PUBLIC_ENCRYPTION_KEY}</code></td></tr>
+            <tr><td>Fallback key</td><td><code>"default-secret-key-change-me"</code> (legacy migration)</td></tr>
+            <tr><td>Payload (sessions)</td><td>JSON.stringify of the <code>exercises</code> array</td></tr>
+            <tr><td>Payload (weight)</td><td>Weight value as a string</td></tr>
+            <tr><td>Encrypted field</td><td><code>data</code> (string)</td></tr>
+            <tr><td>Flag field</td><td><code>isEncrypted: true</code></td></tr>
+            <tr><td>Cleanup</td><td><code>deleteField()</code> removes the opposite field on toggle</td></tr>
+          </tbody>
+        </table>
+
+        <div class="sub-label">Encrypted document shape</div>
+        <pre>{
+  <span class="key">"id"</span>: <span class="str">"1706688000000"</span>,
+  <span class="key">"name"</span>: <span class="str">"Push Day A"</span>,
+  <span class="key">"date"</span>: <span class="str">"2026-01-31T10:30:00"</span>,
+  <span class="key">"duration"</span>: <span class="num">3240</span>,
+  <span class="key">"isEncrypted"</span>: <span class="kw">true</span>,
+  <span class="key">"data"</span>: <span class="str">"U2FsdGVkX1+abc123..."</span>  <span class="cmt">// AES ciphertext</span>
+  <span class="cmt">// exercises field absent</span>
+}</pre>
+
+        <div class="sub-label">Unencrypted document shape</div>
+        <pre>{
+  <span class="key">"id"</span>: <span class="str">"1706688000000"</span>,
+  <span class="key">"name"</span>: <span class="str">"Push Day A"</span>,
+  <span class="key">"date"</span>: <span class="str">"2026-01-31T10:30:00"</span>,
+  <span class="key">"duration"</span>: <span class="num">3240</span>,
+  <span class="key">"isEncrypted"</span>: <span class="kw">false</span>,
+  <span class="key">"exercises"</span>: [ ... ]  <span class="cmt">// plain array</span>
+  <span class="cmt">// data field absent</span>
+}</pre>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── Indexes ───────────────────────────────────────── -->
+  <section class="section" id="indexes">
+    <h2 class="section-title">Recommended Firestore Indexes</h2>
+
+    <div class="collection">
+      <div class="collection-body" style="padding:0;">
+        <table>
+          <thead>
+            <tr><th>Collection</th><th>Fields</th><th>Query</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>users/{uid}/sessions</code></td><td><code>isEncrypted ASC</code></td><td>Filter public sessions for leaderboard/feed</td></tr>
+            <tr><td><code>users/{uid}/cardio_sessions</code></td><td><code>isEncrypted ASC</code></td><td>Filter public cardio for leaderboard/feed</td></tr>
+            <tr><td><code>users/{uid}/weight_logs</code></td><td><code>isEncrypted ASC</code></td><td>Filter public weight logs</td></tr>
+            <tr><td><code>users/{uid}/routines</code></td><td><code>isPublic ASC</code></td><td>Fetch public templates for discovery</td></tr>
+            <tr><td><code>posts</code></td><td><code>authorId ASC, createdAt DESC</code></td><td>Filter posts by user, sorted by date</td></tr>
+            <tr><td><code>posts</code></td><td><code>createdAt DESC</code></td><td>Global feed sorted by recency</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-box info-box-warning" style="max-width:1000px;margin:16px auto 0;">
+      ⚠ Single-field indexes are created automatically by Firestore. Composite indexes (e.g. <code>authorId + createdAt</code>) must be created manually in the Firebase Console or via <code>firestore.indexes.json</code>.
+    </div>
+  </section>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/firebase/package.json'\\).version\\)\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(bash -c 'output=$\\(npx tsc --noEmit 2>&1\\); printf \"%s\" \"${output:-✓ TypeScript: no errors}\" | jq -Rs '\"'\"'{\"systemMessage\": .}'\"'\"'')",
+      "Bash(bash -c 'output=$\\(npx tsc --noEmit 2>&1\\); node -e \"const o=process.argv[1]; process.stdout.write\\(JSON.stringify\\({systemMessage: o||\\\\\"✓ TypeScript: no errors\\\\\"}\\)\\)\" -- \"$output\"')",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.local.json','utf8'\\)\\); console.log\\('JSON valid'\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/prettier/package.json'\\).version\\)\")",
+      "Bash(npm install *)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const f=JSON.parse\\(d\\).tool_input.file_path;if\\(/\\\\.\\(ts|tsx|js|jsx\\)$/.test\\(f\\)\\){require\\('child_process'\\).execSync\\('npx prettier --write \\\\\"'+f+'\\\\\"',{stdio:'inherit'}\\)}}\\)\")"
+    ]
+  }
+}
