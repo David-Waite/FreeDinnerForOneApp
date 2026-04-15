@@ -36,6 +36,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ExerciseAutocomplete from "../components/workout/ExerciseAutocomplete";
 import DuoTouch from "../components/ui/DuoTouch";
 import { TextInput } from "react-native-gesture-handler";
+import { WorkoutSessionLiveActivity } from "../components/workout/WorkoutSessionLiveActivity";
 
 if (
   Platform.OS === "android" &&
@@ -63,6 +64,7 @@ export default function RecordWorkoutScreen() {
     addExerciseToSession,
     updateSet,
     markSetComplete,
+    resetSet,
     addSet,
     removeSet,
     saveSession,
@@ -102,6 +104,24 @@ export default function RecordWorkoutScreen() {
 
   // Track if screen is focused (to control auto-advance behavior)
   const [isFocused, setIsFocused] = useState(false);
+
+  // --- LIVE ACTIVITY DERIVED VALUES ---
+  const laTotalSets = useMemo(
+    () => exercises.reduce((sum, ex) => sum + ex.sets.length, 0),
+    [exercises],
+  );
+  const laCompletedSets = useMemo(
+    () =>
+      exercises.reduce(
+        (sum, ex) => sum + ex.sets.filter((s) => s.completed).length,
+        0,
+      ),
+    [exercises],
+  );
+  const laCurrentExercise = useMemo(() => {
+    const first = exercises.find((ex) => ex.sets.some((s) => !s.completed));
+    return first?.name ?? sessionName;
+  }, [exercises, sessionName]);
 
   // --- NEW STATE FOR ADDING EXERCISE ---
   const [isAddingExercise, setIsAddingExercise] = useState(false);
@@ -153,12 +173,12 @@ export default function RecordWorkoutScreen() {
   };
 
   // --- AUTO-ADVANCE LOGIC ---
+  // force=true skips the "next set must be empty" guard (used when user explicitly skips)
   const advanceToNextSet = useCallback(
-    (currentExId: string, currentSetId: string) => {
-      const exerciseIndex = exercises.findIndex((e) => e.id === currentExId);
-      if (exerciseIndex === -1) return;
+    (currentExId: string, currentSetId: string, force = false) => {
+      const exercise = exercises.find((e) => e.id === currentExId);
+      if (!exercise) return;
 
-      const exercise = exercises[exerciseIndex];
       const setIndex = exercise.sets.findIndex((s) => s.id === currentSetId);
       if (setIndex === -1) return;
 
@@ -167,15 +187,36 @@ export default function RecordWorkoutScreen() {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
       if (!isLastSet) {
-        setExpandedSetId(exercise.sets[setIndex + 1].id);
+        const nextSet = exercise.sets[setIndex + 1];
+        const nextSetIsEmpty =
+          (!nextSet.weight || nextSet.weight === "") &&
+          (!nextSet.reps || nextSet.reps === "") &&
+          !nextSet.completed;
+
+        // Auto-advance only when next set is empty; force-advance always proceeds
+        if (force || nextSetIsEmpty) {
+          setExpandedSetId(nextSet.id);
+        }
       } else {
-        if (exerciseIndex < exercises.length - 1) {
-          const nextExercise = exercises[exerciseIndex + 1];
-          setExpandedExerciseId(nextExercise.id);
-          if (nextExercise.sets.length > 0) {
-            setExpandedSetId(nextExercise.sets[0].id);
+        // Last set done — find the first incomplete exercise from the top,
+        // treating the current set as already completed.
+        const nextEx = exercises.find((ex) => {
+          if (ex.id === currentExId) {
+            return ex.sets.some((s) => s.id !== currentSetId && !s.completed);
           }
+          return ex.sets.some((s) => !s.completed);
+        });
+
+        if (nextEx) {
+          setExpandedExerciseId(nextEx.id);
+          const firstIncomplete =
+            nextEx.id === currentExId
+              ? nextEx.sets.find((s) => s.id !== currentSetId && !s.completed)
+              : nextEx.sets.find((s) => !s.completed);
+          if (firstIncomplete) setExpandedSetId(firstIncomplete.id);
+          pendingScrollId.current = nextEx.id;
         } else {
+          // All sets done
           setControlsExpandTrigger(Date.now());
         }
       }
@@ -306,24 +347,15 @@ export default function RecordWorkoutScreen() {
     setNotesModalVisible(true);
   }, []);
 
-  const handleStartRestTimer = useCallback(
-    (duration: number, setId: string, exId: string) => {
-      const ex = exercises.find((e) => e.id === exId);
-      const name = ex ? ex.name : "Exercise";
-      startRestTimer(duration, exId, setId, name);
-    },
-    [startRestTimer, exercises],
-  );
-
-  const handleSetDone = useCallback(
+  const handleCompleteSet = useCallback(
     (exerciseId: string, setId: string) => {
-      const exerciseIndex = exercises.findIndex((e) => e.id === exerciseId);
-      if (exerciseIndex === -1) return;
+      const exercise = exercises.find((e) => e.id === exerciseId);
+      if (!exercise) return;
 
-      const exercise = exercises[exerciseIndex];
       const set = exercise.sets.find((s) => s.id === setId);
       if (!set) return;
 
+      // Validate reps
       const isInvalid = !set.reps || set.reps === "0";
       const isAlreadyHighlighted = highlightedSets.has(setId);
 
@@ -331,7 +363,6 @@ export default function RecordWorkoutScreen() {
         setHighlightedSets((prev) => new Set(prev).add(setId));
         return;
       }
-
       if (isAlreadyHighlighted) {
         setHighlightedSets((prev) => {
           const next = new Set(prev);
@@ -340,19 +371,28 @@ export default function RecordWorkoutScreen() {
         });
       }
 
-      if (restTimer && restTimer.setId === setId) {
+      // Cancel any timer that was running for a different set
+      if (restTimer && restTimer.setId !== setId) {
         cancelRestTimer();
       }
 
       markSetComplete(exerciseId, setId);
-      advanceToNextSet(exerciseId, setId);
+
+      if (exercise.restTime > 0) {
+        // Start timer — keep set expanded, advance happens when timer ends
+        startRestTimer(exercise.restTime, exerciseId, setId, exercise.name);
+      } else {
+        // No rest configured — advance immediately
+        advanceToNextSet(exerciseId, setId);
+      }
     },
     [
       exercises,
       highlightedSets,
       markSetComplete,
-      restTimer,
+      startRestTimer,
       cancelRestTimer,
+      restTimer,
       advanceToNextSet,
     ],
   );
@@ -485,10 +525,8 @@ export default function RecordWorkoutScreen() {
               onAddSet={() => handleAddSet(exercise.id)}
               onRemoveSet={(setId) => handleRemoveSet(exercise.id, setId)}
               onOpenNotes={() => handleOpenNotes(exercise.name)}
-              onStartRestTimer={(dur, setId) =>
-                handleStartRestTimer(dur, setId, exercise.id)
-              }
-              onSetDone={(setId) => handleSetDone(exercise.id, setId)}
+              onCompleteSet={(setId) => handleCompleteSet(exercise.id, setId)}
+              onResetSet={(setId) => resetSet(exercise.id, setId)}
               onInputFocus={(setIndex) =>
                 handleInputFocus(exercise.id, setIndex)
               }
@@ -616,10 +654,30 @@ export default function RecordWorkoutScreen() {
         onAdd30={() => addRestTime(30)}
         onSkip={() => {
           if (restTimer) {
-            handleSetDone(restTimer.exerciseId, restTimer.setId);
+            cancelRestTimer();
+            advanceToNextSet(restTimer.exerciseId, restTimer.setId, true);
           }
         }}
       />
+
+      {isActive && startTime && (
+        <WorkoutSessionLiveActivity
+          sessionName={sessionName}
+          startTime={startTime}
+          isPaused={isPaused}
+          totalSets={laTotalSets}
+          completedSets={laCompletedSets}
+          currentExerciseName={laCurrentExercise}
+          restTimer={
+            restTimer
+              ? {
+                  endTime: restTimer.endTime,
+                  isFinished: restTimer.isFinished,
+                }
+              : null
+          }
+        />
+      )}
     </View>
   );
 }

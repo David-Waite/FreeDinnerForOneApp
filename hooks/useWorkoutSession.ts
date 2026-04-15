@@ -165,6 +165,22 @@ export const useWorkoutSession = () => {
     saveSessionState(updated);
   };
 
+  const resetSet = (exId: string, setId: string) => {
+    const updated = exercises.map((e) => {
+      if (e.id !== exId) return e;
+      return {
+        ...e,
+        sets: e.sets.map((s) =>
+          s.id === setId
+            ? { ...s, weight: "", reps: "", completed: false }
+            : s,
+        ),
+      };
+    });
+    setExercises(updated);
+    saveSessionState(updated);
+  };
+
   const addSet = async (exId: string) => {
     const exercise = exercises.find((e) => e.id === exId);
     if (!exercise) return;
@@ -296,6 +312,7 @@ export const useWorkoutSession = () => {
     addExerciseToSession,
     updateSet,
     markSetComplete,
+    resetSet,
     addSet,
     removeSet,
     saveSession,

@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -22,11 +22,11 @@ type Props = {
   activeRestEndTime?: number;
   onToggleExpand: () => void;
   onUpdate: (field: keyof WorkoutSet, value: string | number) => void;
-  onDone: () => void;
-  onStartTimer: () => void;
+  onCompleteSet: () => void;
+  onResetSet: () => void;
   onOpenTimer: () => void;
   onRemove: () => void;
-  onInputFocus: (index: number) => void; // Using the existing prop for scroll logic
+  onInputFocus: (index: number) => void;
 };
 
 function SetRowComponent({
@@ -37,13 +37,25 @@ function SetRowComponent({
   activeRestEndTime,
   onToggleExpand,
   onUpdate,
-  onDone,
-  onStartTimer,
+  onCompleteSet,
+  onResetSet,
   onOpenTimer,
   onRemove,
   onInputFocus,
 }: Props) {
+  const weightInputRef = useRef<TextInput>(null);
+  const repsInputRef = useRef<TextInput>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+
+  // Auto-focus the right input when the row opens
+  useEffect(() => {
+    if (!isExpanded) return;
+    const t = setTimeout(() => {
+      const weightEmpty = !set.weight || set.weight === "" || set.weight === "0";
+      (weightEmpty ? weightInputRef : repsInputRef).current?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, [isExpanded]);
 
   // --- TIMER TICKER ---
   useEffect(() => {
@@ -107,6 +119,7 @@ function SetRowComponent({
           styles.container,
           set.completed && styles.containerCompleted,
           isError && styles.containerError,
+          !!activeRestEndTime && timeLeft > 0 && styles.containerTimerActive,
         ]}
       >
         <View style={styles.topRow}>
@@ -124,6 +137,7 @@ function SetRowComponent({
 
           <View style={styles.inputGroup}>
             <TextInput
+              ref={weightInputRef}
               style={styles.input}
               keyboardType="decimal-pad"
               placeholder="0"
@@ -141,6 +155,7 @@ function SetRowComponent({
 
           <View style={styles.inputGroup}>
             <TextInput
+              ref={repsInputRef}
               style={styles.input}
               keyboardType="numeric"
               placeholder={set.previousReps || "0"}
@@ -157,9 +172,8 @@ function SetRowComponent({
 
         {isExpanded && (
           <View style={styles.bottomRow}>
-            {/* CONDITIONAL TIMER BUTTON */}
             {activeRestEndTime && timeLeft > 0 ? (
-              // ACTIVE COUNTDOWN (Orange)
+              // Timer is running — show orange countdown, tap to open modal
               <DuoTouch
                 style={styles.timerBtnActive}
                 onPress={onOpenTimer}
@@ -174,31 +188,27 @@ function SetRowComponent({
                   {formatTime(timeLeft)}
                 </Text>
               </DuoTouch>
-            ) : (
-              // STANDARD START BUTTON
+            ) : set.completed ? (
+              // Already done, timer not running — offer to reset
               <DuoTouch
-                style={styles.timerBtn}
-                onPress={onStartTimer}
-                hapticStyle="light"
+                style={styles.resetBtn}
+                onPress={onResetSet}
+                hapticStyle="medium"
               >
-                <MaterialCommunityIcons
-                  name="timer-outline"
-                  size={20}
-                  color={Colors.primary}
-                />
-                <Text style={styles.timerText}>REST</Text>
+                <Ionicons name="refresh" size={20} color={Colors.textMuted} />
+                <Text style={styles.resetText}>RESET SET</Text>
+              </DuoTouch>
+            ) : (
+              // Fresh set — primary complete action
+              <DuoTouch
+                style={styles.doneBtn}
+                onPress={onCompleteSet}
+                hapticStyle="medium"
+              >
+                <Ionicons name="checkmark-sharp" size={20} color={Colors.white} />
+                <Text style={styles.doneText}>COMPLETE SET</Text>
               </DuoTouch>
             )}
-
-            {/* DONE / CHECK BUTTON */}
-            <DuoTouch
-              style={styles.doneBtn}
-              onPress={onDone}
-              hapticStyle="medium"
-            >
-              <Ionicons name="checkmark-sharp" size={20} color={Colors.white} />
-              <Text style={styles.doneText}>DONE</Text>
-            </DuoTouch>
           </View>
         )}
       </TouchableOpacity>
@@ -213,6 +223,7 @@ function arePropsEqual(prev: Props, next: Props) {
     prev.isExpanded === next.isExpanded &&
     prev.isError === next.isError &&
     prev.activeRestEndTime === next.activeRestEndTime &&
+    prev.onCompleteSet === next.onCompleteSet &&
     prev.onInputFocus === next.onInputFocus
   );
 }
@@ -233,6 +244,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#233610",
     borderColor: Colors.primary,
     borderBottomColor: "#46a302",
+  },
+  containerTimerActive: {
+    backgroundColor: Colors.surface,
+    borderColor: Colors.warning,
+    borderBottomColor: "#cc7a00",
   },
   containerError: {
     borderColor: Colors.error,
@@ -346,9 +362,28 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 12,
   },
+  resetBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.surface,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.border,
+  },
+  resetText: {
+    color: Colors.textMuted,
+    fontWeight: "900",
+    marginLeft: 6,
+    fontSize: 12,
+  },
 
   deleteAction: {
-    backgroundColor: Colors.error,
+    backgroundColor: Colors.error, // swipe to delete
     justifyContent: "center",
     alignItems: "flex-end",
     marginBottom: 8,

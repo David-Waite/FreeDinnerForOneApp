@@ -10,7 +10,7 @@ type Props = {
   isExpanded: boolean;
   expandedSetId: string | null;
   highlightedSets?: Set<string>;
-  activeRestTimer?: { setId: string; endTime: number } | null; // <--- NEW PROP
+  activeRestTimer?: { setId: string; endTime: number; exerciseId: string; isFinished: boolean } | null;
   onToggle: () => void;
   onSetExpand: (setId: string | null) => void;
   onUpdateSet: (
@@ -21,9 +21,9 @@ type Props = {
   onAddSet: () => void;
   onRemoveSet: (setId: string) => void;
   onOpenNotes: () => void;
-  onStartRestTimer: (duration: number, setId: string) => void;
-  onOpenRestTimer: () => void; // <--- NEW PROP
-  onSetDone: (setId: string) => void;
+  onCompleteSet: (setId: string) => void;
+  onResetSet: (setId: string) => void;
+  onOpenRestTimer: () => void;
   onInputFocus: (setIndex: number) => void;
 };
 
@@ -39,16 +39,28 @@ function ExerciseCardComponent({
   onAddSet,
   onRemoveSet,
   onOpenNotes,
-  onStartRestTimer,
+  onCompleteSet,
+  onResetSet,
   onOpenRestTimer,
-  onSetDone,
   onInputFocus,
 }: Props) {
   const isComplete =
     exercise.sets.every((s) => s.completed) && exercise.sets.length > 0;
 
+  // Orange border whenever a timer is running for this exercise (beats green complete state)
+  const hasActiveTimer =
+    !!activeRestTimer &&
+    !activeRestTimer.isFinished &&
+    activeRestTimer.exerciseId === exercise.id;
+
   return (
-    <View style={[styles.card, isComplete && styles.cardComplete]}>
+    <View
+      style={[
+        styles.card,
+        isComplete && styles.cardComplete,
+        hasActiveTimer && styles.cardTimerActive,
+      ]}
+    >
       <TouchableOpacity
         style={[styles.cardHeader, isExpanded && styles.cardHeaderActive]}
         onPress={onToggle}
@@ -92,8 +104,8 @@ function ExerciseCardComponent({
                   onSetExpand(expandedSetId === set.id ? null : set.id)
                 }
                 onUpdate={(field, val) => onUpdateSet(set.id, field, val)}
-                onDone={() => onSetDone(set.id)}
-                onStartTimer={() => onStartRestTimer(exercise.restTime, set.id)}
+                onCompleteSet={() => onCompleteSet(set.id)}
+                onResetSet={() => onResetSet(set.id)}
                 onOpenTimer={onOpenRestTimer}
                 onRemove={() => onRemoveSet(set.id)}
                 onInputFocus={onInputFocus}
@@ -126,10 +138,11 @@ function ExerciseCardComponent({
 function arePropsEqual(prev: Props, next: Props) {
   return (
     prev.isExpanded === next.isExpanded &&
-      prev.expandedSetId === next.expandedSetId &&
-      prev.exercise === next.exercise &&
-      prev.highlightedSets === next.highlightedSets &&
-      prev.activeRestTimer === next.activeRestTimer, // <--- Check for timer updates
+    prev.expandedSetId === next.expandedSetId &&
+    prev.exercise === next.exercise &&
+    prev.highlightedSets === next.highlightedSets &&
+    prev.activeRestTimer === next.activeRestTimer &&
+    prev.onCompleteSet === next.onCompleteSet &&
     prev.onInputFocus === next.onInputFocus
   );
 }
@@ -148,6 +161,10 @@ const styles = StyleSheet.create({
   cardComplete: {
     borderColor: Colors.primary,
     borderBottomColor: "#46a302",
+  },
+  cardTimerActive: {
+    borderColor: Colors.warning,
+    borderBottomColor: "#cc7a00",
   },
   cardHeader: {
     flexDirection: "row",
