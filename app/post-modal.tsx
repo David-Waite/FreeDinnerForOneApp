@@ -12,6 +12,7 @@ import {
   Modal,
   FlatList,
   InteractionManager,
+  Linking,
 } from "react-native";
 import AppAlert, { AppAlertButton } from "../components/ui/AppAlert";
 import { Image } from "expo-image";
@@ -101,6 +102,25 @@ export default function PostModal() {
   };
 
   const pickFromLibrary = async () => {
+    let { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+
+    if (status === "denied") {
+      setAlertConfig({
+        title: "LIBRARY BLOCKED",
+        message: "You've blocked photo library access. Go to Settings to enable it.",
+        buttons: [
+          { text: "CANCEL", style: "cancel" },
+          { text: "OPEN SETTINGS", onPress: () => Linking.openSettings() },
+        ],
+      });
+      return;
+    }
+
+    if (status !== "granted") {
+      const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (req.status !== "granted") return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
       allowsEditing: true,
@@ -111,6 +131,25 @@ export default function PostModal() {
   };
 
   const takePhoto = async () => {
+    let { status } = await ImagePicker.getCameraPermissionsAsync();
+
+    if (status === "denied") {
+      setAlertConfig({
+        title: "CAMERA BLOCKED",
+        message: "You've blocked camera access. Go to Settings to enable it.",
+        buttons: [
+          { text: "CANCEL", style: "cancel" },
+          { text: "OPEN SETTINGS", onPress: () => Linking.openSettings() },
+        ],
+      });
+      return;
+    }
+
+    if (status !== "granted") {
+      const req = await ImagePicker.requestCameraPermissionsAsync();
+      if (req.status !== "granted") return;
+    }
+
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [4, 3],

@@ -9,6 +9,7 @@ type Props = {
   distance: number; // km
   pace: number; // seconds per km (0 = no pace yet)
   isPaused: boolean;
+  elapsedSeconds: number; // frozen elapsed value from the in-app timer
 };
 
 const ACTIVITY_LABEL: Record<CardioActivityType, string> = {
@@ -37,12 +38,22 @@ function formatPaceLiveActivity(secondsPerKm: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function formatElapsed(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0)
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function WorkoutLiveActivity({
   activityType,
   startTime,
   distance,
   pace,
   isPaused,
+  elapsedSeconds,
 }: Props) {
   const label = ACTIVITY_LABEL[activityType];
   const symbol = ACTIVITY_SYMBOL[activityType];
@@ -100,12 +111,19 @@ export function WorkoutLiveActivity({
         </Voltra.VStack>
 
         <Voltra.VStack>
-          {/* Native timer — counts up from startTime with no JS updates needed */}
-          <Voltra.Timer
-            startAtMs={startTime}
-            direction="up"
-            style={{ color: WHITE, fontSize: 18, fontWeight: "800" }}
-          />
+          {isPaused ? (
+            <Voltra.Text
+              style={{ color: MUTED, fontSize: 18, fontWeight: "800" }}
+            >
+              {formatElapsed(elapsedSeconds)}
+            </Voltra.Text>
+          ) : (
+            <Voltra.Timer
+              startAtMs={startTime}
+              direction="up"
+              style={{ color: WHITE, fontSize: 18, fontWeight: "800" }}
+            />
+          )}
           <Voltra.Text
             style={{ color: MUTED, fontSize: 10, fontWeight: "700" }}
           >
@@ -158,11 +176,19 @@ export function WorkoutLiveActivity({
     ),
     trailing: (
       <Voltra.VStack style={{ padding: 8, gap: 2, alignItems: "center" }}>
-        <Voltra.Timer
-          startAtMs={startTime}
-          direction="up"
-          style={{ color: WHITE, fontSize: 15, fontWeight: "800" }}
-        />
+        {isPaused ? (
+          <Voltra.Text
+            style={{ color: MUTED, fontSize: 15, fontWeight: "800" }}
+          >
+            {formatElapsed(elapsedSeconds)}
+          </Voltra.Text>
+        ) : (
+          <Voltra.Timer
+            startAtMs={startTime}
+            direction="up"
+            style={{ color: WHITE, fontSize: 15, fontWeight: "800" }}
+          />
+        )}
         <Voltra.Text
           style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}
         >
@@ -186,11 +212,19 @@ export function WorkoutLiveActivity({
     ),
     trailing: (
       <Voltra.HStack style={{ paddingRight: 6 }}>
-        <Voltra.Timer
-          startAtMs={startTime}
-          direction="up"
-          style={{ color: WHITE, fontSize: 13, fontWeight: "700" }}
-        />
+        {isPaused ? (
+          <Voltra.Text
+            style={{ color: MUTED, fontSize: 13, fontWeight: "700" }}
+          >
+            {formatElapsed(elapsedSeconds)}
+          </Voltra.Text>
+        ) : (
+          <Voltra.Timer
+            startAtMs={startTime}
+            direction="up"
+            style={{ color: WHITE, fontSize: 13, fontWeight: "700" }}
+          />
+        )}
       </Voltra.HStack>
     ),
   };

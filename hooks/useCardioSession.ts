@@ -15,6 +15,7 @@ export type ActiveCardioSession = {
   activityType: CardioActivityType;
   startTime: number;
   isPaused: boolean;
+  pausedAt?: number;
   distance: number;
   gpsEnabled: boolean;
 };
@@ -66,13 +67,34 @@ export const useCardioSession = () => {
     [],
   );
 
-  const toggleCardioPause = useCallback(() => {
-    setActiveCardio((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, isPaused: !prev.isPaused };
-      persist(next);
-      return next;
-    });
+  const toggleCardioPause = useCallback(async () => {
+    // Read from AsyncStorage to get the real accumulated distance —
+    // React state has a stale distance because only the background task updates it.
+    const json = await AsyncStorage.getItem(ACTIVE_CARDIO_KEY);
+    if (!json) return;
+    const current = JSON.parse(json) as ActiveCardioSession;
+
+    let next: ActiveCardioSession;
+    if (!current.isPaused) {
+      // Pausing — record when we paused
+      next = { ...current, isPaused: true, pausedAt: Date.now() };
+    } else {
+      // Unpausing — shift startTime forward by the pause duration so
+      // elapsed-time calculations (Date.now() - startTime) stay correct.
+      const pauseLen = Date.now() - (current.pausedAt ?? Date.now());
+      next = {
+        ...current,
+        isPaused: false,
+        startTime: current.startTime + pauseLen,
+        pausedAt: undefined,
+      };
+      // Clear last known GPS position so the background task doesn't count
+      // any drift/movement that happened while paused.
+      await AsyncStorage.removeItem(BG_LAST_LOC_KEY);
+    }
+
+    await persist(next);
+    setActiveCardio(next);
   }, []);
 
   const updateCardioDistance = useCallback((distance: number) => {

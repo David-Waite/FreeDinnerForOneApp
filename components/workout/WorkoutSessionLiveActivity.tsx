@@ -11,6 +11,7 @@ type Props = {
   sessionName: string;
   startTime: number; // epoch ms
   isPaused: boolean;
+  elapsedSeconds: number; // frozen elapsed value from the in-app timer
   totalSets: number;
   completedSets: number;
   currentExerciseName: string;
@@ -31,10 +32,20 @@ function stateColor(restTimer: RestTimerInfo | null): string {
   return restTimer.isFinished ? RED : ORANGE;
 }
 
+function formatElapsed(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0)
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function WorkoutSessionLiveActivity({
   sessionName,
   startTime,
   isPaused,
+  elapsedSeconds,
   totalSets,
   completedSets,
   currentExerciseName,
@@ -70,11 +81,19 @@ export function WorkoutSessionLiveActivity({
           {isPaused ? " · PAUSED" : ""}
           </Voltra.Text>
         </Voltra.HStack>
-        <Voltra.Timer
-          startAtMs={startTime}
-          direction="up"
-          style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
-        />
+        {isPaused ? (
+          <Voltra.Text
+            style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
+          >
+            {formatElapsed(elapsedSeconds)}
+          </Voltra.Text>
+        ) : (
+          <Voltra.Timer
+            startAtMs={startTime}
+            direction="up"
+            style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
+          />
+        )}
       </Voltra.HStack>
 
       {/* State label */}
@@ -223,11 +242,19 @@ export function WorkoutSessionLiveActivity({
     ),
     trailing: (
       <Voltra.VStack style={{ padding: 8, gap: 2, alignItems: "center" }}>
-        <Voltra.Timer
-          startAtMs={startTime}
-          direction="up"
-          style={{ color: WHITE, fontSize: 15, fontWeight: "800" }}
-        />
+        {isPaused ? (
+          <Voltra.Text
+            style={{ color: MUTED, fontSize: 15, fontWeight: "800" }}
+          >
+            {formatElapsed(elapsedSeconds)}
+          </Voltra.Text>
+        ) : (
+          <Voltra.Timer
+            startAtMs={startTime}
+            direction="up"
+            style={{ color: WHITE, fontSize: 15, fontWeight: "800" }}
+          />
+        )}
         <Voltra.Text
           style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}
         >
@@ -261,6 +288,12 @@ export function WorkoutSessionLiveActivity({
             direction="down"
             style={{ color: accent, fontSize: 13, fontWeight: "700" }}
           />
+        ) : isPaused ? (
+          <Voltra.Text
+            style={{ color: MUTED, fontSize: 13, fontWeight: "700" }}
+          >
+            {formatElapsed(elapsedSeconds)}
+          </Voltra.Text>
         ) : (
           <Voltra.Timer
             startAtMs={startTime}

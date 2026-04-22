@@ -665,6 +665,7 @@ export default function RecordWorkoutScreen() {
           sessionName={sessionName}
           startTime={startTime}
           isPaused={isPaused}
+          elapsedSeconds={elapsedSeconds}
           totalSets={laTotalSets}
           completedSets={laCompletedSets}
           currentExerciseName={laCurrentExercise}

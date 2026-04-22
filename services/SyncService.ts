@@ -21,8 +21,12 @@ const KEYS_TO_WIPE = [
 ];
 
 // 1. Define the Keys
-const ENV_SECRET = process.env.EXPO_PUBLIC_ENCRYPTION_KEY || "default-secret";
-const FALLBACK_SECRET = "default-secret"; // For legacy dev data
+const ENV_SECRET =
+  process.env.EXPO_PUBLIC_ENCRYPTION_KEY || "default-secret-key-change-me";
+const FALLBACK_SECRETS = [
+  "default-secret-key-change-me", // WorkoutRepository's hardcoded fallback
+  "default-secret",               // Legacy dev data
+];
 
 export const SyncService = {
   async wipeLocalData() {
@@ -53,7 +57,7 @@ export const SyncService = {
   tryDecrypt(cipherText: string, userId: string): any | null {
     const keysToTry = [
       `${userId}-${ENV_SECRET}`,
-      `${userId}-${FALLBACK_SECRET}`,
+      ...FALLBACK_SECRETS.map((s) => `${userId}-${s}`),
     ];
 
     for (const key of keysToTry) {
@@ -128,7 +132,7 @@ export const SyncService = {
         let weightVal = null;
         const keysToTry = [
           `${userId}-${ENV_SECRET}`,
-          `${userId}-${FALLBACK_SECRET}`,
+          ...FALLBACK_SECRETS.map((s) => `${userId}-${s}`),
         ];
         for (const key of keysToTry) {
           try {

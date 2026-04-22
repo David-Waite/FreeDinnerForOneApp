@@ -13,6 +13,7 @@ export const useWorkoutSession = () => {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
 
   useEffect(() => {
     loadActiveSession();
@@ -259,7 +260,21 @@ export const useWorkoutSession = () => {
     return newExId;
   };
 
-  const togglePause = () => setIsPaused(!isPaused);
+  const togglePause = () => {
+    if (!isPaused) {
+      // Pausing — record when
+      setPausedAt(Date.now());
+      setIsPaused(true);
+    } else {
+      // Unpausing — shift startTime forward by pause duration
+      const pauseLen = Date.now() - (pausedAt ?? Date.now());
+      const adjusted = (startTime ?? 0) + pauseLen;
+      setStartTime(adjusted);
+      AsyncStorage.setItem(TIMER_START_KEY, adjusted.toString());
+      setPausedAt(null);
+      setIsPaused(false);
+    }
+  };
 
   const saveSession = async () => {
     if (!sessionId) return;

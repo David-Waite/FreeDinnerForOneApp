@@ -514,6 +514,7 @@ export default function RecordCardioScreen() {
           distance={liveDistance}
           pace={livePace}
           isPaused={activeCardio.isPaused}
+          elapsedSeconds={liveElapsed}
         />
       )}
 
