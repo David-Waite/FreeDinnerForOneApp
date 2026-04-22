@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thecomp — E2E Encryption Migration Plan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-primary:        #58cc02;
+      --color-background:     #131f24;
+      --color-surface:        #1f2f38;
+      --color-border:         #37464f;
+      --color-text:           #ffffff;
+      --color-text-muted:     #afafaf;
+      --color-error:          #ff4b4b;
+      --color-warning:        #ff9600;
+      --color-info:           #1cb0f6;
+      --color-gold:           #ffc800;
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--color-background);
+      color: var(--color-text);
+      padding: 40px 24px;
+      line-height: 1.7;
+    }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 {
+      font-size: 28px; font-weight: 900; letter-spacing: 1px;
+      color: var(--color-primary); margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 14px; font-weight: 700; color: var(--color-text-muted);
+      margin-bottom: 32px; letter-spacing: 0.5px;
+    }
+    h2 {
+      font-size: 20px; font-weight: 900; color: var(--color-info);
+      margin-top: 40px; margin-bottom: 16px; letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--color-border); padding-bottom: 8px;
+    }
+    h3 {
+      font-size: 16px; font-weight: 800; color: var(--color-gold);
+      margin-top: 24px; margin-bottom: 10px;
+    }
+    p, li { font-size: 15px; font-weight: 600; color: var(--color-text); }
+    ul, ol { padding-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; }
+    .card {
+      background: var(--color-surface); border: 2px solid var(--color-border);
+      border-radius: 16px; padding: 20px; margin: 16px 0;
+      border-bottom: 4px solid var(--color-border);
+    }
+    .card-warning {
+      border-color: var(--color-warning);
+      border-bottom-color: #cc7a00;
+      background: #2a2210;
+    }
+    .card-error {
+      border-color: var(--color-error);
+      border-bottom-color: #a62626;
+      background: #2a1515;
+    }
+    .card-success {
+      border-color: var(--color-primary);
+      border-bottom-color: #46a302;
+      background: #1a2a10;
+    }
+    .card-title {
+      font-size: 13px; font-weight: 900; letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .card-warning .card-title { color: var(--color-warning); }
+    .card-error .card-title { color: var(--color-error); }
+    .card-success .card-title { color: var(--color-primary); }
+    code {
+      font-family: 'Courier New', monospace; font-size: 13px;
+      background: var(--color-background); padding: 2px 6px;
+      border-radius: 4px; color: var(--color-info);
+    }
+    pre {
+      background: var(--color-background); border: 1px solid var(--color-border);
+      border-radius: 12px; padding: 16px; overflow-x: auto;
+      margin: 12px 0; font-size: 13px; line-height: 1.6;
+      color: var(--color-text-muted); font-family: 'Courier New', monospace;
+    }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 8px;
+      font-size: 11px; font-weight: 900; letter-spacing: 1px;
+    }
+    .badge-current { background: var(--color-error); color: #fff; }
+    .badge-target { background: var(--color-primary); color: #fff; }
+    .phase {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+    }
+    .phase-number {
+      min-width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 16px; color: #fff;
+      background: var(--color-info);
+    }
+    .phase-title { font-weight: 900; font-size: 15px; }
+    table {
+      width: 100%; border-collapse: collapse; margin: 16px 0;
+      font-size: 14px;
+    }
+    th {
+      text-align: left; padding: 10px 12px; font-weight: 900;
+      font-size: 12px; letter-spacing: 1px; color: var(--color-text-muted);
+      border-bottom: 2px solid var(--color-border);
+    }
+    td {
+      padding: 10px 12px; border-bottom: 1px solid var(--color-border);
+      font-weight: 600;
+    }
+    .flow-arrow {
+      text-align: center; font-size: 24px; color: var(--color-text-muted);
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>END-TO-END ENCRYPTION MIGRATION</h1>
+  <p class="subtitle">TODO — ARCHITECTURAL PLAN FOR TRUE USER-DERIVED ENCRYPTION</p>
+
+  <!-- ───────────────────────────────────────────── -->
+  <h2>1. Current State</h2>
+
+  <div class="card card-error">
+    <div class="card-title">PROBLEM WITH CURRENT APPROACH</div>
+    <p>Encryption is performed using a <strong>single app-wide secret</strong> (<code>EXPO_PUBLIC_ENCRYPTION_KEY</code>) bundled into the JavaScript build. The key is combined with the user's UID to produce a per-user key:</p>
+    <pre>encryptionKey = `${userId}-${APP_SECRET}`</pre>
+    <p style="margin-top: 12px;">This is <strong>obfuscation, not true encryption</strong>. Anyone who decompiles the app binary can extract the secret and decrypt any user's data if they have Firestore read access.</p>
+  </div>
+
+  <h3>Current Key Derivation</h3>
+  <table>
+    <tr><th>FILE</th><th>VARIABLE</th><th>FALLBACK VALUE</th></tr>
+    <tr><td><code>WorkoutRepository.ts</code></td><td><code>APP_SECRET</code></td><td><code>default-secret-key-change-me</code></td></tr>
+    <tr><td><code>SyncService.ts</code></td><td><code>ENV_SECRET</code></td><td><code>default-secret-key-change-me</code></td></tr>
+    <tr><td><code>SyncService.ts</code></td><td><code>FALLBACK_SECRETS[]</code></td><td><code>default-secret-key-change-me</code>, <code>default-secret</code></td></tr>
+  </table>
+
+  <h3>What Gets Encrypted</h3>
+  <ul>
+    <li><strong>Workout sessions</strong> — the <code>exercises</code> array is encrypted into a <code>data</code> field (controlled by <code>privacySettings.encryptWorkouts</code>)</li>
+    <li><strong>Body weight logs</strong> — the <code>weight</code> value is encrypted into a <code>data</code> field (controlled by <code>privacySettings.encryptBodyWeight</code>, defaults to <code>true</code>)</li>
+    <li><strong>Workout templates (routines)</strong> — the <code>exercises</code> array is encrypted into a <code>data</code> field (controlled by <code>privacySettings.encryptWorkouts</code>)</li>
+  </ul>
+
+  <h3>Firestore Document Shape (Encrypted)</h3>
+  <pre>{
+  id: "session-123",
+  name: "Push Day",
+  date: "2026-04-20T10:00:00.000Z",
+  duration: 3600,
+  isEncrypted: true,
+  data: "U2FsdGVkX1+..." // AES ciphertext of JSON.stringify(exercises)
+}</pre>
+
+  <!-- ───────────────────────────────────────────── -->
+  <h2>2. Target State — True E2E Encryption</h2>
+
+  <div class="card card-success">
+    <div class="card-title">GOAL</div>
+    <p>Each user's data is encrypted with a key <strong>derived from their own password</strong>. The key never leaves the device. Neither the server, the app developer, nor anyone with Firestore access can read user data without the user's password.</p>
+  </div>
+
+  <h3>Proposed Key Derivation</h3>
+  <pre>
+// On login / account creation:
+salt         = user.uid (or a random salt stored in user doc)
+masterKey    = PBKDF2(password, salt, { iterations: 100000, keySize: 256 })
+encryptionKey = masterKey
+
+// Store in secure storage (expo-secure-store), NOT AsyncStorage
+await SecureStore.setItemAsync('encryption_key', masterKey)</pre>
+
+  <h3>How It Works</h3>
+  <ol>
+    <li><strong>Account creation / password change</strong> — derive the master key from the password using PBKDF2, store it in <code>expo-secure-store</code> on device.</li>
+    <li><strong>Login</strong> — after Firebase Auth succeeds, re-derive the key from the password and store it in secure storage. The password is then discarded from memory.</li>
+    <li><strong>Encrypt on write</strong> — when saving data to Firestore, encrypt with the master key from secure storage (same AES approach but with the user-derived key).</li>
+    <li><strong>Decrypt on read</strong> — when hydrating from Firestore, decrypt with the stored master key.</li>
+    <li><strong>Logout</strong> — delete the master key from secure storage.</li>
+  </ol>
+
+  <div class="card card-warning">
+    <div class="card-title">KEY CONSIDERATION — PASSWORD RESETS</div>
+    <p>If a user resets their password, the old master key is lost. This means <strong>all previously encrypted data becomes unreadable</strong> unless we plan for this. Options:</p>
+    <ul style="margin-top: 8px;">
+      <li><strong>Key escrow:</strong> Encrypt the master key with a recovery code shown once at signup. User stores it offline.</li>
+      <li><strong>Re-encryption on password change:</strong> When the user changes their password (not resets), decrypt all data with the old key and re-encrypt with the new key in a batch operation.</li>
+      <li><strong>Accept the trade-off:</strong> Warn users that a password reset will wipe their encrypted history. Simple but harsh.</li>
+    </ul>
+  </div>
+
+  <!-- ───────────────────────────────────────────── -->
+  <h2>3. Migration Strategy</h2>
+
+  <p>Migration must be handled carefully because production users already have data encrypted with the old app-wide key. The migration will be done in <strong>three phases</strong>.</p>
+
+  <div class="card">
+    <div class="phase">
+      <div class="phase-number">1</div>
+      <div>
+        <div class="phase-title">INTERIM — ADD NEW ENV KEY + FALLBACK DECRYPTION</div>
+        <span class="badge badge-current">CURRENT STEP</span>
+      </div>
+    </div>
+    <p>This is where we are now. A proper <code>EXPO_PUBLIC_ENCRYPTION_KEY</code> has been added to EAS environment variables. <code>SyncService.ts</code> has a <code>FALLBACK_SECRETS</code> array that can decrypt data encrypted with any of the old default keys.</p>
+    <ul>
+      <li>New data is encrypted with the new env key</li>
+      <li>Old data is still decryptable via fallbacks</li>
+      <li>No user action required</li>
+    </ul>
+  </div>
+
+  <div class="flow-arrow">&#8595;</div>
+
+  <div class="card">
+    <div class="phase">
+      <div class="phase-number">2</div>
+      <div>
+        <div class="phase-title">FULL MIGRATION — RE-ENCRYPT ALL DATA WITH USER-DERIVED KEYS</div>
+        <span class="badge badge-target">TARGET</span>
+      </div>
+    </div>
+    <p>When E2E encryption is implemented, a one-time migration runs on each user's device:</p>
+    <ol>
+      <li>On login, detect if user has documents with <code>isEncrypted: true</code> that use the old key format</li>
+      <li>Decrypt each document using the old key (try <code>ENV_SECRET</code> then <code>FALLBACK_SECRETS</code>)</li>
+      <li>Re-encrypt with the user's new password-derived master key</li>
+      <li>Write the re-encrypted document back to Firestore</li>
+      <li>Mark migration complete on the user's profile: <code>encryptionVersion: 2</code></li>
+    </ol>
+
+    <h3 style="margin-top: 16px;">Migration Flow</h3>
+    <pre>
+async function migrateUserEncryption(userId, newMasterKey) {
+  const userDoc = await getDoc(doc(db, "users", userId));
+  if (userDoc.data()?.encryptionVersion === 2) return; // Already migrated
+
+  // Migrate sessions
+  const sessions = await getDocs(collection(db, "users", userId, "sessions"));
+  for (const session of sessions.docs) {
+    const data = session.data();
+    if (!data.isEncrypted || !data.data) continue;
+
+    // Decrypt with old key
+    const decrypted = tryDecryptWithFallbacks(data.data, userId);
+    if (!decrypted) { flag for manual review; continue; }
+
+    // Re-encrypt with new user-derived key
+    const reEncrypted = AES.encrypt(JSON.stringify(decrypted), newMasterKey);
+    await setDoc(session.ref, { data: reEncrypted, encryptionVersion: 2 }, { merge: true });
+  }
+
+  // Repeat for weight_logs, routines...
+
+  // Mark complete
+  await setDoc(doc(db, "users", userId), { encryptionVersion: 2 }, { merge: true });
+}</pre>
+  </div>
+
+  <div class="flow-arrow">&#8595;</div>
+
+  <div class="card">
+    <div class="phase">
+      <div class="phase-number">3</div>
+      <div>
+        <div class="phase-title">CLEANUP — REMOVE LEGACY ENCRYPTION CODE</div>
+      </div>
+    </div>
+    <p>Once all active users have migrated (track via <code>encryptionVersion</code> field on user docs), remove the dead code:</p>
+    <ul>
+      <li>Remove <code>EXPO_PUBLIC_ENCRYPTION_KEY</code> env variable from EAS</li>
+      <li>Remove <code>APP_SECRET</code> constant from <code>WorkoutRepository.ts</code></li>
+      <li>Remove <code>ENV_SECRET</code> and <code>FALLBACK_SECRETS</code> from <code>SyncService.ts</code></li>
+      <li>Remove fallback decryption logic (the <code>keysToTry</code> loops)</li>
+      <li>Simplify encrypt/decrypt to only use the user-derived key from <code>expo-secure-store</code></li>
+      <li>Remove the migration function itself</li>
+    </ul>
+  </div>
+
+  <!-- ───────────────────────────────────────────── -->
+  <h2>4. Files That Will Change</h2>
+
+  <table>
+    <tr><th>FILE</th><th>CHANGES</th></tr>
+    <tr>
+      <td><code>services/WorkoutRepository.ts</code></td>
+      <td>Replace <code>APP_SECRET</code> key derivation with secure-store lookup. Update <code>uploadSession</code>, <code>uploadBodyWeight</code>, and <code>uploadTemplate</code>.</td>
+    </tr>
+    <tr>
+      <td><code>services/SyncService.ts</code></td>
+      <td>Replace fallback key logic with secure-store lookup. Add migration function. Remove <code>ENV_SECRET</code> / <code>FALLBACK_SECRETS</code> after migration.</td>
+    </tr>
+    <tr>
+      <td><code>app/(tabs)/settings.tsx</code> (or equivalent)</td>
+      <td>UI for password change must trigger re-encryption of all data.</td>
+    </tr>
+    <tr>
+      <td><code>context/WorkoutContext.tsx</code></td>
+      <td>May need to hold / pass the master key during the session.</td>
+    </tr>
+    <tr>
+      <td><code>config/firebase.ts</code></td>
+      <td>Remove <code>EXPO_PUBLIC_ENCRYPTION_KEY</code> usage if no longer needed.</td>
+    </tr>
+  </table>
+
+  <!-- ───────────────────────────────────────────── -->
+  <h2>5. New Dependencies</h2>
+
+  <table>
+    <tr><th>PACKAGE</th><th>PURPOSE</th></tr>
+    <tr><td><code>expo-secure-store</code></td><td>Store the derived master key in the device keychain (iOS) / keystore (Android). Unlike AsyncStorage, this is hardware-backed and encrypted at rest.</td></tr>
+    <tr><td><code>pbkdf2</code> or <code>crypto-js/pbkdf2</code></td><td>Derive the master key from the user's password. CryptoJS already includes PBKDF2 so no new dep may be needed.</td></tr>
+  </table>
+
+  <!-- ───────────────────────────────────────────── -->
+  <h2>6. Open Questions</h2>
+
+  <div class="card card-warning">
+    <div class="card-title">DECISIONS NEEDED BEFORE IMPLEMENTATION</div>
+    <ul>
+      <li>How do we handle <strong>password resets</strong>? (recovery code vs. data loss vs. key escrow)</li>
+      <li>Should the migration run <strong>eagerly</strong> (all docs on login) or <strong>lazily</strong> (re-encrypt each doc as it's accessed)?</li>
+      <li>Do we need a <strong>server-side Cloud Function</strong> to track / enforce migration progress?</li>
+      <li>How long do we keep fallback decryption before removing it? (e.g., 3 months after 95% migration)</li>
+      <li>Should we encrypt <strong>workout templates (routines)</strong> with E2E as well, or keep them accessible for potential future sharing features?</li>
+      <li>Do we continue using <strong>CryptoJS</strong> or switch to a faster native crypto library (e.g., <code>react-native-quick-crypto</code>)?</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

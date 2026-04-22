@@ -65,17 +65,15 @@ export function WorkoutLiveActivity({
     <Voltra.VStack
       style={{
         backgroundColor: DARK,
-        borderRadius: 16,
         padding: 16,
         gap: 4,
+        maxWidth: ".infinity",
       }}
     >
       {/* Activity type header */}
       <Voltra.HStack style={{ gap: 8, alignItems: "center" }}>
         <Voltra.Symbol name={symbol} size={16} tintColor={GREEN} />
-        <Voltra.Text
-          style={{ color: MUTED, fontSize: 12, fontWeight: "700" }}
-        >
+        <Voltra.Text style={{ color: MUTED, fontSize: 12, fontWeight: "700" }}>
           {label}
           {isPaused ? " · PAUSED" : ""}
         </Voltra.Text>
@@ -83,14 +81,10 @@ export function WorkoutLiveActivity({
 
       {/* Big distance number */}
       <Voltra.HStack style={{ alignItems: "baseline", gap: 4 }}>
-        <Voltra.Text
-          style={{ color: WHITE, fontSize: 40, fontWeight: "900" }}
-        >
+        <Voltra.Text style={{ color: WHITE, fontSize: 40, fontWeight: "900" }}>
           {distanceText}
         </Voltra.Text>
-        <Voltra.Text
-          style={{ color: MUTED, fontSize: 16, fontWeight: "700" }}
-        >
+        <Voltra.Text style={{ color: MUTED, fontSize: 16, fontWeight: "700" }}>
           KM
         </Voltra.Text>
       </Voltra.HStack>
@@ -113,7 +107,13 @@ export function WorkoutLiveActivity({
         <Voltra.VStack>
           {isPaused ? (
             <Voltra.Text
-              style={{ color: MUTED, fontSize: 18, fontWeight: "800" }}
+              style={{
+                color: MUTED,
+                fontSize: 18,
+                fontWeight: "800",
+                width: "100%",
+                textAlign: "right",
+              }}
             >
               {formatElapsed(elapsedSeconds)}
             </Voltra.Text>
@@ -121,11 +121,23 @@ export function WorkoutLiveActivity({
             <Voltra.Timer
               startAtMs={startTime}
               direction="up"
-              style={{ color: WHITE, fontSize: 18, fontWeight: "800" }}
+              style={{
+                color: WHITE,
+                fontSize: 18,
+                fontWeight: "800",
+                width: "100%",
+                textAlign: "right",
+              }}
             />
           )}
           <Voltra.Text
-            style={{ color: MUTED, fontSize: 10, fontWeight: "700" }}
+            style={{
+              color: MUTED,
+              fontSize: 10,
+              fontWeight: "700",
+              width: "100%",
+              textAlign: "right",
+            }}
           >
             ELAPSED
           </Voltra.Text>
@@ -162,14 +174,10 @@ export function WorkoutLiveActivity({
     ),
     leading: (
       <Voltra.VStack style={{ padding: 8, gap: 2, alignItems: "center" }}>
-        <Voltra.Text
-          style={{ color: GREEN, fontSize: 15, fontWeight: "800" }}
-        >
+        <Voltra.Text style={{ color: GREEN, fontSize: 15, fontWeight: "800" }}>
           {paceText}
         </Voltra.Text>
-        <Voltra.Text
-          style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}
-        >
+        <Voltra.Text style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}>
           /KM
         </Voltra.Text>
       </Voltra.VStack>
@@ -189,9 +197,7 @@ export function WorkoutLiveActivity({
             style={{ color: WHITE, fontSize: 15, fontWeight: "800" }}
           />
         )}
-        <Voltra.Text
-          style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}
-        >
+        <Voltra.Text style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}>
           TIME
         </Voltra.Text>
       </Voltra.VStack>
@@ -203,9 +209,7 @@ export function WorkoutLiveActivity({
     leading: (
       <Voltra.HStack style={{ gap: 4, paddingLeft: 6, alignItems: "center" }}>
         <Voltra.Symbol name={symbol} size={12} tintColor={GREEN} />
-        <Voltra.Text
-          style={{ color: WHITE, fontSize: 13, fontWeight: "800" }}
-        >
+        <Voltra.Text style={{ color: WHITE, fontSize: 13, fontWeight: "800" }}>
           {distanceText}
         </Voltra.Text>
       </Voltra.HStack>

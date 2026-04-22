@@ -59,9 +59,9 @@ export function WorkoutSessionLiveActivity({
     <Voltra.VStack
       style={{
         backgroundColor: DARK,
-        borderRadius: 16,
         padding: 16,
         gap: 10,
+        maxWidth: ".infinity",
       }}
     >
       {/* Header row: icon + session name | elapsed */}
@@ -78,12 +78,18 @@ export function WorkoutSessionLiveActivity({
             style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
           >
             {sessionName.toUpperCase()}
-          {isPaused ? " · PAUSED" : ""}
+            {isPaused ? " · PAUSED" : ""}
           </Voltra.Text>
         </Voltra.HStack>
         {isPaused ? (
           <Voltra.Text
-            style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
+            style={{
+              color: MUTED,
+              fontSize: 11,
+              fontWeight: "700",
+              width: "100%",
+              textAlign: "right",
+            }}
           >
             {formatElapsed(elapsedSeconds)}
           </Voltra.Text>
@@ -91,15 +97,19 @@ export function WorkoutSessionLiveActivity({
           <Voltra.Timer
             startAtMs={startTime}
             direction="up"
-            style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
+            style={{
+              color: MUTED,
+              fontSize: 11,
+              fontWeight: "700",
+              width: "100%",
+              textAlign: "right",
+            }}
           />
         )}
       </Voltra.HStack>
 
       {/* State label */}
-      <Voltra.Text
-        style={{ color: accent, fontSize: 10, fontWeight: "900" }}
-      >
+      <Voltra.Text style={{ color: accent, fontSize: 10, fontWeight: "900" }}>
         {!restTimer
           ? "LIFTING"
           : restTimer.isFinished
@@ -120,7 +130,12 @@ export function WorkoutSessionLiveActivity({
             <Voltra.Timer
               endAtMs={restTimer.endTime}
               direction="down"
-              style={{ color: WHITE, fontSize: 36, fontWeight: "900", textAlign: "center" }}
+              style={{
+                color: WHITE,
+                fontSize: 36,
+                fontWeight: "900",
+                textAlign: "center",
+              }}
             />
           )}
           <Voltra.Text
@@ -160,14 +175,10 @@ export function WorkoutSessionLiveActivity({
           justifyContent: "space-between",
         }}
       >
-        <Voltra.Text
-          style={{ color: accent, fontSize: 15, fontWeight: "900" }}
-        >
+        <Voltra.Text style={{ color: accent, fontSize: 15, fontWeight: "900" }}>
           {progressText}
         </Voltra.Text>
-        <Voltra.Text
-          style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}
-        >
+        <Voltra.Text style={{ color: MUTED, fontSize: 11, fontWeight: "700" }}>
           SETS DONE
         </Voltra.Text>
       </Voltra.HStack>
@@ -227,9 +238,7 @@ export function WorkoutSessionLiveActivity({
     ),
     center: (
       <Voltra.VStack style={{ alignItems: "center", gap: 2, padding: 8 }}>
-        <Voltra.Text
-          style={{ color: accent, fontSize: 22, fontWeight: "900" }}
-        >
+        <Voltra.Text style={{ color: accent, fontSize: 22, fontWeight: "900" }}>
           {progressText}
         </Voltra.Text>
         <Voltra.Text
@@ -244,7 +253,11 @@ export function WorkoutSessionLiveActivity({
       <Voltra.VStack style={{ padding: 8, gap: 2, alignItems: "center" }}>
         {isPaused ? (
           <Voltra.Text
-            style={{ color: MUTED, fontSize: 15, fontWeight: "800" }}
+            style={{
+              color: MUTED,
+              fontSize: 15,
+              fontWeight: "800",
+            }}
           >
             {formatElapsed(elapsedSeconds)}
           </Voltra.Text>
@@ -255,9 +268,7 @@ export function WorkoutSessionLiveActivity({
             style={{ color: WHITE, fontSize: 15, fontWeight: "800" }}
           />
         )}
-        <Voltra.Text
-          style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}
-        >
+        <Voltra.Text style={{ color: MUTED, fontSize: 9, fontWeight: "700" }}>
           TIME
         </Voltra.Text>
       </Voltra.VStack>
@@ -273,9 +284,7 @@ export function WorkoutSessionLiveActivity({
           size={12}
           tintColor={accent}
         />
-        <Voltra.Text
-          style={{ color: WHITE, fontSize: 13, fontWeight: "800" }}
-        >
+        <Voltra.Text style={{ color: WHITE, fontSize: 13, fontWeight: "800" }}>
           {progressText}
         </Voltra.Text>
       </Voltra.HStack>
