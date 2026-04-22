@@ -48,3 +48,5 @@ google-services.json
 .history/
 .vscode/
 .idea/.claude/settings.local.json
+.claude
+.claude/settings.json
